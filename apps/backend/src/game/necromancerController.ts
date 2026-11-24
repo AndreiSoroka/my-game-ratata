@@ -3,14 +3,18 @@ import type { CharacterController } from './controllers'
 import {
     advanceNecromancerHeartRite,
     approachStudyLandmark,
+    canActAsNecromancer,
     moveNecromancer,
     performNecromancerCombatIntent,
     performNecromancerTactic,
 } from './necromancerActions'
 import {
+    aidWoundedSkeleton,
     defendNecromancer,
     needsNecromancerSafety,
     seekNecromancerSafety,
+    tryNecromancerAid,
+    updateNecromancerEscort,
 } from './necromancerDefense'
 import {
     localNecromancerOptions,
@@ -20,6 +24,7 @@ import {
     type NecromancerOffer,
     NecromancerPlanning,
 } from './necromancerPlanning'
+import { NecromancerRetinue } from './necromancerRetinue'
 import { NecromancerSpeech } from './necromancerSpeech'
 import {
     type NecromancerModelDecision,
@@ -46,8 +51,11 @@ export class NecromancerController implements CharacterController {
     private recovering = false
     private activity = 0
     private scene: NecromancerScene | undefined
+    private readonly retinue: NecromancerRetinue
 
-    public constructor(private readonly refuge: NecromancerRefuge) {}
+    public constructor(private readonly refuge: NecromancerRefuge) {
+        this.retinue = new NecromancerRetinue(refuge)
+    }
 
     public update(actor: GameCharacter, room: GameRoom, now: number): void {
         controllers.set(actor, this)
@@ -61,6 +69,7 @@ export class NecromancerController implements CharacterController {
         this.nextStepAt = now + 300
         const scene = observeNecromancerScene(actor, room, now)
         this.scene = scene
+        updateNecromancerEscort(actor, scene, now)
         this.planning.observe(scene, now)
         const remark = this.planning.accept(
             actor,
@@ -69,11 +78,7 @@ export class NecromancerController implements CharacterController {
             now
         )
         this.speech.advance(actor, room, scene, now, remark)
-        if (
-            !actor.isActionLocked(now) &&
-            actor.movement.dashUntil <= now &&
-            actor.abilities.casting === null
-        ) {
+        if (canActAsNecromancer(actor, now)) {
             this.act(actor, room, scene, now)
         }
     }
@@ -157,11 +162,20 @@ export class NecromancerController implements CharacterController {
         scene: NecromancerScene,
         now: number
     ): void {
+        if (aidWoundedSkeleton(actor, room, scene, now)) {
+            return
+        }
         if (scene.threat === undefined && this.recovering) {
             if (actor.hp < actor.maxHp * 0.8 || actor.hasPath()) {
                 return
             }
             this.recovering = false
+        }
+        if (
+            scene.threat === undefined &&
+            this.retinue.replenish(actor, room, scene, now)
+        ) {
+            return
         }
         if (this.applyPlan(actor, room, scene, now)) {
             return
@@ -171,16 +185,9 @@ export class NecromancerController implements CharacterController {
             defendNecromancer(actor, room, scene, scene.threat, options, now)
             return
         }
-        const aid = options.find(
-            ({ tactic }) => tactic === 'revive' || tactic === 'heal'
-        )
-        if (
-            aid !== undefined &&
-            performNecromancerTactic(actor, room, aid, now)
-        ) {
-            return
+        if (!tryNecromancerAid(actor, room, options, now)) {
+            this.study(actor, room, now)
         }
-        this.study(actor, room, now)
     }
 
     private applyPlan(
@@ -276,13 +283,11 @@ export class NecromancerController implements CharacterController {
         plan: NecromancerOption | undefined,
         now: number
     ): boolean {
-        if (plan?.targetId === undefined) {
-            return false
-        }
-        if (plan.tactic !== 'magic') {
+        const targeted = plan?.targetId !== undefined
+        if (targeted && plan.tactic !== 'magic') {
             this.planning.plan = undefined
         }
-        return performNecromancerTactic(actor, room, plan, now)
+        return targeted && performNecromancerTactic(actor, room, plan, now)
     }
 
     private study(actor: GameCharacter, room: GameRoom, now: number): void {

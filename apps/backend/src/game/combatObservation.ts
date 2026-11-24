@@ -9,6 +9,7 @@ import {
 import { snapshotAbilityUsage } from './abilityUsage'
 import type { GameCharacter } from './character'
 import { createCharacterSheet } from './characterSheet'
+import { canObserveRoomCharacter } from './characterSight'
 import { hasStar } from './constellations'
 import type { GraveCombatTarget } from './graveRules'
 import type { NavigationService } from './navigation'
@@ -156,9 +157,11 @@ function observedAbilities(
     if (abilities === undefined) {
         return {}
     }
+    const ashCasting = observedAshCast(abilities.ashCasting, target, view)
     return {
         abilities: {
             ...abilities,
+            ...(ashCasting === undefined ? {} : { ashCasting }),
             ...(target !== undefined && view.navigation !== undefined
                 ? {
                       ...(abilities.known.includes('pray')
@@ -195,6 +198,29 @@ function observedAbilities(
                       },
         },
     }
+}
+
+function observedAshCast(
+    cast: NonNullable<CharacterSnapshot['abilities']>['ashCasting'],
+    caster: GameCharacter | undefined,
+    { observer, getCharacter, navigation, now }: CombatObserver
+): typeof cast {
+    if (
+        cast?.targetId === undefined ||
+        (caster !== undefined && caster === observer)
+    ) {
+        return cast
+    }
+    const target = getCharacter(cast.targetId)
+    if (
+        target !== undefined &&
+        canObserveRoomCharacter(observer, target, navigation, now)
+    ) {
+        return cast
+    }
+    const visible = { ...cast }
+    delete visible.targetId
+    return visible
 }
 
 export function observeGraveCombat(

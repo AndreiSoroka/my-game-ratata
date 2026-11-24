@@ -1,4 +1,5 @@
 import {
+    ABILITY_DEFINITIONS,
     type AshRiteMessage,
     MASTERY_XP_SCALE,
     type SkeletonOrder,
@@ -10,7 +11,13 @@ import {
     parseAbilityCommand,
 } from '../src/game/abilityCommands'
 import { AshRites } from '../src/game/ashRites'
-import { ashSkeletonOrder, ashSummoner } from '../src/game/ashSkeletonState'
+import {
+    ashBoundSkeletons,
+    ashSkeletonBond,
+    ashSkeletonOrder,
+    ashSummoner,
+    bindAshSkeleton,
+} from '../src/game/ashSkeletonState'
 import { GameCharacter } from '../src/game/character'
 import { restoreCharacter } from '../src/game/characterRecovery'
 import { CompanionService } from '../src/game/companions'
@@ -89,6 +96,87 @@ function scenario(...actors: GameCharacter[]) {
         },
     }
 }
+
+describe('skeleton taming', () => {
+    it('tames an existing skeleton once without replacing its health, gear, or identity', () => {
+        const first = fighter('first')
+        const second = fighter('second')
+        const skeleton = fighter('wild', 'skeleton', false, {
+            faction: 'monsters',
+        })
+        const weapon = createItemInstance('old_sword')
+        skeleton.equipment.weapon = weapon
+        skeleton.hp = 17
+        const f = scenario(first, second, skeleton)
+        study(first, 4)
+        study(second, 4)
+        const initialMana = first.mana
+        const command = {
+            abilityId: 'ash_tame',
+            targetId: skeleton.id,
+        } as const
+        expect(f.use(first, command, now)).toMatchObject([{ phase: 'started' }])
+        expect(f.use(second, command, now)).toMatchObject([
+            { phase: 'started' },
+        ])
+        const { windupMs, mana } = ABILITY_DEFINITIONS.ash_tame
+        expect(f.rites.advance(now + windupMs - 1)).toEqual([])
+        expect(f.rites.advance(now + windupMs)).toMatchObject([
+            { phase: 'completed', targetId: skeleton.id },
+            { phase: 'interrupted', targetId: skeleton.id },
+        ])
+        expect(first.mana).toBe(initialMana - mana)
+        expect(second.mana).toBe(initialMana)
+        expect(f.characters.get(skeleton.id)).toBe(skeleton)
+        expect(skeleton.hp).toBe(17)
+        expect(skeleton.equipment.weapon).toBe(weapon)
+        expect(ashSkeletonBond(skeleton)?.owner).toBe(first)
+        expect(ashSummoner(skeleton)).toBeUndefined()
+        expect(canTargetByFaction(skeleton, first, now + windupMs)).toBe(false)
+    })
+
+    it('keeps three living bindings and frees one slot on death without spending on failed channels', () => {
+        const caster = fighter('caster')
+        const guards = ['one', 'two', 'three'].map((id) =>
+            fighter(id, 'skeleton')
+        )
+        const wild = fighter('wild', 'skeleton')
+        const f = scenario(caster, wild, ...guards)
+        study(caster, 4)
+        for (const guard of guards) {
+            bindAshSkeleton(guard, caster)
+        }
+        const initialMana = caster.mana
+        const command = { abilityId: 'ash_tame', targetId: wild.id } as const
+        expect(f.use(caster, command, now)).toMatchObject([{ kind: 'notice' }])
+        const deceased = guards[0]
+        if (deceased === undefined) {
+            throw new Error('Missing bound guard')
+        }
+        deceased.applyDamage(deceased.hp, now)
+        expect(ashBoundSkeletons(caster)).toHaveLength(2)
+
+        expect(f.use(caster, command, now)).toMatchObject([
+            { phase: 'started' },
+        ])
+        caster.applyDamage(1, now + 50)
+        caster.hp = caster.maxHp
+        expect(f.rites.advance(now + 100)).toMatchObject([
+            { phase: 'interrupted' },
+        ])
+        expect(caster.mana).toBe(initialMana)
+        expect(ashSkeletonBond(wild)).toBeUndefined()
+
+        expect(f.use(caster, command, now + 100)).toMatchObject([
+            { phase: 'started' },
+        ])
+        expect(
+            f.rites.advance(now + 100 + ABILITY_DEFINITIONS.ash_tame.windupMs)
+        ).toMatchObject([{ phase: 'completed' }])
+        expect(ashBoundSkeletons(caster)).toHaveLength(3)
+        expect(ashSkeletonBond(wild)?.owner).toBe(caster)
+    })
+})
 
 describe('shared Ash rites', () => {
     it('starts, revalidates and consumes shared remains once, without consuming the corpse loot', () => {

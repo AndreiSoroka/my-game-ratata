@@ -7,6 +7,7 @@ import {
 import { expect, it } from 'vitest'
 
 import { generateWorldMap } from '../../../scripts/generate-map.mjs'
+import { ashParameters } from '../src/game/constellationModifiers'
 import { canTargetByFaction } from '../src/game/factions'
 import { NavigationService } from '../src/game/navigation'
 import { buildGrid, type TiledMap } from '../src/game/navigationGrid'
@@ -56,6 +57,13 @@ it('generates one reachable Ash refuge in each corner using deterministic world 
         expect(savva.maxHp).toBe(100)
         expect(savva.hp).toBe(savva.maxHp)
         expect(savva.abilities.known).toContain('ash_raise')
+        expect(savva.abilities.known).toContain('ash_tame')
+        expect(savva.abilities.known).toContain('ash_exhaustion')
+        expect(ashParameters(savva)).toMatchObject({
+            exhaustionRank: 2,
+            healPower: 1.3,
+            healRadiusCells: 1,
+        })
         const skeleton = createSkeleton(navigation).character
         const slime = createSlime(navigation).character
         expect(canTargetByFaction(savva, skeleton)).toBe(false)

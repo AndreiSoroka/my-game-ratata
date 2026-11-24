@@ -1,12 +1,24 @@
+import { worldLocationNeighbor } from '@my-game-ratata/contracts'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { resolveCharacterDamage } from '../src/game/abilityDamage'
+import {
+    ashAssaultTarget,
+    ashBoundSkeletons,
+    ashSkeletonBond,
+} from '../src/game/ashSkeletonState'
 import { distance } from '../src/game/math'
-import { defendNecromancer } from '../src/game/necromancerDefense'
+import {
+    aidWoundedSkeleton,
+    defendNecromancer,
+    updateNecromancerEscort,
+} from '../src/game/necromancerDefense'
 import { observeNecromancerScene } from '../src/game/necromancerTactics'
 import {
     hasGroupHostility,
     hasPersonalHostility,
 } from '../src/game/personalHostility'
+import { advancePrayerCast } from '../src/game/prayer'
 import { GameRoom } from '../src/game/room'
 import {
     advanceSavvaTerritory,
@@ -105,18 +117,42 @@ function fixture() {
     }
 }
 
-it('counts three separate warned approaches by one visitor and starts ordinary combat against newcomers', () => {
-    const { game, savva, visitor, enter, warnings, arrive, beyondLeash } =
-        fixture()
+it('turns Savva and his three skeletons against unrelated humans on the first warned trespass', () => {
+    const {
+        game,
+        savva,
+        visitor,
+        enter,
+        warnings,
+        arrive,
+        inner,
+        beyondLeash,
+    } = fixture()
     const time = Date.now()
+    const group = ashBoundSkeletons(savva)
+    expect(group).toHaveLength(3)
+    expect(
+        group.filter(
+            (skeleton) => ashSkeletonBond(skeleton)?.guard !== undefined
+        )
+    ).toHaveLength(1)
+    expect(
+        group.every((skeleton) => !hasGroupHostility(skeleton, visitor))
+    ).toBe(true)
+    const newcomer = arrive('Клирик Дымный')
+    newcomer.actor.position = beyondLeash
     enter(time)
     expect(savvaHumanTrust(savva, visitor)).toBe(-20)
     expect(hasPersonalHostility(savva, visitor, time + 201)).toBe(true)
+    expect(hasGroupHostility(savva, newcomer.actor)).toBe(true)
+    expect(
+        group.every((skeleton) => hasGroupHostility(skeleton, newcomer.actor))
+    ).toBe(true)
     advanceSavvaTerritory(game, time + 3_900)
     expect(savvaHumanTrust(savva, visitor)).toBe(-20)
     enter(time + 4_000)
     expect(savvaHumanTrust(savva, visitor)).toBe(-40)
-    expect(hasGroupHostility(savva, visitor)).toBe(false)
+    expect(hasGroupHostility(savva, visitor)).toBe(true)
     enter(time + 5_000)
     expect(warnings()).toHaveLength(3)
     expect(hasGroupHostility(savva, visitor)).toBe(true)
@@ -124,25 +160,101 @@ it('counts three separate warned approaches by one visitor and starts ordinary c
     expect(savva.faction).toBe('peaceful')
 
     visitor.position = beyondLeash
-    const newcomer = arrive('Клирик Дымный')
     const undead = arrive('Сторож Райм')
     undead.actor.lich = true
     const now = time + 6_000
     newcomer.actor.position = {
-        x: (newcomer.actor.position.x + savva.position.x) / 2,
-        y: (newcomer.actor.position.y + savva.position.y) / 2,
+        x: (inner.x + savva.position.x) / 2,
+        y: (inner.y + savva.position.y) / 2,
     }
     advanceSavvaTerritory(game, now)
     expect(savvaTerritorialTarget(savva)).toBe(newcomer.actor)
     expect(hasGroupHostility(savva, undead.actor)).toBe(false)
     const scene = observeNecromancerScene(savva, game, now)
     expect(scene.threat).toBe(newcomer.actor)
+    updateNecromancerEscort(savva, scene, now)
+    expect(
+        group.filter(
+            (skeleton) => ashAssaultTarget(skeleton) === newcomer.actor
+        )
+    ).toHaveLength(2)
     defendNecromancer(savva, game, scene, newcomer.actor, [], now)
     expect(savva.pendingAttack?.targetId).toBe(newcomer.actor.id)
     newcomer.actor.position = beyondLeash
     advanceSavvaTerritory(game, now + 50)
     expect(savvaTerritorialTarget(savva)).toBeUndefined()
     expect(savva.pendingAttack).toBeUndefined()
+})
+
+it('heals a critically wounded escort through the ordinary Ash prayer', () => {
+    const { game, savva, inner } = fixture()
+    const skeleton = ashBoundSkeletons(savva).find(
+        (actor) => ashSkeletonBond(actor)?.guard === undefined
+    )
+    if (skeleton === undefined) {
+        throw new Error('Missing escort')
+    }
+    const now = game.gameplayNow()
+    skeleton.position = inner
+    skeleton.applyDamage(Math.ceil(skeleton.maxHp * 0.65), now)
+    const woundedHp = skeleton.hp
+    expect(
+        aidWoundedSkeleton(
+            savva,
+            game,
+            observeNecromancerScene(savva, game, now),
+            now
+        )
+    ).toBe(true)
+    const cast = savva.abilities.casting
+    expect(cast).toMatchObject({
+        abilityId: 'pray_grave',
+        targetId: skeleton.id,
+    })
+    if (cast === null) {
+        throw new Error('Expected Ash healing windup')
+    }
+    advancePrayerCast(
+        savva,
+        cast.completesAt,
+        game.abilityContextFor(savva, cast.completesAt),
+        () => 0
+    )
+    expect(skeleton.hp).toBeGreaterThan(woundedHp)
+})
+
+it('starts the same hostility on a resolved hit against the chest guard even while Savva is away', () => {
+    const { game, savva, visitor, arrive } = fixture()
+    const guard = ashBoundSkeletons(savva).find(
+        (skeleton) => ashSkeletonBond(skeleton)?.guard !== undefined
+    )
+    if (guard === undefined) {
+        throw new Error('Missing chest guard')
+    }
+    const bystander = arrive('Поздний Странник').actor
+    const east = worldLocationNeighbor(savva.locationId, 'east')
+    if (east === undefined) {
+        throw new Error('The Western Ruins must have an eastern neighbor')
+    }
+    savva.locationId = east.id
+    expect(hasGroupHostility(guard, bystander)).toBe(false)
+    const now = Date.now()
+    expect(
+        resolveCharacterDamage({
+            actor: visitor,
+            target: guard,
+            amount: 1,
+            damageKind: 'physical',
+            respawnDelayMs: 0,
+            now,
+        }).hpDamage
+    ).toBe(1)
+    expect(hasGroupHostility(guard, bystander)).toBe(true)
+    expect(hasGroupHostility(savva, bystander)).toBe(false)
+    const snapshot = game.snapshot(now, guard.locationId, bystander.id)
+    expect(
+        snapshot.characters.find(({ id }) => id === guard.id)?.relationship
+    ).toBe('hostile')
 })
 
 it('requires an audible warning, does not credit retreat, and counts a continuous stay inside only once', () => {

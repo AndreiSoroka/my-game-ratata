@@ -54,7 +54,8 @@ export function requestNpcAttack(
     actor: GameCharacter,
     target: GameCharacter,
     world: NpcAbilityWorld,
-    now: number
+    now: number,
+    explicitTarget = false
 ): void {
     if (actorRefusesCombat(actor)) {
         return
@@ -75,7 +76,12 @@ export function requestNpcAttack(
         }
         world.publishEvents(stowed.events)
     }
-    if (!trySkeletonStrike(actor, target, world, now)) {
+    if (trySkeletonStrike(actor, target, world, now)) {
+        return
+    }
+    if (explicitTarget) {
+        world.requestAttack(actor, now, target.id)
+    } else {
         world.requestAttack(actor, now)
     }
 }

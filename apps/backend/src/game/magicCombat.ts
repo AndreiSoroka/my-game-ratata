@@ -5,7 +5,10 @@ import type {
 
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
-import { advanceFireProjectile, type FireProjectile } from './magicProjectiles'
+import {
+    advanceMagicProjectile,
+    type MagicProjectile,
+} from './magicProjectiles'
 import {
     activeMagicChannel,
     bindMagicCombat,
@@ -21,12 +24,12 @@ const noChannels: ReadonlySet<GameCharacter> = new Set()
 export class MagicCombat {
     private readonly channels = new Map<string, Set<GameCharacter>>()
     private readonly effectIds = new WeakMap<
-        GameCharacter | FireProjectile,
+        GameCharacter | MagicProjectile,
         string
     >()
     private readonly windingUp = new WeakSet<GameCharacter>()
     private effectSequence = 0
-    private readonly projectiles = new Map<string, FireProjectile>()
+    private readonly projectiles = new Map<string, MagicProjectile>()
     private readonly impacts = new Map<
         string,
         { effect: ProjectileEffect; locationId: string }
@@ -52,9 +55,11 @@ export class MagicCombat {
         return this.channels.get(locationId) ?? noChannels
     }
 
-    public launch(projectile: FireProjectile): void {
+    public launch(projectile: MagicProjectile): void {
         this.projectiles.set(projectile.id, projectile)
-        this.windingUp.add(projectile.actor)
+        if (!projectile.launched) {
+            this.windingUp.add(projectile.actor)
+        }
         this.assignEffectId(projectile)
     }
 
@@ -76,7 +81,7 @@ export class MagicCombat {
         return false
     }
 
-    private assignEffectId(instance: GameCharacter | FireProjectile): void {
+    private assignEffectId(instance: GameCharacter | MagicProjectile): void {
         this.effectIds.set(instance, `magic-${String(++this.effectSequence)}`)
     }
 
@@ -91,7 +96,7 @@ export class MagicCombat {
             const context = contexts.get(locationId) ?? contextFor(locationId)
             contexts.set(locationId, context)
             const wasWindingUp = !projectile.launched
-            const result = advanceFireProjectile(projectile, context)
+            const result = advanceMagicProjectile(projectile, context)
             if (wasWindingUp && (projectile.launched || result !== undefined)) {
                 this.windingUp.delete(projectile.actor)
             }

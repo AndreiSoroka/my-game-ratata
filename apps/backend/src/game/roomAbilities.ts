@@ -233,6 +233,7 @@ function roomMagicEnvironment(
                 navigation: world().get(locationId).navigation,
                 now,
                 onProjectileRelease: onRelease,
+                sameParty,
                 respawnDelayMsFor: resolveRespawnDelayMs,
             })),
     }

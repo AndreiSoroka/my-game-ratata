@@ -13,9 +13,12 @@ import {
     allowAshSummonWandering,
     applyAshGift,
     ashActorAvailable,
+    ashBoundSkeletons,
+    ashSkeletonBond,
     ashSkeletonOrder,
-    ashSummoner,
+    ashSkeletonOwnerId,
     hasAshGift,
+    releaseAshSkeleton,
     setAshSkeletonOrder,
 } from './ashSkeletonState'
 import type { GameCharacter } from './character'
@@ -55,26 +58,22 @@ export class AshOrders {
                 'Приказать можно только доступному союзному скелету.'
             )
         }
-        const current = ashSkeletonOrder(target)
+        const ownerId = ashSkeletonOwnerId(target)
         if (sameOrder(actor, target, message.order)) {
             return []
         }
         if (message.order === 'wander') {
-            if (
-                current?.ownerId !== actor.id &&
-                ashSummoner(target) !== actor.id
-            ) {
+            if (ownerId !== actor.id) {
                 return []
             }
             this.clear(target)
+            releaseAshSkeleton(target)
             allowAshSummonWandering(target)
         } else {
             if (
-                current === undefined &&
-                [...this.ordered].filter(
-                    (skeleton) =>
-                        ashSkeletonOrder(skeleton)?.ownerId === actor.id
-                ).length >= ASH_RITE_RULES.orderSlots
+                ashSkeletonOrder(target) === undefined &&
+                ashSkeletonBond(target) === undefined &&
+                this.atOrderLimit(actor)
             ) {
                 return abilityNotice(actor, 'Уже подчинены три скелета.')
             }
@@ -160,6 +159,17 @@ export class AshOrders {
         ]
     }
 
+    private atOrderLimit(actor: GameCharacter): boolean {
+        const extra = [...this.ordered].filter(
+            (skeleton) =>
+                ashSkeletonBond(skeleton) === undefined &&
+                ashSkeletonOrder(skeleton)?.ownerId === actor.id
+        ).length
+        return (
+            ashBoundSkeletons(actor).length + extra >= ASH_RITE_RULES.orderSlots
+        )
+    }
+
     private validateOrder(skeleton: GameCharacter): void {
         const order = ashSkeletonOrder(skeleton)
         const owner =
@@ -169,10 +179,7 @@ export class AshOrders {
             owner === undefined ||
             this.characters.get(skeleton.id) !== skeleton ||
             !ashActorAvailable(skeleton) ||
-            skeleton.locationId !== order.locationId ||
-            (order.kind !== 'guard' &&
-                (!ashActorAvailable(owner) ||
-                    owner.locationId !== skeleton.locationId))
+            !orderStillApplies(skeleton, owner, order)
         ) {
             this.clear(skeleton)
         }
@@ -182,6 +189,20 @@ export class AshOrders {
         setAshSkeletonOrder(actor, undefined)
         this.ordered.delete(actor)
     }
+}
+
+function orderStillApplies(
+    skeleton: GameCharacter,
+    owner: GameCharacter,
+    order: NonNullable<ReturnType<typeof ashSkeletonOrder>>
+): boolean {
+    return (
+        ashSkeletonBond(skeleton)?.owner === owner ||
+        (skeleton.locationId === order.locationId &&
+            (order.kind === 'guard' ||
+                (ashActorAvailable(owner) &&
+                    owner.locationId === skeleton.locationId)))
+    )
 }
 
 function alliedSkeleton(
@@ -209,7 +230,7 @@ function alliedSkeleton(
     ) {
         return undefined
     }
-    const ownerId = ashSummoner(target) ?? ashSkeletonOrder(target)?.ownerId
+    const ownerId = ashSkeletonOwnerId(target)
     return ownerId === undefined || ownerId === actor.id ? target : undefined
 }
 

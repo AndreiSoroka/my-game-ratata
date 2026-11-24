@@ -25,6 +25,8 @@ export const hotbarGlyphs: Record<AbilityId, string> = {
     pray_grave: '☾',
     ash_raise: '†',
     ash_order: '›',
+    ash_tame: '⋈',
+    ash_exhaustion: '◒',
     ash_gift: '♢',
     ash_sacrifice: '◆',
     ash_heart: '♥',

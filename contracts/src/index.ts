@@ -180,6 +180,8 @@ export interface CharacterStatsSnapshot {
 export interface CharacterSnapshot {
     workerActivity?: import('./workerRequests').WorkerActivitySnapshot
     interactions?: CharacterInteractions
+    /** The observer knows the rite and may attempt to bind this skeleton. */
+    ashTameable?: true
     trainingTarget?: { areaId: string }
     connected?: boolean
     relationship?: CharacterRelationship
@@ -193,6 +195,11 @@ export interface CharacterSnapshot {
     movement?: CharacterMovementSnapshot
     /** Active prayer aura effects are visible only to this character. */
     prayerAuraEffects?: ReadonlyArray<import('./prayer').PrayerAuraEffectId>
+    /** The victim alone sees the rank and authoritative deadline. */
+    ashExhaustion?: {
+        rank: import('./ash').AshExhaustionRank
+        expiresAt: number
+    }
     soul?: SoulSnapshot
     progression?: ProgressionSnapshot
     heroClass?: HeroClass | null

@@ -117,6 +117,12 @@ export interface CharacterAbilitiesSnapshot {
     cooldowns: Partial<Record<AbilityId, number>>
     barrier: { remaining?: number; expiresAt: number } | null
     magicChannel?: import('./magic').MagicChannelSnapshot
+    ashCasting?: {
+        abilityId: 'ash_exhaustion' | 'ash_tame'
+        targetId?: string
+        startedAt: number
+        completesAt: number
+    }
     rootedUntil?: number
     /** Healing alias retained for existing presentation fixtures. */
     prayer?: PrayerParametersSnapshot

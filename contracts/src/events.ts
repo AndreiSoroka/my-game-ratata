@@ -72,7 +72,8 @@ export interface GameEventPayload {
     abilityId?: AbilityId
     damageKind?: DamageKind
     critical?: boolean
-    statusId?: 'stun' | 'barrier' | 'reviving' | 'defensive_stance'
+    statusId?:
+        'stun' | 'barrier' | 'reviving' | 'defensive_stance' | 'ash_exhaustion'
     expiresAt?: number
     /** Fixed authoritative action duration, including phase-dependent rituals. */
     durationMs?: number

@@ -22,6 +22,7 @@ import {
 } from './prayerAuras'
 import { cancelPrayerCast } from './prayerCancellation'
 import { confirmResourceSpend, recordResourceSpend } from './resourcePractice'
+import { observeSavvaAssault } from './savvaTerritory'
 import { rewardSkeletonKill } from './skeletonKillReward'
 import { awardMasteries, captureMasteryFactors } from './skillProgression'
 import { interruptUndeadWindup } from './undeadCombat'
@@ -91,6 +92,9 @@ export function resolveCharacterDamage(
     const authorizedRetaliation = hasRetaliationRight(actor, target, now)
     markNonhostileContact(input, hostile, authorizedRetaliation)
     result.hpDamage = guardedHpDamage(input, result.absorbed, hostile)
+    if (result.hpDamage > 0 || result.absorbed > 0) {
+        observeSavvaAssault(actor, target, now)
+    }
     if (result.hpDamage <= 0) {
         finishDefenderPractice(input, result, hostile, factors)
         return result

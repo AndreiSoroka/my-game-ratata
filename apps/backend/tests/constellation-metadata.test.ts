@@ -346,7 +346,7 @@ describe('known prayer school cards', () => {
             fullConstellationCatalog.filter(
                 (node) => node.constellationId === 'prayer_grave'
             )
-        ).toHaveLength(40)
+        ).toHaveLength(44)
     })
 })
 
@@ -366,6 +366,8 @@ it('marks only standalone hotbar bindings active, never enhancement prerequisite
         ['prayer_grave.root', 'pray_grave'],
         ['prayer_grave.raise', 'ash_raise'],
         ['prayer_grave.orders', 'ash_order'],
+        ['prayer_grave.tame', 'ash_tame'],
+        ['prayer_grave.exhaustion1', 'ash_exhaustion'],
         ['prayer_grave.donate', 'ash_gift'],
         ['prayer_grave.sacrifice', 'ash_sacrifice'],
         ['prayer_grave.heart', 'ash_heart'],

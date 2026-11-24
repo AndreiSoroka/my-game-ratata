@@ -144,6 +144,30 @@ function ashRiteCardEffects(
             ),
         ]
     }
+    if (ability === 'ash_exhaustion') {
+        const { drain, chanceBonus, reductions } = ASH_RULES.exhaustion
+        const { exhaustionRank } = resolveAshParameters(learned)
+        const effects = [
+            effectRow(
+                `Попадание истощает здоровье, ману и энергию на ${String(drain)} ед. каждое.`,
+                `A hit drains ${String(drain)} each from health, mana and energy.`
+            ),
+            effectRow(
+                `Шанс проклятия равен шансу ответа Праха плюс ${percent(chanceBonus)} п.п.`,
+                `The curse chance is the Ash Guardian’s answer chance plus ${englishPercent(chanceBonus)} percentage points.`
+            ),
+        ]
+        const reduction = reductions[exhaustionRank - 1]
+        if (reduction !== undefined && exhaustionRank > 1) {
+            effects.push(
+                effectRow(
+                    `Текущий ранг: ${String(exhaustionRank)}. Проклятие снижает максимумы ресурсов на ${percent(reduction)}%.`,
+                    `Current rank: ${String(exhaustionRank)}. The curse reduces maximum resources by ${englishPercent(reduction)}%.`
+                )
+            )
+        }
+        return effects
+    }
     const node = fullConstellationCatalog.find(
         (candidate) => candidate.activationAbilityId === ability
     )

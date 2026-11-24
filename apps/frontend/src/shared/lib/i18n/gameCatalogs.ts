@@ -61,6 +61,8 @@ export const abilityMessages = withAuthoredRussian(
         pray_grave: 'Prayer of ashes',
         ash_raise: 'Raise skeleton',
         ash_order: 'Command skeleton',
+        ash_tame: 'Tame skeletons',
+        ash_exhaustion: 'Withering bolt',
         ash_gift: 'Gift of ash',
         ash_sacrifice: 'Ash sacrifice',
         ash_heart: 'Lich’s heart',

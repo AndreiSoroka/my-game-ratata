@@ -11,9 +11,10 @@ const props = defineProps<{ player: CharacterSnapshot; serverTime?: number }>()
 const emit = defineEmits<{ cancelPrayer: []; cancelMagic: []; cancelRoute: [] }>()
 const stunned = computed(() => props.player.cooldowns.stunMsLeft > 0)
 const casting = computed(() => props.player.abilities?.casting)
-const magicChannel = computed(() => props.player.abilities?.magicChannel)
-const magicSeconds = computed(() => {
-    const channel = magicChannel.value
+const ashCasting = computed(() => props.player.abilities?.ashCasting)
+const timedCast = computed(() => ashCasting.value ?? props.player.abilities?.magicChannel)
+const castSeconds = computed(() => {
+    const channel = timedCast.value
     return channel
         ? Math.max(
               0,
@@ -21,6 +22,10 @@ const magicSeconds = computed(() => {
           )
         : 0
 })
+function cancelTimedCast(): void {
+    if (ashCasting.value) emit('cancelPrayer')
+    else emit('cancelMagic')
+}
 const blockedRoute = computed(() => {
     const control = props.player.control
     return props.player.alive && control?.mode === 'route' && control.route?.waiting === 'blocked'
@@ -34,17 +39,21 @@ const remainingSeconds = computed(() => {
 </script>
 <template>
     <div
-        v-if="!stunned && magicChannel"
+        v-if="!stunned && timedCast"
         class="control-status control-status--magic rpg-panel game-frame-host"
     >
         <GameFrame variant="panel" />
         <span role="status"
-            >{{ abilityName(magicChannel.abilityId) }} · {{ magicSeconds }}
+            >{{ abilityName(timedCast.abilityId) }} · {{ castSeconds }}
             {{ tGame('game.knowledge.s') }}</span
         >
-        <GameButton :aria-label="tGame('game.world.interruptSpell')" @click="emit('cancelMagic')">{{
-            tGame('game.world.interruptEsc')
-        }}</GameButton>
+        <GameButton
+            :aria-label="
+                tGame(ashCasting ? 'game.world.interruptPrayer' : 'game.world.interruptSpell')
+            "
+            @click="cancelTimedCast"
+            >{{ tGame('game.world.interruptEsc') }}</GameButton
+        >
     </div>
     <GameButton
         v-else-if="!stunned && casting && !casting.uninterruptible"

@@ -29,7 +29,7 @@ export type MagicEffectSnapshot =
       }
     | {
           id: string
-          abilityId: 'fireball' | 'greater_fireball'
+          abilityId: 'fireball' | 'greater_fireball' | 'ash_exhaustion'
           phase: 'flight' | 'impact'
           position: Vector2
           direction: Vector2

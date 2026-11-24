@@ -157,7 +157,7 @@ it('includes only the applicable learned modifiers of both shots and both fireba
     }
     expect(
         fullConstellationCatalog.filter((node) => node.effectType === 'active')
-    ).toHaveLength(23)
+    ).toHaveLength(25)
     for (const node of fullConstellationCatalog.filter(
         (entry) => entry.effectType === 'active'
     )) {

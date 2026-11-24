@@ -3,7 +3,6 @@ import {
     type CharacterAbilitiesSnapshot,
     type CharacterSnapshot,
     type GameEventPayload,
-    isPrayerAction,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import { AudioContextFactory, type SoundTrack } from 'excalibur'
@@ -23,9 +22,7 @@ import type { WorldAmbienceSounds } from './worldAmbienceSounds'
 export { isMagicCastAttack } from './castAudioEvents'
 
 type TileSize = Pick<FootstepMap, 'tileWidth' | 'tileHeight'>
-type Channel = NonNullable<
-    CharacterAbilitiesSnapshot['casting'] | CharacterAbilitiesSnapshot['magicChannel']
->
+type Channel = NonNullable<CharacterAbilitiesSnapshot['casting' | 'magicChannel' | 'ashCasting']>
 
 interface CastSource {
     gain: number
@@ -186,7 +183,10 @@ export class CastAudio {
         if (!source || this.actorGone(view, actorId) || !this.audioRunning()) return
         this.reconcileVoices(view, serverTime)
         if (!this.hasSlot(view, actorId)) return
-        const track = this.sounds.play(sound, { volume: source.gain })
+        const track = this.sounds.play(sound, {
+            volume: source.gain,
+            ...(event.abilityId === 'ash_exhaustion' ? { playbackRate: 0.72 } : {}),
+        })
         if (track) this.voices.set(actorId, { track, receipt })
     }
 
@@ -200,7 +200,7 @@ export class CastAudio {
         if (!channel || channel.completesAt - serverTime < minimumChannelMs) return
         if (this.channelEnded(view, actorId, channel, serverTime) || !this.hasSlot(view, actorId))
             return
-        const loop = !isPrayerAction(channel.abilityId)
+        const loop = channel.abilityId === 'chains' || channel.abilityId === 'city_portal'
         const receipt = loop
             ? undefined
             : JSON.stringify(['channel', actorId, channel.abilityId, channel.startedAt])
@@ -302,17 +302,16 @@ function readSources(
             (actor.position.y - listener.position.y) / tileSize.tileHeight
         )
         const gain = footstepGain(distance - 2, 6)
-        if (gain > 0)
-            sources.push([
-                actor.id,
-                { gain, distance, channel: readChannel(actor, snapshot.serverTime) },
-            ])
+        if (!(gain > 0)) continue
+        const channel = readChannel(actor, snapshot.serverTime)
+        sources.push([actor.id, { gain, distance, channel }])
     }
     return new Map(sources.sort((a, b) => a[1].distance - b[1].distance))
 }
 
 function readChannel(actor: CharacterSnapshot, serverTime: number): Channel | undefined {
-    const channel = actor.abilities?.casting ?? actor.abilities?.magicChannel
+    const channel =
+        actor.abilities?.casting ?? actor.abilities?.magicChannel ?? actor.abilities?.ashCasting
     return channel && channel.startedAt <= serverTime && serverTime < channel.completesAt
         ? channel
         : undefined

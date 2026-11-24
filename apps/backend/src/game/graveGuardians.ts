@@ -3,6 +3,7 @@ import {
     PURSUIT_RULES,
 } from '@my-game-ratata/contracts'
 
+import { ashSkeletonBond } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { distance } from './math'
 import { clearPursuit, pursuits, territories } from './pursuitState'
@@ -30,7 +31,8 @@ export class GraveGuardians {
         if (
             current?.alive === true &&
             characters.get(current.id) === current &&
-            !current.tags.has('state.retired')
+            !current.tags.has('state.retired') &&
+            ashSkeletonBond(current) === undefined
         ) {
             return
         }
@@ -39,7 +41,9 @@ export class GraveGuardians {
             .map((id) => characters.get(id))
             .filter(
                 (child): child is GameCharacter =>
-                    child?.alive === true && !child.tags.has('state.retired')
+                    child?.alive === true &&
+                    !child.tags.has('state.retired') &&
+                    ashSkeletonBond(child) === undefined
             )
             .sort((a, b) => {
                 const difference =

@@ -1,4 +1,5 @@
 import {
+    type AshExhaustionRank,
     type GameEventPayload,
     type MagicEffectSnapshot,
     MASTERY_REWARDS,
@@ -8,10 +9,17 @@ import {
 
 import type { AbilityContext } from './abilityContext'
 import { resolveCharacterDamage } from './abilityDamage'
+import { resolveAshExhaustionImpact } from './ashExhaustionImpact'
 import type { GameCharacter } from './character'
 import { availableToAttack } from './combat'
 import { recordRunicContact } from './constellations'
 import { damageGrave } from './graveCombat'
+import {
+    availableTarget,
+    clearFlightDistance,
+    firstContactDistance,
+    positionAlong,
+} from './magicProjectileGeometry'
 import { distance } from './math'
 import {
     confirmCombatResourceSpend,
@@ -20,9 +28,8 @@ import {
 } from './resourcePractice'
 import { awardMasteries, type captureMasteryFactors } from './skillProgression'
 
-export interface FireProjectile {
+export interface ProjectileFlight {
     id: string
-    abilityId: SpellSkillId
     actor: GameCharacter
     launchedAt: number
     launched: boolean
@@ -33,20 +40,31 @@ export interface FireProjectile {
     traveled: number
     radius: number
     speed: number
-    minDamage: number
-    maxDamage: number
     resourceSpend: ResourceSpendReceipt | undefined
     random: () => number
     factors: ReturnType<typeof captureMasteryFactors>
 }
+
+interface FireProjectile extends ProjectileFlight {
+    abilityId: SpellSkillId
+    minDamage: number
+    maxDamage: number
+}
+
+export interface ExhaustionProjectile extends ProjectileFlight {
+    abilityId: 'ash_exhaustion'
+    rank: AshExhaustionRank
+}
+
+export type MagicProjectile = FireProjectile | ExhaustionProjectile
 
 interface ProjectileResult {
     events: GameEventPayload[]
     effect?: Extract<MagicEffectSnapshot, { phase: 'flight' | 'impact' }>
 }
 
-export function advanceFireProjectile(
-    projectile: FireProjectile,
+export function advanceMagicProjectile(
+    projectile: MagicProjectile,
     context: AbilityContext
 ): ProjectileResult | undefined {
     const { now, navigation } = context
@@ -54,16 +72,11 @@ export function advanceFireProjectile(
         return undefined
     }
     if (!projectile.launched) {
-        const { actor, locationId } = projectile
-        if (
-            !availableToAttack(actor, now) ||
-            actor.locationId !== locationId ||
-            (actor.controllerKind === 'network_player' && !actor.connected)
-        ) {
+        if (!canLaunch(projectile, now)) {
             return { events: [] }
         }
         projectile.launched = true
-        context.onProjectileRelease?.(actor, projectile.position)
+        context.onProjectileRelease?.(projectile.actor, projectile.position)
     }
     const distanceAtTick = Math.min(
         projectile.range,
@@ -72,93 +85,36 @@ export function advanceFireProjectile(
     const remainingStep = distanceAtTick - projectile.traveled
     const clear = clearFlightDistance(projectile, remainingStep, navigation)
     const contact = firstContactDistance(projectile, clear, context)
-    const step = contact ?? clear
+    const step = contact?.distance ?? clear
     projectile.position = positionAlong(projectile, step)
     projectile.traveled += step
     const hasImpact =
         contact !== undefined ||
         clear < remainingStep ||
         projectile.traveled + 1e-8 >= projectile.range
-    return hasImpact ? explode(projectile, context) : undefined
+    return hasImpact
+        ? resolveProjectileImpact(projectile, contact?.target, context)
+        : undefined
 }
 
-function clearFlightDistance(
-    projectile: FireProjectile,
-    length: number,
-    navigation: AbilityContext['navigation']
-): number {
-    const samples = Math.ceil(
-        length /
-            Math.min(
-                2,
-                navigation.grid.tileWidth / 4,
-                navigation.grid.tileHeight / 4
-            )
-    )
-    for (let index = 1; index <= samples; index += 1) {
-        const sample = (index * length) / samples
-        const position = positionAlong(projectile, sample)
-        if (navigation.isSolidTile(navigation.worldToTile(position))) {
-            return ((index - 1) * length) / samples
-        }
-    }
-    return length
-}
-
-function firstContactDistance(
-    projectile: FireProjectile,
-    length: number,
+function resolveProjectileImpact(
+    projectile: MagicProjectile,
+    target: GameCharacter | undefined,
     context: AbilityContext
-): number | undefined {
-    const { actor, position, direction, locationId } = projectile
-    const hitRadius = context.navigation.grid.tileWidth / 3
-    let first: number | undefined
-    if (projectile.range === 0) {
-        return undefined
-    }
-    for (const target of context.characters) {
-        if (target === actor || !availableTarget(target, locationId)) {
-            continue
-        }
-        const x = target.position.x - position.x
-        const y = target.position.y - position.y
-        const projection = x * direction.x + y * direction.y
-        const radial =
-            hitRadius * hitRadius - (x * x + y * y - projection * projection)
-        if (radial < 0 || projection + Math.sqrt(radial) < 0) {
-            continue
-        }
-        const contact = Math.max(0, projection - Math.sqrt(radial))
-        if (
-            contact <= length &&
-            (first === undefined || contact < first) &&
-            context.navigation.hasLineOfSight(
-                positionAlong(projectile, contact),
-                target.position
-            )
-        ) {
-            first = contact
-        }
-    }
-    return first
+): ProjectileResult {
+    return projectile.abilityId === 'ash_exhaustion'
+        ? {
+              events: resolveAshExhaustionImpact(projectile, target, context),
+              effect: impactEffect(projectile, context.now),
+          }
+        : explode(projectile, context)
 }
 
-function positionAlong(
-    { position, direction }: FireProjectile,
-    length: number
-): Vector2 {
-    return {
-        x: position.x + direction.x * length,
-        y: position.y + direction.y * length,
-    }
-}
-
-function availableTarget(target: GameCharacter, locationId: string): boolean {
+function canLaunch({ actor, locationId }: ProjectileFlight, now: number) {
     return (
-        target.locationId === locationId &&
-        target.alive &&
-        !target.tags.has('state.retired') &&
-        !target.tags.has('offline')
+        availableToAttack(actor, now) &&
+        actor.locationId === locationId &&
+        (actor.controllerKind !== 'network_player' || actor.connected)
     )
 }
 
@@ -166,16 +122,8 @@ function explode(
     projectile: FireProjectile,
     context: AbilityContext
 ): ProjectileResult {
-    const {
-        abilityId,
-        id,
-        maxDamage,
-        minDamage,
-        position,
-        radius,
-        direction,
-        random,
-    } = projectile
+    const { abilityId, id, maxDamage, minDamage, position, radius, random } =
+        projectile
     const { now, navigation } = context
     const amount = Math.min(
         maxDamage,
@@ -203,15 +151,22 @@ function explode(
     }
     return {
         events: contacts,
-        effect: {
-            id,
-            abilityId,
-            phase: 'impact',
-            position: { ...position },
-            radius,
-            direction: { ...direction },
-            expiresAt: now + 300,
-        },
+        effect: impactEffect(projectile, now),
+    }
+}
+
+function impactEffect(
+    { id, abilityId, position, radius, direction }: MagicProjectile,
+    now: number
+): NonNullable<ProjectileResult['effect']> {
+    return {
+        id,
+        abilityId,
+        phase: 'impact',
+        position: { ...position },
+        radius,
+        direction: { ...direction },
+        expiresAt: now + 300,
     }
 }
 

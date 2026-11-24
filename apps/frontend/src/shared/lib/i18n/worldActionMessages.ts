@@ -132,4 +132,9 @@ export const worldActionMessages = {
     waitingAttack: ['Ждём восстановления удара', 'Waiting for attack cooldown'],
     waitingEnergy: ['Ждём силы', 'Waiting for energy'],
     weakened: ['Ослабление', 'Weakened'],
+    ashExhaustion: ['Истощение Праха', 'Ash exhaustion'],
+    ashExhaustionRank: [
+        'Ранг {rank} · пределы ресурсов −{percent}%',
+        'Rank {rank} · resource limits −{percent}%',
+    ],
 } as const

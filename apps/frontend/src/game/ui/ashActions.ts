@@ -10,6 +10,7 @@ import {
 
 import { abilityName, tGame } from '@/shared/lib/i18n'
 
+import { abilityUsage } from './abilityUsage'
 import { relation } from './combatTargeting'
 import { interactionDistance } from './interactionTargets'
 import type { InteractionAction } from './nearbyInteractionActions'
@@ -18,10 +19,17 @@ export function ashCharacterActions(
     player: CharacterSnapshot,
     target: CharacterSnapshot
 ): InteractionAction[] {
-    if (!canSelectAshSkeleton(player, target)) return []
     const known = player.abilities?.known ?? []
     const distance = interactionDistance(player, target)
     const actions: InteractionAction[] = []
+    if (
+        target.ashTameable &&
+        known.includes('ash_tame') &&
+        distance <= ABILITY_DEFINITIONS.ash_tame.range
+    ) {
+        actions.push(riteAction('ash_tame', target.id))
+    }
+    if (!canSelectAshSkeleton(player, target)) return actions
     if (distance <= ABILITY_DEFINITIONS.ash_order.range && known.includes('ash_order')) {
         actions.push(
             ...skeletonOrders.map((order): InteractionAction => ({
@@ -88,6 +96,8 @@ export function ashHotbarReason(
     player: CharacterSnapshot,
     target: CharacterSnapshot | undefined
 ): string | undefined {
+    if (abilityId === 'ash_tame' || abilityId === 'ash_exhaustion')
+        return targetedAshReason(abilityId, player, target)
     if (abilityId !== 'ash_gift' && abilityId !== 'ash_sacrifice')
         return tGame('game.world.selectAndUseF')
     return canSelectAshSkeleton(player, target)
@@ -95,11 +105,35 @@ export function ashHotbarReason(
         : tGame('game.world.selectAlliedSkeleton')
 }
 
+function targetedAshReason(
+    abilityId: 'ash_tame' | 'ash_exhaustion',
+    player: CharacterSnapshot,
+    target: CharacterSnapshot | undefined
+): string | undefined {
+    if (abilityId === 'ash_tame' && !target?.ashTameable)
+        return tGame('game.world.selectWildSkeleton')
+    if (
+        abilityId === 'ash_exhaustion' &&
+        (!target?.alive || target.trainingTarget || relation(target, player) !== 'hostile')
+    ) {
+        return tGame('game.world.selectEnemy')
+    }
+    return target && interactionDistance(player, target) > abilityUsage(player, abilityId).range
+        ? tGame('game.world.spellOutOfRange')
+        : undefined
+}
+
 export function ashHotbarCommand(
     abilityId: AshRiteId,
     target: CharacterSnapshot | undefined
 ): ClientMessage | undefined {
-    if (target === undefined || (abilityId !== 'ash_gift' && abilityId !== 'ash_sacrifice'))
-        return undefined
-    return { type: 'use_ability', abilityId, targetId: target.id }
+    switch (abilityId) {
+        case 'ash_tame':
+        case 'ash_exhaustion':
+        case 'ash_gift':
+        case 'ash_sacrifice':
+            return target && { type: 'use_ability', abilityId, targetId: target.id }
+        default:
+            return undefined
+    }
 }

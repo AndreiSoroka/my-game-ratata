@@ -15,6 +15,7 @@ import {
     resolveCombatWeapon,
 } from '@my-game-ratata/contracts'
 
+import { ashTargetCastInProgress } from './abilityState'
 import type { GameCharacter } from './character'
 import { canWalkDuringPrayer } from './combatMovement'
 import {
@@ -271,6 +272,7 @@ function abilityAllowsAction(
 ): boolean {
     return (
         !magicAttackWindingUp(actor) &&
+        !ashTargetCastInProgress(actor) &&
         (options?.allowMagicChannel === true ||
             activeMagicChannel(actor, now) === undefined) &&
         ((actor.abilities.casting === null && !actor.isActionLocked(now)) ||

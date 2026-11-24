@@ -66,6 +66,8 @@ function readyResources(): NonNullable<CharacterSnapshot['resourceChecks']> {
             defensive_stance: 'ready',
             ash_raise: 'ready',
             ash_order: 'ready',
+            ash_tame: 'ready',
+            ash_exhaustion: 'ready',
             ash_gift: 'ready',
             ash_sacrifice: 'ready',
             ash_heart: 'ready',

@@ -425,7 +425,11 @@ describe('private mastery observation', () => {
 
 describe('all required star conditions', () => {
     it('assigns explicit acquisition methods and gates to the complete fixed catalogue', () => {
-        expect(fullConstellationCatalog).toHaveLength(241)
+        expect(fullConstellationCatalog).toHaveLength(245)
+        expect(minimumConstellationLevel('prayer_grave.tame')).toBe(4)
+        expect(minimumConstellationLevel('prayer_grave.exhaustion1')).toBe(3)
+        expect(minimumConstellationLevel('prayer_grave.exhaustion2')).toBe(5)
+        expect(minimumConstellationLevel('prayer_grave.exhaustion3')).toBe(9)
         expect(minimumConstellationLevel('prayer.harm')).toBe(1)
         expect(minimumConstellationLevel('prayer.harm1')).toBe(6)
         expect(minimumConstellationLevel('prayer.harm2')).toBe(12)

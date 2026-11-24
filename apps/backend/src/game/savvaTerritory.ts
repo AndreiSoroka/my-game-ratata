@@ -1,5 +1,6 @@
 import type { GameLocale, Vector2 } from '@my-game-ratata/contracts'
 
+import { ashSkeletonBond } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { hasDirectRetaliationRight } from './crimeRelations'
 import { canTargetByFaction, isPveOpponent } from './factions'
@@ -17,7 +18,7 @@ import {
     advanceSavvaVisits,
     canSeeSavvaVisitor,
     savvaEntryTiles,
-    savvaGroupThreshold,
+    savvaMaxWarningViolations,
     savvaTrespassCause,
     type SavvaVisits,
     withinSavvaTerritory,
@@ -46,6 +47,7 @@ interface PersuasionReceipt {
 }
 
 interface Territory extends SavvaVisits {
+    hostile: boolean
     episode: number
     threat: GameCharacter | undefined
     nextPersuasionAt: number
@@ -57,6 +59,7 @@ const territories = new WeakMap<GameCharacter, Territory>()
 export function registerSavvaTerritory(savva: GameCharacter, home: Vector2) {
     territories.set(savva, {
         home,
+        hostile: false,
         visits: new Map(),
         violations: 0,
         episode: 0,
@@ -77,16 +80,47 @@ export function advanceSavvaTerritory(room: GameRoom, now: number): void {
     }
     const navigation = room.navigationFor(savva)
     const neighbors = room.charactersFor(savva)
-    if (
-        territory.violations < savvaGroupThreshold &&
-        advanceSavvaVisits(savva, territory, room, neighbors, navigation, now)
-    ) {
-        territory.episode += 1
-        territory.nextPersuasionAt = now
+    if (savva.locationId !== savva.spawnLocationId) {
         territory.visits.clear()
-        setGroupHostility(savva, 'living_humans', true)
+    } else if (territory.violations < savvaMaxWarningViolations) {
+        const before = territory.violations
+        advanceSavvaVisits(savva, territory, room, neighbors, navigation, now)
+        if (territory.violations > before) {
+            startHostility(savva, territory, now)
+        }
     }
     updateThreat(savva, territory, room, neighbors, navigation, now)
+}
+
+export function observeSavvaAssault(
+    attacker: GameCharacter,
+    victim: GameCharacter,
+    now: number
+): void {
+    const savva = ashSkeletonBond(victim)?.owner ?? victim
+    const territory = territories.get(savva)
+    if (
+        territory !== undefined &&
+        savva.alive &&
+        attacker !== savva &&
+        attacker.locationId === victim.locationId &&
+        isLivingHuman(attacker)
+    ) {
+        startHostility(savva, territory, now)
+    }
+}
+
+function startHostility(
+    savva: GameCharacter,
+    territory: Territory,
+    now: number
+): void {
+    if (!territory.hostile) {
+        territory.hostile = true
+        territory.episode += 1
+        territory.nextPersuasionAt = now
+        setGroupHostility(savva, 'living_humans', true)
+    }
 }
 
 function updateThreat(
@@ -98,10 +132,12 @@ function updateThreat(
     now: number
 ): void {
     const current = territory.threat
+    const atRefuge = savva.locationId === savva.spawnLocationId
     const inReach = (visitor: GameCharacter, tiles: number) =>
         (hasGroupHostility(savva, visitor) ||
             hasPersonalHostility(savva, visitor, now, savvaTrespassCause)) &&
-        withinSavvaTerritory(territory.home, visitor, navigation, tiles) &&
+        (!atRefuge ||
+            withinSavvaTerritory(territory.home, visitor, navigation, tiles)) &&
         canSeeSavvaVisitor(savva, visitor, navigation, now)
     if (current !== undefined && inReach(current, leashTiles)) {
         return
@@ -179,7 +215,7 @@ export function savvaPersuasionContext(
     const territory = territories.get(savva)
     if (
         territory === undefined ||
-        territory.violations < savvaGroupThreshold ||
+        !territory.hostile ||
         territory.threat === undefined ||
         !hasGroupHostility(savva, territory.threat) ||
         now < territory.nextPersuasionAt ||
@@ -189,12 +225,13 @@ export function savvaPersuasionContext(
     }
     const navigation = room.navigationFor(savva)
     return canSeeSavvaVisitor(savva, territory.threat, navigation, now) &&
-        withinSavvaTerritory(
-            territory.home,
-            territory.threat,
-            navigation,
-            leashTiles
-        ) &&
+        (savva.locationId !== savva.spawnLocationId ||
+            withinSavvaTerritory(
+                territory.home,
+                territory.threat,
+                navigation,
+                leashTiles
+            )) &&
         canConverseWithNpc(savva, speaker, navigation, now, persuasionRange)
         ? { episode: territory.episode }
         : undefined
@@ -227,7 +264,9 @@ export function attemptSavvaPersuasion(
     territory.receipts.set(speaker, { episode, messageId, result })
     territory.nextPersuasionAt = now + persuasionCooldownMs
     if (result.success) {
+        territory.hostile = false
         territory.violations = 0
+        territory.visits.clear()
         setGroupHostility(savva, 'living_humans', false)
         updateThreat(
             savva,

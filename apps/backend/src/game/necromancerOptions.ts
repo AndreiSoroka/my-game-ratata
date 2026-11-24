@@ -5,7 +5,14 @@ import {
     MASTERY_XP_SCALE,
 } from '@my-game-ratata/contracts'
 
-import { ashSkeletonOrder, ashSummoner, hasAshGift } from './ashSkeletonState'
+import { ashExhaustionTarget } from './ashExhaustionCast'
+import {
+    ashSkeletonBond,
+    ashSkeletonGuard,
+    ashSkeletonOrder,
+    ashSkeletonOwnerId,
+    hasAshGift,
+} from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
@@ -95,8 +102,7 @@ function isNecromancerAlly(
     return (
         actor.soul.companion?.leaderId === visitor.id ||
         visitor.soul.companion?.leaderId === actor.id ||
-        ashSummoner(visitor) === actor.id ||
-        ashSkeletonOrder(visitor)?.ownerId === actor.id
+        ashSkeletonOwnerId(visitor) === actor.id
     )
 }
 
@@ -129,14 +135,20 @@ function prayerChoices(
     scene: NecromancerScene,
     now: number
 ): NecromancerOption[] {
-    const wounded = [...scene.visible, actor].find((target) =>
-        necromancerCanPray(
-            actor,
-            room,
-            { mode: 'restore', targetId: target.id },
-            now
+    const wounded = [...scene.visible, actor]
+        .sort(
+            (left, right) =>
+                Number(ashSkeletonBond(right)?.owner === actor) -
+                Number(ashSkeletonBond(left)?.owner === actor)
         )
-    )
+        .find((target) =>
+            necromancerCanPray(
+                actor,
+                room,
+                { mode: 'restore', targetId: target.id },
+                now
+            )
+        )
     const fallen = scene.visible.find((target) =>
         necromancerCanPray(
             actor,
@@ -151,6 +163,16 @@ function prayerChoices(
     }
     if (wounded !== undefined) {
         choices.push({ tactic: 'heal', targetId: wounded.id })
+    }
+    if (
+        scene.threat !== undefined &&
+        ashExhaustionTarget(
+            actor,
+            scene.threat.id,
+            room.abilityContextFor(actor, now)
+        ) !== undefined
+    ) {
+        choices.push({ tactic: 'curse', targetId: scene.threat.id })
     }
     if (
         scene.threat !== undefined &&
@@ -211,7 +233,9 @@ export function availableSlimeHunter(
         return undefined
     }
     const skeleton = nearbyAlliedSkeletons(actor, scene, now).find(
-        (target) => ashSkeletonOrder(target)?.kind !== 'hunt_slimes'
+        (target) =>
+            ashSkeletonGuard(target) === undefined &&
+            ashSkeletonOrder(target)?.kind !== 'hunt_slimes'
     )
     return skeleton === undefined
         ? undefined
@@ -222,7 +246,7 @@ function belongsToNecromancer(
     actor: GameCharacter,
     skeleton: GameCharacter
 ): boolean {
-    const owner = ashSummoner(skeleton) ?? ashSkeletonOrder(skeleton)?.ownerId
+    const owner = ashSkeletonOwnerId(skeleton)
     return owner === undefined || owner === actor.id
 }
 
@@ -234,6 +258,7 @@ function orderChoices(
     const order = ashSkeletonOrder(skeleton)
     if (
         !actor.abilities.known.has('ash_order') ||
+        ashSkeletonGuard(skeleton) !== undefined ||
         (order !== undefined && order.ownerId !== actor.id)
     ) {
         return []

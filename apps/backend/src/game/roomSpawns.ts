@@ -62,7 +62,9 @@ export function spawnRoomCharacters(
             ...(locationId === centerLocationId
                 ? [createFriendlyGirl(location.navigation, suffix)]
                 : []),
-            ...(necromancer === undefined ? [] : [necromancer]),
+            ...(necromancer === undefined
+                ? []
+                : [necromancer, ...necromancer.skeletons]),
             ...enemies,
         ]) {
             registerRoomCharacter(

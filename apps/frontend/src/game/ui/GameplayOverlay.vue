@@ -32,6 +32,9 @@ const emit = defineEmits<{ interact: [id: string]; requestInteract: []; openMenu
 const hotbar = ref<InstanceType<typeof ActionHotbar>>()
 const speech = ref<InstanceType<typeof SpeechBubbles>>()
 const unavailable = computed(() => !props.player.alive || props.player.cooldowns.stunMsLeft > 0)
+const prayerCast = computed(
+    () => props.player.abilities?.ashCasting ?? props.player.abilities?.casting
+)
 const {
     selectedKey,
     selectedTarget,
@@ -103,7 +106,7 @@ useEscapeOwner({
     active: () =>
         !props.blocked &&
         Boolean(
-            props.player.abilities?.casting ||
+            prayerCast.value ||
             props.player.abilities?.magicChannel ||
             props.snapshot.automation?.run?.status === 'running' ||
             selectedKey.value ||
@@ -111,7 +114,7 @@ useEscapeOwner({
         ),
     escape: () => {
         if (props.player.abilities?.magicChannel) send({ type: 'cancel_magic' })
-        if (props.player.abilities?.casting) send({ type: 'cancel_prayer' })
+        if (prayerCast.value) send({ type: 'cancel_prayer' })
         cancel(true)
     },
 })

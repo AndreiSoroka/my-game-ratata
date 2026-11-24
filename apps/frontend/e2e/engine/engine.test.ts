@@ -36,6 +36,22 @@ test('renders moving, depth-sorted particles and uploads changed raster pixels',
     expect(result.visible).toBeGreaterThan(0)
 })
 
+test('renders Ash curse flight and impact only where the authoritative effect is visible', async ({
+    page,
+}) => {
+    const result = await page.evaluate(() => window.engineHarness.ashExhaustion())
+    expect(result).toMatchObject({
+        ...webgl2,
+        noTrail: true,
+        noFlightTailOnImpact: true,
+        hidden: true,
+        expired: true,
+    })
+    expect(result.start).toBeGreaterThan(60)
+    expect(result.moved).toBeGreaterThan(60)
+    expect(result.impact).toBeGreaterThan(10)
+})
+
 test('animates the shoreline of shipped ponds and lakes in WebGL2', async ({ page }) => {
     const result = await page.evaluate(() => window.engineHarness.water())
     expect(result).toMatchObject({
@@ -177,7 +193,7 @@ test('keeps forced silent sessions from loading or playing eligible world ambien
     })
 })
 
-test('plays Spark flight, cast, prayer and death cues and the shoreline loop', async ({ page }) => {
+test('plays Spark, Ash curse, prayer and death cues and the shoreline loop', async ({ page }) => {
     const result = await page.evaluate(() => window.engineHarness.castAndWaterAudio())
     expect(result).toMatchObject({
         requests: 5,
@@ -198,6 +214,16 @@ test('plays Spark flight, cast, prayer and death cues and the shoreline loop', a
             portalLoop: true,
             portalHeldBeforeDeadline: true,
             portalStoppedAtDeadline: true,
+        },
+        ashCurse: {
+            noFlightBeforeRelease: true,
+            whisperVolume: 0.25,
+            whisperOneShot: true,
+            stoppedWhisperOnRelease: true,
+            flightVolume: 0.25,
+            flightRate: 0.72,
+            sharedSampleRate: 1,
+            flightCount: 1,
         },
         deathVoiceSurvivesInvalidation: true,
         durations: [

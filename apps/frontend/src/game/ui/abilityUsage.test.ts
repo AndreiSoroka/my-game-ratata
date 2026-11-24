@@ -6,6 +6,7 @@ import { characterFixture } from '../testing/characterFixture'
 import AbilityKnowledge from './AbilityKnowledge.vue'
 import { abilityUsage } from './abilityUsage'
 import ActionHotbar from './ActionHotbar.vue'
+import { ashCharacterActions, ashHotbarCommand, ashHotbarReason } from './ashActions'
 
 const parameters = {
     pray: { mana: 5, energy: 0, cooldownMs: 2700, range: 64, windupMs: 2700 },
@@ -110,5 +111,32 @@ describe('authoritative ability usage metadata', () => {
         } finally {
             wrapper.unmount()
         }
+    })
+
+    it('offers taming on an eligible wild skeleton and aims the bolt only at a hostile target', () => {
+        const player = observedPlayer()
+        player.abilities!.known.push('ash_tame', 'ash_exhaustion')
+        const skeleton = characterFixture('wild-skeleton', {
+            archetype: 'skeleton',
+            relationship: 'hostile',
+            ashTameable: true,
+            position: { x: 32, y: 0 },
+        })
+        expect(ashCharacterActions(player, skeleton).map(({ command }) => command)).toEqual([
+            { type: 'use_ability', abilityId: 'ash_tame', targetId: skeleton.id },
+        ])
+        expect(ashHotbarReason('ash_tame', player, skeleton)).toBeUndefined()
+        expect(ashHotbarReason('ash_exhaustion', player, skeleton)).toBeUndefined()
+        expect(ashHotbarCommand('ash_exhaustion', skeleton)).toEqual({
+            type: 'use_ability',
+            abilityId: 'ash_exhaustion',
+            targetId: skeleton.id,
+        })
+        expect(
+            ashHotbarReason('ash_exhaustion', player, { ...skeleton, relationship: 'friendly' })
+        ).toBe('Выберите врага: E')
+        expect(
+            ashHotbarReason('ash_exhaustion', player, { ...skeleton, position: { x: 100, y: 0 } })
+        ).toBe('Цель слишком далеко')
     })
 })

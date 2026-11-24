@@ -60,7 +60,31 @@ export function describeAshEffectChance(node: ConstellationStar, activeIds?: Rea
     if (node.id === `${path}root`) return describeHealing(selection)
     if (node.id === `${path}revive`) return describeRevival(selection)
     if (node.id === `${path}brand`) return describeBrand()
+    if (node.id.startsWith(`${path}exhaustion`)) return describeExhaustion(selection)
     return describeGuaranteedAsh(node, selection)
+}
+
+function describeExhaustion(activeIds: ReadonlySet<string>) {
+    const { chanceBonus, drain, durationMs, reductions } = ASH_RULES.exhaustion
+    const rank = resolveAshParameters(activeIds).exhaustionRank || 1
+    return withChanceFormulas(
+        {
+            summary:
+                'Попадание истощает ресурсы. Ответ Хранителя Праха дополнительно снижает их максимумы.',
+            examples: examples((mood) => prayerAnswerChance(mood) + chanceBonus, 'Проклятие'),
+            notes: [
+                'Бросок на проклятие происходит при попадании. Мгновенное истощение от броска не зависит.',
+            ],
+        },
+        [
+            chanceFormula('Шанс проклятия, %', `B + ${decimal(chanceBonus * 100)}`, {
+                B: baseMood,
+            }),
+            chanceFormula('Мгновенное истощение каждого ресурса', String(drain)),
+            chanceFormula('Снижение максимумов, %', decimal(reductions[rank - 1]! * 100)),
+            chanceFormula('Срок проклятия, мин', String(durationMs / 60_000)),
+        ]
+    )
 }
 
 function describeHealing(activeIds: ReadonlySet<string>) {
@@ -223,6 +247,15 @@ function ashRiteFormulas(id: string, ash: AshParameters): ConstellationChanceFor
         ]
     if (id === 'orders')
         return [chanceFormula('Предел приказов', String(ASH_RITE_RULES.orderSlots))]
+    if (id === 'tame')
+        return [
+            chanceFormula(
+                'Подготовка приручения, мс',
+                String(ABILITY_DEFINITIONS.ash_tame.windupMs)
+            ),
+            chanceFormula('Цена приручения, MP', String(ABILITY_DEFINITIONS.ash_tame.mana)),
+            chanceFormula('Предел постоянных прислужников', String(ASH_RITE_RULES.orderSlots)),
+        ]
     if (id === 'donate' || id === 'sacrifice') {
         const deep = id === 'sacrifice'
         return [

@@ -380,6 +380,62 @@ it('silences a caster who dies during the Spark whisper', () => {
     expect(test.sounds.play).toHaveBeenCalledTimes(1)
 })
 
+it.each(['ash_exhaustion', 'ash_tame'] as const)(
+    'plays an attenuated %s prayer whisper through terminal cast events',
+    (abilityId) => {
+        const test = setup()
+        const actors = [
+            caster('me', 0),
+            caster('savva', 80, {
+                ashCasting: {
+                    abilityId,
+                    targetId: 'target',
+                    startedAt: epoch,
+                    completesAt: epoch + 2000,
+                },
+            }),
+        ]
+        test.observe(epoch + 100, actors)
+        expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('prayerWhisper', {
+            volume: 0.25,
+            loop: false,
+        })
+        test.audio.receive(
+            { kind: 'cast', abilityId, actorId: 'savva', phase: 'interrupted' },
+            epoch + 200
+        )
+        expect(test.tracks[0]?.isStopped).toBe(true)
+        test.observe(epoch + 201, actors)
+        expect(test.sounds.play).toHaveBeenCalledTimes(1)
+    }
+)
+
+it('plays the curse release once with an isolated, lower playback rate', () => {
+    const test = setup()
+    const attack = {
+        kind: 'attack',
+        abilityId: 'ash_exhaustion',
+        delivery: 'magic',
+        actionId: 'ash:1',
+        actorId: 'savva',
+    } as const
+    test.observe(epoch + 100, [caster('me', 0), caster('savva', 80)])
+    expect(isMagicCastAttack(attack)).toBe(true)
+    test.audio.receive({ ...attack, phase: 'started' }, epoch + 100)
+    test.audio.receive({ ...attack, phase: 'interrupted' }, epoch + 200)
+    expect(test.sounds.play).not.toHaveBeenCalled()
+    test.audio.receive(attack, epoch + 300)
+    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('sparkFlight', {
+        volume: 0.25,
+        playbackRate: 0.72,
+    })
+    test.tracks[0]?.stop()
+    test.audio.receive(attack, epoch + 300)
+    test.audio.receive({ ...attack, abilityId: 'spark' }, epoch + 400)
+    expect(test.sounds.play).toHaveBeenCalledTimes(2)
+    expect(test.sounds.play).toHaveBeenLastCalledWith('sparkFlight', { volume: 0.25 })
+})
+
 it('plays instant devotion but leaves ordinary completed prayers, barriers removed by dispel and misses silent', () => {
     const test = setup()
     test.observe(epoch, [caster('me', 0)])

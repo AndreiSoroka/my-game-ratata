@@ -5,6 +5,7 @@ import { tGame } from '@/shared/lib/i18n'
 import { UiButton, type UiButtonColors } from '@/shared/ui/common'
 
 import type { PlayerEffect, PlayerEffectKind } from '../model/playerEffects'
+import PlayerEffectDetails from './PlayerEffectDetails.vue'
 import { presentPlayerEffects } from './playerEffectPresentation'
 
 const props = defineProps<{ effects: readonly PlayerEffect[] }>()
@@ -77,14 +78,7 @@ const tileColors: UiButtonColors = {
                 </UiButton>
             </li>
         </ul>
-        <p
-            v-if="selectedEffect"
-            :id="detailId"
-            class="player-effects-strip__detail"
-            :data-player-effect-detail="selectedEffect.kind"
-        >
-            {{ selectedEffect.text }}
-        </p>
+        <PlayerEffectDetails v-if="selectedEffect" :id="detailId" :effect="selectedEffect" />
     </div>
 </template>
 
@@ -173,18 +167,5 @@ const tileColors: UiButtonColors = {
     inset-inline-end: 2px;
     max-inline-size: 20px;
     background: var(--player-effect-surface);
-}
-
-.player-effects-strip__detail {
-    box-sizing: border-box;
-    max-inline-size: min(220px, 100%);
-    margin: 0;
-    border: 1px solid var(--character-hud-border, var(--ui-dark-panel-border));
-    padding: 4px 6px;
-    background: var(--character-hud-surface, var(--ui-dark-panel-surface));
-    color: var(--ui-dark-panel-text);
-    font: 13px/1.3 var(--ratata-font-family, sans-serif);
-    overflow-wrap: anywhere;
-    pointer-events: auto;
 }
 </style>

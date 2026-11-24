@@ -6,6 +6,7 @@ import {
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
 
+import { ashTargetCastInProgress } from './abilityState'
 import type { GameCharacter } from './character'
 import { canObserveRoomCharacter } from './characterSight'
 import type { PendingAttackHit } from './characterState'
@@ -67,10 +68,8 @@ export function resolvePendingAttackHit(
     if (targets.length === 0 && graves.length === 0) {
         return [...release, missedAttack(actor, attack)]
     }
-    return [
-        ...release,
-        ...resolveContactBatch(context, attack, targets, graves),
-    ]
+    const contacts = resolveContactBatch(context, attack, targets, graves)
+    return [...release, ...contacts]
 }
 function interruptedAttack(
     actor: GameCharacter,
@@ -253,6 +252,7 @@ export function availableToStartAttack(
         actor.pendingAttack === undefined &&
         !actor.combat.defensiveStance &&
         !magicAttackWindingUp(actor) &&
+        !ashTargetCastInProgress(actor) &&
         activeMagicChannel(actor, now) === undefined &&
         actor.abilities.casting === null
     )

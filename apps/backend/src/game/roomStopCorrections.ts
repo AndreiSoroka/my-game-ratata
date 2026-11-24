@@ -1,3 +1,4 @@
+import { ashExhaustionCasting } from './ashExhaustionCast'
 import type { GameCharacter } from './character'
 import { magicCombatFor } from './magicState'
 import { activePrayerAuras } from './prayerAuras'
@@ -57,13 +58,20 @@ export function prepareRoomStopCorrections({
 }
 
 function hasUnresolvedCombat(actor: GameCharacter, now: number): boolean {
-    const { casting } = actor.abilities
     return (
         actor.pendingAttack !== undefined ||
         (actor.combat.action?.readyAt ?? 0) > now ||
         (actor.attackZones.length > 0 && actor.attackZoneUntil > now) ||
-        (casting?.mode === 'prayer' && casting.intent.mode === 'harm') ||
-        casting?.mode === 'purify_grave' ||
+        isOffensivePrayerInProgress(actor) ||
         activePrayerAuras(actor, now) !== undefined
+    )
+}
+
+function isOffensivePrayerInProgress(actor: GameCharacter): boolean {
+    const { casting } = actor.abilities
+    return (
+        ashExhaustionCasting(actor) ||
+        casting?.mode === 'purify_grave' ||
+        (casting?.mode === 'prayer' && casting.intent.mode === 'harm')
     )
 }

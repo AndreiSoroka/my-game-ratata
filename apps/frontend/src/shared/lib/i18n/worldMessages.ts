@@ -223,6 +223,8 @@ export const worldMessages = {
     secondsEvidenceLastsFor: ['секунд; доказательство сохраняется', 'seconds. Evidence lasts for'],
     secondsValue: ['{seconds} с', '{seconds} s'],
     selectAlliedSkeleton: ['Выберите союзного скелета', 'Select an allied skeleton'],
+    selectWildSkeleton: ['Выберите свободного скелета', 'Select an unclaimed skeleton'],
+    spellOutOfRange: ['Цель слишком далеко', 'Target out of range'],
     selectAndUseF: ['Выберите цель и используйте F', 'Select a target and use F'],
     selectedGrave: ['В выбранную могилу', 'Into the selected grave'],
     selectLiving: ['Выберите живую цель: E', 'Select a living target: E'],

@@ -11,7 +11,7 @@ import { canHearNearbySpeech } from './socialSpeech'
 import { createSpeechEvent } from './speechReceipts'
 
 export const savvaEntryTiles = 5
-export const savvaGroupThreshold = 3
+export const savvaMaxWarningViolations = 3
 export const savvaTrespassCause = 'savva_refuge'
 const innerTiles = 2
 const dwellMs = 3_000
@@ -41,7 +41,7 @@ export function advanceSavvaVisits(
     neighbors: readonly GameCharacter[],
     navigation: NavigationService,
     now: number
-): boolean {
+): void {
     for (const visitor of state.visits.keys()) {
         if (
             room.getCharacter(visitor.id) !== visitor ||
@@ -68,12 +68,11 @@ export function advanceSavvaVisits(
             )
         ) {
             observeVisit(savva, visitor, state, room, navigation, now)
-            if (state.violations === savvaGroupThreshold) {
-                return true
+            if (state.violations === savvaMaxWarningViolations) {
+                return
             }
         }
     }
-    return false
 }
 
 function observeVisit(

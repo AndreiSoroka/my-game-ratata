@@ -1,4 +1,4 @@
-import { ashSkeletonOrder } from './ashSkeletonState'
+import { ashSkeletonBond, ashSkeletonOrder } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { hasRetaliationRight } from './crimeRelations'
 import { hasGroupHostility, hasPersonalHostility } from './personalHostility'
@@ -8,7 +8,11 @@ export function canTargetByFaction(
     target: GameCharacter,
     now = Date.now()
 ): boolean {
-    if (actor.id === target.id) {
+    if (
+        actor.id === target.id ||
+        ashSkeletonBond(actor)?.owner === target ||
+        ashSkeletonBond(target)?.owner === actor
+    ) {
         return false
     }
 
@@ -56,10 +60,16 @@ function factionEnemy(actor: GameCharacter, target: GameCharacter): boolean {
 function hasAshAffinity(actor: GameCharacter, target: GameCharacter): boolean {
     return (
         target.creatureType === 'undead' &&
-        (actor.ashPact || ashSkeletonOrder(actor)?.ownerAshPact === true)
+        (actor.ashPact ||
+            ashSkeletonBond(actor)?.owner.ashPact === true ||
+            ashSkeletonOrder(actor)?.ownerAshPact === true)
     )
 }
 
 export function combatFaction(actor: GameCharacter) {
-    return ashSkeletonOrder(actor)?.ownerFaction ?? actor.faction
+    return (
+        ashSkeletonBond(actor)?.owner.faction ??
+        ashSkeletonOrder(actor)?.ownerFaction ??
+        actor.faction
+    )
 }

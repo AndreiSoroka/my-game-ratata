@@ -1,5 +1,6 @@
 import {
     CENTER_LOCATION_ID,
+    type CharacterAbilitiesSnapshot,
     type MagicChannelSnapshot,
     type WorldLocation,
 } from '@my-game-ratata/contracts'
@@ -26,6 +27,7 @@ const tileWidth = 16
 const tileHeight = 16
 const mapSize = 24
 const serverTime = 100_000
+type AshCast = NonNullable<CharacterAbilitiesSnapshot['ashCasting']>
 const spark = {
     kind: 'attack',
     abilityId: 'spark',
@@ -67,9 +69,9 @@ export async function verifyCastAndWaterAudio(context: AudioContext) {
         await startEngine(run)
         audio.setMap(shoreMap(), CENTER_LOCATION_ID)
         audio.startWorldAmbience()
-        const observe = (at = serverTime, channel?: MagicChannelSnapshot) =>
+        const observe: ObserveCastWorld = (at = serverTime, channel, ashCasting) =>
             audio.observeWorld(
-                shorelineSnapshot(at, channel),
+                shorelineSnapshot(at, channel, ashCasting),
                 actorId,
                 () => true,
                 () => true
@@ -92,7 +94,11 @@ export async function verifyCastAndWaterAudio(context: AudioContext) {
     }
 }
 
-type ObserveCastWorld = (serverTime?: number, channel?: MagicChannelSnapshot) => void
+type ObserveCastWorld = (
+    serverTime?: number,
+    channel?: MagicChannelSnapshot,
+    ashCasting?: AshCast
+) => void
 
 function exerciseWorldCues(
     audio: GameAudio,
@@ -118,8 +124,9 @@ function exerciseWorldCues(
 
     tracks[0]?.stop()
     const magicChannels = exerciseMagicChannels(audio, magic, observe, step)
+    const ashCurse = exerciseAshCurse(audio, sparkFlight, prayer, observe)
 
-    audio.playEventSound({ kind: 'death', targetId: actorId }, serverTime + 4500)
+    audio.playEventSound({ kind: 'death', targetId: actorId }, serverTime + 6200)
     const deathVoice = death.instances[0]
     audio.invalidateWorld(true)
     const deathVoiceSurvivesInvalidation = deathVoice?.isPlaying
@@ -134,6 +141,7 @@ function exerciseWorldCues(
         instantOneShot: tracks[0]?.loop === false,
         prayerOneShot: tracks[1]?.loop === false,
         magicChannels,
+        ashCurse,
         deathVoiceSurvivesInvalidation,
         durations: [sparkFlight, magic, prayer, water, death].map((sound) => sound.data.duration),
     }
@@ -157,6 +165,47 @@ function exerciseSparkCues(audio: GameAudio, magic: Sound, sparkFlight: Sound) {
         castWhispersOnce,
         noWindupBuzz,
         sparkWhisperStopsAtRelease: sparkWhisper?.isStopped && magic.playingCount() === 0,
+    }
+}
+
+function exerciseAshCurse(
+    audio: GameAudio,
+    sparkFlight: Sound,
+    prayer: Sound,
+    observe: ObserveCastWorld
+) {
+    const ashCasting: AshCast = {
+        abilityId: 'ash_exhaustion',
+        targetId: actorId,
+        startedAt: serverTime + 4000,
+        completesAt: serverTime + 6000,
+    }
+    observe(serverTime + 4100, undefined, ashCasting)
+    const whisper = prayer.instances.find((track) => track.isPlaying)
+    const noFlightBeforeRelease = sparkFlight.playingCount() === 0
+    const { abilityId, completesAt } = ashCasting
+    const release = {
+        ...spark,
+        abilityId,
+        actorId: prayerId,
+        actionId: 'ash-1',
+    }
+    audio.playEventSound(
+        { kind: 'cast', phase: 'completed', actorId: prayerId, abilityId },
+        completesAt
+    )
+    audio.playEventSound(release, completesAt)
+    audio.playEventSound(release, completesAt)
+    const flight = sparkFlight.instances.find((track) => track.isPlaying)
+    return {
+        noFlightBeforeRelease,
+        whisperVolume: whisper?.volume,
+        whisperOneShot: whisper?.loop === false,
+        stoppedWhisperOnRelease: whisper?.isStopped,
+        flightVolume: flight?.volume,
+        flightRate: flight?.playbackRate,
+        sharedSampleRate: sparkFlight.playbackRate,
+        flightCount: sparkFlight.playingCount(),
     }
 }
 
@@ -214,7 +263,7 @@ function shoreMap() {
     }
 }
 
-function shorelineSnapshot(at: number, magicChannel?: MagicChannelSnapshot) {
+function shorelineSnapshot(at: number, magicChannel?: MagicChannelSnapshot, ashCasting?: AshCast) {
     const local = characterFixture(actorId, {
         position: { x: 64, y: 88 },
         ...(magicChannel && {
@@ -222,17 +271,20 @@ function shorelineSnapshot(at: number, magicChannel?: MagicChannelSnapshot) {
         }),
     })
     const neighbor = characterFixture(prayerId, {
-        position: { x: 96, y: 88 },
+        position: { x: ashCasting ? 144 : 96, y: 88 },
         abilities: {
             known: ['pray'],
             cooldowns: {},
             barrier: null,
-            casting: {
-                abilityId: 'pray',
-                targetId: prayerId,
-                startedAt: serverTime - 50,
-                completesAt: serverTime + 10_000,
-            },
+            casting: ashCasting
+                ? null
+                : {
+                      abilityId: 'pray',
+                      targetId: prayerId,
+                      startedAt: serverTime - 50,
+                      completesAt: serverTime + 10_000,
+                  },
+            ...(ashCasting && { ashCasting }),
         },
     })
     return {

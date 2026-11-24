@@ -44,7 +44,7 @@ export interface PendingAttackHit {
     stunDurationMs?: number
     resourceSpends?: ResourceSpendReceipt[] | undefined
     weaponInstanceId?: string | undefined
-    abilityId?: AttackAbilityId | SpellSkillId | undefined
+    abilityId?: AttackAbilityId | SpellSkillId | 'ash_exhaustion' | undefined
     rawDamage?: number | undefined
     maxRange?: number | undefined
     target?: WorldCombatTarget | undefined

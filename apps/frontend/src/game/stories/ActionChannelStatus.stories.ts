@@ -48,6 +48,27 @@ export const MaintainingChains: Story = {
         }),
 }
 
+export const WitheringBolt: Story = {
+    render: () =>
+        renderVueStory(ActionChannelStatus, {
+            player: characterFixture('necromancer', {
+                abilities: {
+                    known: ['ash_exhaustion'],
+                    cooldowns: {},
+                    barrier: null,
+                    casting: null,
+                    ashCasting: {
+                        abilityId: 'ash_exhaustion',
+                        targetId: 'hostile',
+                        startedAt: 0,
+                        completesAt: 2000,
+                    },
+                },
+            }),
+            serverTime: 100,
+        }),
+}
+
 export const BlockedRoute: Story = {
     render: () =>
         renderVueStory(ActionChannelStatus, {

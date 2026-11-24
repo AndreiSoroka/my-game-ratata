@@ -1,4 +1,5 @@
 import type {
+    AshExhaustionRank,
     BladeComboSnapshot,
     CharacterSnapshot,
     PrayerAuraEffectId,
@@ -9,6 +10,7 @@ export type PlayerEffectKind =
     | 'stun'
     | 'barrier'
     | 'chains'
+    | 'ash-exhaustion'
     | 'defensive-stance'
     | 'blade-combo'
     | 'sneaking'
@@ -23,11 +25,12 @@ export interface PlayerEffect {
     remainingMs?: number
     stacks?: number
     stackLimit?: number
+    rank?: AshExhaustionRank
 }
 
 export interface PlayerEffectsSnapshot extends Pick<
     CharacterSnapshot,
-    'alive' | 'combat' | 'prayerAuraEffects'
+    'alive' | 'ashExhaustion' | 'combat' | 'prayerAuraEffects'
 > {
     abilities?: Pick<NonNullable<CharacterSnapshot['abilities']>, 'barrier' | 'rootedUntil'>
     cooldowns: Pick<CharacterSnapshot['cooldowns'], 'stunMsLeft'>
@@ -57,11 +60,19 @@ function livingEffects(
     character: PlayerEffectsSnapshot,
     serverTime: number | undefined
 ): PlayerEffect[] {
-    const { abilities, combat, cooldowns, movement, prayerAuraEffects } = character
+    const { abilities, ashExhaustion, combat, cooldowns, movement, prayerAuraEffects } = character
     const effects: PlayerEffect[] = []
     appendTimed(effects, 'stun', cooldowns.stunMsLeft)
     appendTimed(effects, 'barrier', remainingUntil(abilities?.barrier?.expiresAt, serverTime))
     appendTimed(effects, 'chains', remainingUntil(abilities?.rootedUntil, serverTime))
+    const exhaustionRemaining = remainingUntil(ashExhaustion?.expiresAt, serverTime)
+    if (ashExhaustion && exhaustionRemaining > 0) {
+        effects.push({
+            kind: 'ash-exhaustion',
+            rank: ashExhaustion.rank,
+            remainingMs: exhaustionRemaining,
+        })
+    }
     if (combat?.defensiveStance) effects.push({ kind: 'defensive-stance' })
 
     appendBladeCombo(effects, combat?.combo, serverTime)

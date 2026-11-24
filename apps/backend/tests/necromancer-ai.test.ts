@@ -3,7 +3,10 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { parseNpcAiConfig } from '../src/ai/config'
 import { parseNecromancerDecision } from '../src/ai/necromancerProtocol'
 import type { NpcAiProvider } from '../src/ai/types'
-import { ashSkeletonOrder } from '../src/game/ashSkeletonState'
+import {
+    ashSkeletonGuard,
+    ashSkeletonOrder,
+} from '../src/game/ashSkeletonState'
 import { distance } from '../src/game/math'
 import { necromancerController } from '../src/game/necromancerController'
 import { defendNecromancer } from '../src/game/necromancerDefense'
@@ -302,7 +305,11 @@ it('walks away from an unengaged slime with an available hunter and leaves the s
     const { game, savva, visitor } = fixture()
     const actors = game.charactersFor(savva)
     const slime = actors.find(({ archetype }) => archetype === 'slime')
-    const skeleton = actors.find(({ archetype }) => archetype === 'skeleton')
+    const skeleton = actors.find(
+        (actor) =>
+            actor.archetype === 'skeleton' &&
+            ashSkeletonGuard(actor) === undefined
+    )
     const navigation = game.navigationFor(savva)
     const origin = navigation.worldToTile(savva.position)
     const slimeTile = [

@@ -1,5 +1,7 @@
 import type { GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
 
+import type { OnProjectileRelease } from './abilityContext'
+import { expireAshExhaustion } from './ashExhaustion'
 import type { GameCharacter } from './character'
 import { resolvePendingAttackHit } from './combat'
 import { takeSparkInterruptions } from './combatInterruption'
@@ -74,6 +76,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         (id) => resourceOccupants(context.world, id)
     )
     for (const character of characters.values()) {
+        expireAshExhaustion(character, now)
         context.companions.hasActiveLease(character, now, room)
     }
     const reacting = context.theft.update(room, characters.values(), now)
@@ -213,14 +216,18 @@ function advanceWorldCharacter(
 }
 
 function resolveWorldCombat(context: SimulationContext): void {
-    const { characters, room, now, onEvents } = context
+    const { characters, life, room, now, onEvents } = context
     for (const character of characters.values()) {
         resolveWorldAttack(character, context)
     }
+    const onProjectileRelease: OnProjectileRelease = (actor, origin) =>
+        recordProjectileNoise(room, actor, origin, now)
+    onEvents(room.advanceMagicProjectiles(now, onProjectileRelease))
     onEvents(
-        room.advanceMagicProjectiles(now, (actor, origin) =>
-            recordProjectileNoise(room, actor, origin, now)
-        )
+        life.ashRites.advanceExhaustionCasts((actor) => ({
+            ...room.abilityContextFor(actor, now),
+            onProjectileRelease,
+        }))
     )
     const interruptions = takeSparkInterruptions(characters.values())
     if (interruptions.length > 0) {

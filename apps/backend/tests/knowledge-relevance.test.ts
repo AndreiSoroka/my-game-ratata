@@ -76,3 +76,40 @@ it('does not anchor on generic acquisition or cardinal words while preserving wo
         )
     ).toBe(4)
 })
+
+it('lets Novogorod residents look up the necromancer rumor without confusing Savva with the merchant', async () => {
+    const room = new GameRoom()
+    const search = new CharacterKnowledge(
+        { embed: (texts) => Promise.resolve(texts.map(() => [1, 0])) },
+        () => undefined
+    )
+    try {
+        const mira = room.getCharacter('npc_friendly_girl_1')
+        const savva = room.getCharacter('npc_necromancer_1')
+        if (mira === undefined || savva === undefined) {
+            throw new Error('Missing authored NPC')
+        }
+        const retrieve = (actor: typeof mira, query: string) =>
+            search.retrieve(
+                actor,
+                room.navigationFor(actor),
+                new CharacterMemory(actor.id),
+                query
+            )
+        const rumorId = 'city.necromancer.rumor'
+        const rumorQuery = 'Что слышно о некроманте Савве?'
+        const localRumor = await retrieve(mira, rumorQuery)
+        expect(localRumor.entries[0]?.id).toBe(rumorId)
+        expect(localRumor.entries[0]?.text).toContain('прогнать из этих земель')
+        expect(
+            (await retrieve(savva, rumorQuery)).entries.map(({ id }) => id)
+        ).not.toContain(rumorId)
+        const merchant = await retrieve(mira, 'Где Савва продаёт припасы?')
+        const merchantIds = merchant.entries.map(({ id }) => id)
+        expect(merchantIds).toContain('city.savva')
+        expect(merchantIds).not.toContain(rumorId)
+    } finally {
+        search.stop()
+        room.stop()
+    }
+})

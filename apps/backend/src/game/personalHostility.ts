@@ -1,3 +1,4 @@
+import { ashSkeletonBond } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 
 /** A private motive makes targeting possible without granting legal retaliation rights. */
@@ -56,9 +57,15 @@ export function hasGroupHostility(
     actor: GameCharacter,
     target: GameCharacter
 ): boolean {
+    const owner = ashSkeletonBond(actor)?.owner ?? actor
     return (
         actor !== target &&
-        groups.get(actor)?.has('living_humans') === true &&
+        owner !== target &&
+        owner.alive &&
+        actor.alive &&
+        actor.locationId === target.locationId &&
+        target.trainingTarget === undefined &&
+        groups.get(owner)?.has('living_humans') === true &&
         isLivingHuman(target)
     )
 }

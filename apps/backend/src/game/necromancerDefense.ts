@@ -1,7 +1,15 @@
 import type { Vector2 } from '@my-game-ratata/contracts'
 import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 
+import {
+    ashAssaultTarget,
+    ashBoundSkeletons,
+    ashSkeletonGuard,
+    ashSkeletonOrder,
+    directAshAssault,
+} from './ashSkeletonState'
 import type { GameCharacter } from './character'
+import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import {
     fightAsNecromancer,
@@ -14,11 +22,52 @@ import {
     type NecromancerScene,
     necromancerThreats,
 } from './necromancerTactics'
+import { prayerParameters } from './prayerParameters'
 import { pursuits } from './pursuitState'
 import type { GameRoom } from './room'
 import { savvaTerritorialTarget } from './savvaTerritory'
 
 export const retreatHealthFraction = 0.55
+const assaultTargets = new WeakMap<
+    GameCharacter,
+    { target: GameCharacter; until: number }
+>()
+
+export function updateNecromancerEscort(
+    actor: GameCharacter,
+    scene: NecromancerScene,
+    now: number
+): void {
+    if (scene.threat !== undefined && scene.threat.creatureType !== 'ooze') {
+        assaultTargets.set(actor, { target: scene.threat, until: now + 3_000 })
+    }
+    const target = currentAssault(actor, now)
+    for (const skeleton of ashBoundSkeletons(actor)) {
+        const follows =
+            ashSkeletonGuard(skeleton) === undefined &&
+            ashSkeletonOrder(skeleton)?.kind !== 'hunt_slimes'
+        directAshAssault(
+            skeleton,
+            follows && skeleton.locationId === actor.locationId
+                ? target
+                : undefined
+        )
+    }
+}
+
+function currentAssault(
+    actor: GameCharacter,
+    now: number
+): GameCharacter | undefined {
+    const current = assaultTargets.get(actor)
+    return current !== undefined &&
+        current.until > now &&
+        current.target.alive &&
+        current.target.locationId === actor.locationId &&
+        canTargetByFaction(actor, current.target, now)
+        ? current.target
+        : undefined
+}
 
 export function needsNecromancerSafety(
     actor: GameCharacter,
@@ -73,6 +122,7 @@ export function seekNecromancerSafety(
     }
     if (
         !hide &&
+        actor.locationId === actor.spawnLocationId &&
         safety(home) &&
         moveNecromancer(actor, room, home, false, now)
     ) {
@@ -115,11 +165,29 @@ export function defendNecromancer(
     ) {
         return
     }
-    for (const tactic of ['revive', 'heal', 'raise', 'magic'] as const) {
+    if (shouldHideBehindEscort(actor, scene, options)) {
+        seekNecromancerSafety(
+            actor,
+            room,
+            scene,
+            threat,
+            actor.position,
+            true,
+            now
+        )
+        return
+    }
+    for (const tactic of [
+        'revive',
+        'heal',
+        'curse',
+        'raise',
+        'magic',
+    ] as const) {
         const option = options.find((choice) => choice.tactic === tactic)
         if (
             option !== undefined &&
-            (engaged || tactic !== 'magic') &&
+            canUseInDefense(tactic, engaged) &&
             performNecromancerTactic(actor, room, option, now)
         ) {
             return
@@ -130,4 +198,97 @@ export function defendNecromancer(
     } else {
         actor.clearPath()
     }
+}
+
+function canUseInDefense(
+    tactic: NecromancerOption['tactic'],
+    engaged: boolean
+): boolean {
+    return engaged || (tactic !== 'magic' && tactic !== 'curse')
+}
+
+export function tryNecromancerAid(
+    actor: GameCharacter,
+    room: GameRoom,
+    options: NecromancerOption[],
+    now: number
+): boolean {
+    const aid = options.find(
+        ({ tactic }) => tactic === 'revive' || tactic === 'heal'
+    )
+    return aid !== undefined && performNecromancerTactic(actor, room, aid, now)
+}
+
+function shouldHideBehindEscort(
+    actor: GameCharacter,
+    scene: NecromancerScene,
+    options: NecromancerOption[]
+): boolean {
+    return (
+        !options.some(({ tactic }) => tactic === 'curse') &&
+        ashBoundSkeletons(actor).some(
+            (skeleton) =>
+                ashAssaultTarget(skeleton) === scene.threat &&
+                !skeleton.tags.has('offline')
+        ) &&
+        scene.cover?.concealed === true
+    )
+}
+
+export function aidWoundedSkeleton(
+    actor: GameCharacter,
+    room: GameRoom,
+    scene: NecromancerScene,
+    now: number
+): boolean {
+    if (
+        actor.mana < ABILITY_DEFINITIONS.pray_grave.mana ||
+        (actor.abilities.availableAt.pray_grave ?? 0) > now
+    ) {
+        return false
+    }
+    const group = ashBoundSkeletons(actor)
+    const target = scene.visible.find(
+        (skeleton) =>
+            group.includes(skeleton) && skeleton.hp < skeleton.maxHp * 0.5
+    )
+    if (target === undefined) {
+        return false
+    }
+    if (
+        performNecromancerTactic(
+            actor,
+            room,
+            { tactic: 'heal', targetId: target.id },
+            now
+        )
+    ) {
+        return true
+    }
+    const navigation = room.navigationFor(actor)
+    const radius = prayerParameters(
+        actor,
+        navigation.grid.tileWidth,
+        'pray_grave',
+        'restore'
+    ).radius
+    const threat = scene.threat
+    const candidates = navigation
+        .walkableNeighbors(navigation.worldToTile(target.position))
+        .map((tile) => navigation.tileToWorld(tile))
+        .filter(
+            (point) =>
+                distance(point, target.position) <= radius &&
+                navigation.hasLineOfSight(point, target.position) &&
+                (threat === undefined ||
+                    distance(point, threat.position) >=
+                        navigation.grid.tileWidth * 2)
+        )
+        .sort(
+            (left, right) =>
+                distance(actor.position, left) - distance(actor.position, right)
+        )
+    return candidates.some((point) =>
+        moveNecromancer(actor, room, point, false, now)
+    )
 }

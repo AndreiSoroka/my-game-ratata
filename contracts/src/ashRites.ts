@@ -1,9 +1,12 @@
 import type { AbilityDefinition } from './abilities'
 import { ASH_RULES } from './ash'
+import { MOVEMENT_RULES } from './movement'
 
 export const ashRiteIds = [
     'ash_raise',
     'ash_order',
+    'ash_tame',
+    'ash_exhaustion',
     'ash_gift',
     'ash_sacrifice',
     'ash_heart',
@@ -73,6 +76,22 @@ export const ashRiteDefinitions = {
         cooldownMs: 0,
         range: 80,
         windupMs: 0,
+    },
+    ash_tame: {
+        name: 'Приручение скелетов',
+        mana: 10,
+        energy: 0,
+        cooldownMs: 0,
+        range: 48,
+        windupMs: 2_000,
+    },
+    ash_exhaustion: {
+        name: 'Тленный сгусток',
+        mana: 12,
+        energy: 0,
+        cooldownMs: 10_000,
+        range: ASH_RULES.exhaustion.rangeCells * MOVEMENT_RULES.stepDistance,
+        windupMs: 2_000,
     },
     ash_gift: {
         name: 'Дар праха',

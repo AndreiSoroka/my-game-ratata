@@ -50,4 +50,8 @@ export const RoadPrayer: Story = {
     },
 }
 
+export const AshExhaustion: Story = {
+    args: { effects: [{ kind: 'ash-exhaustion', rank: 2, remainingMs: 1_800_000 }] },
+}
+
 export const Empty: Story = { args: { effects: [] } }

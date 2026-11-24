@@ -86,6 +86,10 @@ export const constellationEnglishAsh: Readonly<Record<string, StarText>> = {
         'Sentry’s word',
         'You can give orders to three allied skeletons.',
     ],
+    'prayer_grave.tame': [
+        'Tame skeletons',
+        'Bind an unclaimed skeleton. You can have up to three permanent servants.',
+    ],
     'prayer_grave.donate': [
         'Gift of ash',
         'Give a skeleton 70 experience from your current Ash progress and increase its base health by 10%.',
@@ -129,6 +133,18 @@ export const constellationEnglishAsh: Readonly<Record<string, StarText>> = {
     'prayer_grave.brand': [
         'Ashen seal',
         'Direct the prayer against one visible hostile target.',
+    ],
+    'prayer_grave.exhaustion1': [
+        'Withering bolt I',
+        'The bolt drains health, mana and energy. If the Ash Guardian answers, their maximums drop by 20% for 30 minutes.',
+    ],
+    'prayer_grave.exhaustion2': [
+        'Withering bolt II',
+        'The curse reduces maximum health, mana and energy by 30%.',
+    ],
+    'prayer_grave.exhaustion3': [
+        'Withering bolt III',
+        'The curse reduces maximum health, mana and energy by 70%.',
     ],
     'prayer_grave.omen1': [
         'Mark in the ashes',

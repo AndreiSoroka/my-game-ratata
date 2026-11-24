@@ -20,6 +20,7 @@ const combatTactics = new Set([
     'hide',
     'retreat',
     'magic',
+    'curse',
 ])
 
 type Phase = NecromancerModelContext['phase']

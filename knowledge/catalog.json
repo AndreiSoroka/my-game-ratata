@@ -127,6 +127,24 @@
             "facts": {}
         },
         {
+            "id": "city.necromancer.rumor",
+            "file": "settlements/novogorod/necromancer-rumor.md",
+            "audiences": ["resident:map-2-2"],
+            "aliases": [
+                "некромант в округе",
+                "некромант западных руин",
+                "некромант савва",
+                "некроманте савве",
+                "прогнать некроманта"
+            ],
+            "sources": [
+                "apps/backend/src/game/npcIdentityCatalog.ts",
+                "apps/backend/src/game/necromancerSpawn.ts"
+            ],
+            "checks": ["apps/backend/tests/knowledge-relevance.test.ts"],
+            "facts": {}
+        },
+        {
             "id": "city.savva",
             "file": "settlements/novogorod/savva.md",
             "audiences": ["resident:map-2-2", "profession:merchant"],

@@ -10,6 +10,11 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { snapshotAbilityUsage } from './abilityUsage'
+import {
+    ashExhaustionCasting,
+    snapshotAshExhaustionCast,
+} from './ashExhaustionCast'
+import { ashTamingInProgress, snapshotAshTaming } from './ashTaming'
 import type { GameCharacter } from './character'
 import {
     clearMagicChannel,
@@ -99,6 +104,9 @@ export function createAbilityState(
 export function knowsAbility(actor: GameCharacter, id: AbilityId): boolean {
     return actor.abilities.known.has(id)
 }
+export function ashTargetCastInProgress(actor: GameCharacter): boolean {
+    return ashExhaustionCasting(actor) || ashTamingInProgress(actor)
+}
 export function nextPrayerReceipt(actor: GameCharacter): string {
     return `${actor.id}:prayer:${String(++actor.abilities.prayerSequence)}`
 }
@@ -150,9 +158,16 @@ export function snapshotAbilities(
             : {}),
         barrier: snapshotBarrier(actor, now),
         ...(magicChannel === undefined ? {} : { magicChannel }),
+        ...snapshotAshCasting(actor, now),
         ...(rootedUntil <= now ? {} : { rootedUntil }),
         casting: snapshotCast(actor),
     }
+}
+
+function snapshotAshCasting(actor: GameCharacter, now: number) {
+    const ashCasting =
+        snapshotAshExhaustionCast(actor, now) ?? snapshotAshTaming(actor, now)
+    return ashCasting === undefined ? {} : { ashCasting }
 }
 function snapshotBarrier(
     actor: GameCharacter,

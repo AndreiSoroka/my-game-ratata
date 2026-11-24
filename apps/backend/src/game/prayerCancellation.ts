@@ -1,5 +1,7 @@
 import type { GameEventPayload, Vector2 } from '@my-game-ratata/contracts'
 
+import { cancelAshExhaustionCast } from './ashExhaustionCast'
+import { cancelAshTame } from './ashTaming'
 import type { GameCharacter } from './character'
 import { canWalkDuringPrayer } from './combatMovement'
 import { setPrayerAvailableAt } from './prayerParameters'
@@ -9,12 +11,14 @@ export function cancelPrayerCast(
     actor: GameCharacter,
     now: number
 ): GameEventPayload[] {
+    const ashEvents = cancelAshExhaustionCast(actor, now)
+    cancelAshTame(actor)
     const cast = actor.abilities.casting
     if (cast === null) {
-        return []
+        return ashEvents
     }
     if (cast.mother?.lastLight === true && actor.alive) {
-        return []
+        return ashEvents
     }
     if (cast.mother !== undefined) {
         actor.abilities.prayerAurasSuppressed = true
@@ -24,6 +28,7 @@ export function cancelPrayerCast(
     }
     releasePrayerCast(actor, now)
     return [
+        ...ashEvents,
         {
             kind: 'cast',
             actorId: actor.id,

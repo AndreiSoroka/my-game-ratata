@@ -1,6 +1,7 @@
 import { prayerSchoolId } from '@my-game-ratata/contracts'
 import {
     ABILITY_DEFINITIONS,
+    type AbilityId,
     type CharacterSnapshot,
     type DeityId,
     type GameEventPayload,
@@ -38,13 +39,21 @@ export interface EffectCue {
     count?: number
 }
 
+function isAshChannel(
+    abilityId: AbilityId | undefined
+): abilityId is 'ash_tame' | 'ash_exhaustion' {
+    return abilityId === 'ash_tame' || abilityId === 'ash_exhaustion'
+}
+
 export function isCompletedPrayer(event: GameEventPayload): boolean {
     return event.kind === 'cast' && event.phase === 'completed' && isPrayerAction(event.abilityId)
 }
 
 export function captionCharacterId(event: GameEventPayload): string | undefined {
     if (event.target && event.kind !== 'attack') return undefined
-    return event.kind === 'attack' || isCompletedPrayer(event)
+    return event.kind === 'attack' ||
+        isCompletedPrayer(event) ||
+        (event.kind === 'cast' && isAshChannel(event.abilityId))
         ? event.actorId
         : (event.targetId ?? event.actorId)
 }
@@ -58,18 +67,15 @@ export function captionColor(
         ? hitColors[hitQuality(event)]
         : event.kind === 'heal'
           ? '#a9ea8e'
-          : deityColors[
-                isPrayerAction(event.abilityId)
-                    ? PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(event.abilityId)].deityId
-                    : (actor?.progression?.deity.id ?? 'hearth')
-            ]
+          : deityColors[eventDeity(event, actor)]
 }
 
 export function channelEnded(
     cue: EffectCue | undefined,
     character: (id: string) => CharacterSnapshot | undefined
 ): boolean {
-    return Boolean(cue?.channel && !character(cue.fromId)?.abilities?.casting)
+    const abilities = cue?.channel ? character(cue.fromId)?.abilities : undefined
+    return Boolean(cue?.channel && !abilities?.casting && !abilities?.ashCasting)
 }
 function attackShape(event: GameEventPayload, actor: CharacterSnapshot): EffectShape {
     if (isArrowAbility(event.abilityId)) return 'arrow'
@@ -94,9 +100,10 @@ export function combatEffectCues(event: GameEventPayload, actor: CharacterSnapsh
         ...(event.target ? { target: event.target } : {}),
     }
     if (event.kind === 'attack')
-        return isFireSpell(event.abilityId ?? '') ? [] : attackCues(event, actor, base)
-    if (event.kind === 'cast' && isPrayerAction(event.abilityId))
-        return prayerCastCues(event, actor, base)
+        return isFireSpell(event.abilityId ?? '') || event.abilityId === 'ash_exhaustion'
+            ? []
+            : attackCues(event, actor, base)
+    if (event.kind === 'cast') return prayerCastCues(event, actor, base)
     if (event.kind === 'heal' && (event.amount === undefined || event.amount > 0))
         return [{ ...base, kind: 'restore', count: 10 }]
     if (event.kind === 'revive') return [{ ...base, kind: 'revive', duration: 1000, count: 12 }]
@@ -132,29 +139,36 @@ function prayerCastCues(
     actor: CharacterSnapshot,
     base: Omit<EffectCue, 'kind'>
 ): EffectCue[] {
-    if (event.phase === 'completed')
+    const { abilityId, phase } = event
+    const ashChannel = isAshChannel(abilityId)
+    if (!ashChannel && !isPrayerAction(abilityId)) return []
+    if (phase === 'completed') {
+        if (abilityId === 'ash_exhaustion') return []
+        const subjectId = abilityId === 'ash_tame' ? base.targetId : actor.id
         return [
             {
                 ...base,
                 kind: 'devotion',
-                fromId: actor.id,
-                targetId: actor.id,
+                fromId: subjectId,
+                targetId: subjectId,
                 duration: 600,
                 count: 4,
             },
         ]
-    if (event.phase === 'started')
-        return [
-            {
-                ...base,
-                fromId: actor.id,
-                kind: 'casting',
-                duration: event.durationMs ?? (event.target ? GRAVE_PURIFY_CAST_MS : 3000),
-                channel: true,
-                count: 12,
-            },
-        ]
-    return []
+    }
+    if (phase !== 'started') return []
+    const windup = ashChannel ? ABILITY_DEFINITIONS[abilityId].windupMs : 3000
+    return [
+        {
+            ...base,
+            fromId: actor.id,
+            targetId: ashChannel ? actor.id : base.targetId,
+            kind: 'casting',
+            duration: event.durationMs ?? (event.target ? GRAVE_PURIFY_CAST_MS : windup),
+            channel: true,
+            count: 12,
+        },
+    ]
 }
 function impactCues(
     event: GameEventPayload,
@@ -279,15 +293,19 @@ function healingCaption(event: GameEventPayload): string | undefined {
 }
 function castCaption(event: GameEventPayload): string | undefined {
     if (event.phase === 'interrupted') return tGame('game.canvas.interrupted')
-    if (event.phase === 'completed' && isPrayerAction(event.abilityId))
+    if (
+        event.phase === 'completed' &&
+        (isPrayerAction(event.abilityId) || isAshChannel(event.abilityId))
+    )
         return abilityName(event.abilityId)
     if (event.phase === 'started' && event.abilityId === 'skeleton_strike')
         return tGame('game.canvas.skeletonStrike')
     return undefined
 }
 
-function eventDeity(event: GameEventPayload, actor: CharacterSnapshot): DeityId {
+function eventDeity(event: GameEventPayload, actor: CharacterSnapshot | undefined): DeityId {
+    if (isAshChannel(event.abilityId)) return 'grave'
     return isPrayerAction(event.abilityId)
         ? PRAYER_SCHOOL_DEFINITIONS[prayerSchoolId(event.abilityId)].deityId
-        : (actor.progression?.deity.id ?? 'hearth')
+        : (actor?.progression?.deity.id ?? 'hearth')
 }

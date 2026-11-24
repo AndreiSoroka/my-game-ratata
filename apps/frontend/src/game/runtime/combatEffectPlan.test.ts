@@ -2,7 +2,7 @@ import { ABILITY_DEFINITIONS } from '@my-game-ratata/contracts'
 import { describe, expect, it, vi } from 'vitest'
 
 import { characterFixture } from '../testing/characterFixture'
-import { combatEffectCues, eventCaption } from './combatEffectPlan'
+import { channelEnded, combatEffectCues, eventCaption } from './combatEffectPlan'
 import { SPARK_COLOR } from './effectGraphics'
 
 vi.mock('excalibur', () => ({ Canvas: class {} }))
@@ -116,6 +116,42 @@ describe('authoritative combat presentation', () => {
             )
         ).toEqual([])
     })
+})
+
+it('follows the caster during an Ash rite and renders taming success at the skeleton', () => {
+    const actor = characterFixture('savva', {
+        abilities: {
+            known: ['ash_tame'],
+            cooldowns: {},
+            casting: null,
+            barrier: null,
+            ashCasting: {
+                abilityId: 'ash_tame',
+                targetId: 'skeleton',
+                startedAt: 0,
+                completesAt: 2000,
+            },
+        },
+    })
+    const cast = { kind: 'cast', abilityId: 'ash_tame', targetId: 'skeleton' } as const
+    const [cue] = combatEffectCues({ ...cast, phase: 'started' }, actor)
+    expect(cue).toMatchObject({
+        kind: 'casting',
+        deity: 'grave',
+        fromId: actor.id,
+        targetId: actor.id,
+        duration: 2000,
+        channel: true,
+    })
+    expect(channelEnded(cue, () => actor)).toBe(false)
+    expect(channelEnded(cue, () => undefined)).toBe(true)
+    expect(combatEffectCues({ ...cast, phase: 'interrupted' }, actor)).toEqual([])
+    expect(combatEffectCues({ ...cast, phase: 'completed' }, actor)).toMatchObject([
+        { kind: 'devotion', deity: 'grave', fromId: 'skeleton', targetId: 'skeleton' },
+    ])
+    expect(
+        combatEffectCues({ kind: 'attack', abilityId: 'ash_exhaustion', delivery: 'magic' }, actor)
+    ).toEqual([])
 })
 
 it('uses the resolved prayer radius for cosmetic waves without changing their budget', () => {

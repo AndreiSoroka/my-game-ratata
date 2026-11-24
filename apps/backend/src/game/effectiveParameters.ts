@@ -38,6 +38,9 @@ export function effectiveAbility(
     if (id === 'ash_raise') {
         definition.windupMs = ashParameters(actor).raiseWindupMs
     }
+    if (id === 'ash_exhaustion' && cellSize > 0) {
+        definition.range = ASH_RULES.exhaustion.rangeCells * cellSize
+    }
     if (isBladeAbility(id)) {
         return {
             ...definition,

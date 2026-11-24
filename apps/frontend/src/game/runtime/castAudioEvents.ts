@@ -30,7 +30,8 @@ export function isMagicCastAttack(event: GameEventPayload): boolean {
         event.delivery === 'magic' &&
         (event.abilityId === 'spark' ||
             event.abilityId === 'fireball' ||
-            event.abilityId === 'greater_fireball')
+            event.abilityId === 'greater_fireball' ||
+            event.abilityId === 'ash_exhaustion')
     )
 }
 
@@ -57,6 +58,9 @@ function magicAttackSound(event: GameEventPayload): CastSound | undefined {
             ? 'sparkFlight'
             : undefined
     }
+    if (event.abilityId === 'ash_exhaustion') {
+        return event.phase === undefined || event.phase === 'completed' ? 'sparkFlight' : undefined
+    }
     return event.phase === undefined || event.phase === 'started' ? 'magicCast' : undefined
 }
 
@@ -72,7 +76,11 @@ export function isChannelEnd(event: GameEventPayload, abilityId: AbilityId): boo
         event.kind === 'cast' &&
         event.castMode !== 'devotion' &&
         (event.phase === 'interrupted' || event.phase === 'completed') &&
-        (isPrayerAction(abilityId) || abilityId === 'chains' || abilityId === 'city_portal')
+        (isPrayerAction(abilityId) ||
+            abilityId === 'chains' ||
+            abilityId === 'city_portal' ||
+            abilityId === 'ash_exhaustion' ||
+            abilityId === 'ash_tame')
     )
 }
 

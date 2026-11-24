@@ -1,4 +1,5 @@
 import {
+    type AshRiteId,
     CHEST_INTERACTION_RANGE,
     chestInteractionDistance,
     containerBounds,
@@ -9,6 +10,7 @@ import {
     type Vector2,
 } from '@my-game-ratata/contracts'
 
+import { ashTargetCastInProgress } from './abilityState'
 import type { GameCharacter } from './character'
 import { chestHasLineOfSight } from './chestInteraction'
 import { isTargetInAttackRange } from './combat'
@@ -19,6 +21,7 @@ import type {
     NecromancerLandmark,
     NecromancerOption,
     NecromancerScene,
+    NecromancerTactic,
 } from './necromancerTactics'
 import { validPrayerIntent } from './prayerContext'
 import type { GameRoom } from './room'
@@ -36,11 +39,27 @@ const prayers = {
     revive: 'revive',
 } as const
 
-const rites = {
+const rites: Partial<
+    Record<NecromancerTactic, Exclude<AshRiteId, 'ash_order'>>
+> = {
     raise: 'ash_raise',
+    tame: 'ash_tame',
+    curse: 'ash_exhaustion',
     gift: 'ash_gift',
     sacrifice: 'ash_sacrifice',
-} as const
+}
+
+export function canActAsNecromancer(
+    actor: GameCharacter,
+    now: number
+): boolean {
+    return (
+        !actor.isActionLocked(now) &&
+        actor.movement.dashUntil <= now &&
+        actor.abilities.casting === null &&
+        !ashTargetCastInProgress(actor)
+    )
+}
 
 export function necromancerCanPray(
     actor: GameCharacter,
@@ -77,12 +96,13 @@ export function performNecromancerTactic(
             now
         )
     }
-    if (tactic === 'raise' || tactic === 'gift' || tactic === 'sacrifice') {
+    const rite = rites[tactic]
+    if (rite !== undefined) {
         const events = room.requestAbility(
             actor,
             {
                 type: 'use_ability',
-                abilityId: rites[tactic],
+                abilityId: rite,
                 targetId,
             },
             now

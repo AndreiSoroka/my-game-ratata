@@ -5,6 +5,8 @@ import type {
     PrayerAuraEffectId,
 } from '@my-game-ratata/contracts'
 
+import { snapshotAshExhaustion } from './ashExhaustion'
+import { isTameableAshSkeleton } from './ashTaming'
 import type { GameCharacter } from './character'
 import {
     type CombatObserver,
@@ -35,9 +37,12 @@ export function projectRoomCharacter(
             ? roadPrayerDashRemainingMs(actor, view.now)
             : 0
     delete observed.prayerAuraEffects
+    delete observed.ashExhaustion
+    delete observed.ashTameable
     return {
         ...observed,
         ...(interactions === undefined ? {} : { interactions }),
+        ...observedAshEffects(actor, playerId, view),
         ...(activity === undefined ? {} : { workerActivity: activity }),
         ...(auraEffects.length === 0 ? {} : { prayerAuraEffects: auraEffects }),
         ...(dashDiscountMsLeft > 0 && observed.movement !== undefined
@@ -56,6 +61,24 @@ export function projectRoomCharacter(
         inventory: character.id === playerId ? character.inventory : [],
         theft: context.theft.snapshot(character.id, playerId, view.now, actor),
     }
+}
+
+function observedAshEffects(
+    actor: GameCharacter | undefined,
+    playerId: string | undefined,
+    { observer, navigation, now }: CombatObserver
+): Pick<CharacterSnapshot, 'ashExhaustion' | 'ashTameable'> {
+    if (actor === undefined || observer === undefined) {
+        return {}
+    }
+    if (actor === observer && actor.id === playerId) {
+        const ashExhaustion = snapshotAshExhaustion(actor, now)
+        return ashExhaustion === undefined ? {} : { ashExhaustion }
+    }
+    return isTameableAshSkeleton(observer, actor) &&
+        navigation?.hasLineOfSight(observer.position, actor.position) === true
+        ? { ashTameable: true }
+        : {}
 }
 
 function interactionsFor(

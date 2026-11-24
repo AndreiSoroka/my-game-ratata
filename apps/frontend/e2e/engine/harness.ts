@@ -5,7 +5,7 @@ import { verifyAudio } from './audioProbe'
 import { verifyBattleMusic } from './battleMusicProbe'
 import { verifyCastAndWaterAudio } from './castAndWaterProbe'
 import { verifyCancellation, verifyReentry, verifyStartupFailures } from './lifecycleProbe'
-import { verifyRendering } from './renderingProbe'
+import { verifyAshExhaustionRendering, verifyRendering } from './renderingProbe'
 import {
     verifyReducedWaterMotion,
     verifyWaterFallback,
@@ -14,6 +14,7 @@ import {
 
 interface EngineHarness {
     render: () => ReturnType<typeof verifyRendering>
+    ashExhaustion: () => ReturnType<typeof verifyAshExhaustionRendering>
     water: () => ReturnType<typeof verifyWaterRendering>
     waterFallback: () => ReturnType<typeof verifyWaterFallback>
     waterReducedMotion: () => ReturnType<typeof verifyReducedWaterMotion>
@@ -56,6 +57,7 @@ unlock.addEventListener(
 
 window.engineHarness = {
     render: () => audioReady.promise.then(verifyRendering),
+    ashExhaustion: () => audioReady.promise.then(verifyAshExhaustionRendering),
     water: () => audioReady.promise.then(verifyWaterRendering),
     waterFallback: () => audioReady.promise.then(verifyWaterFallback),
     waterReducedMotion: () => audioReady.promise.then(verifyReducedWaterMotion),

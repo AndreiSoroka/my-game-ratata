@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
 
 const entity = 'entities-player-effects-playereffectsstrip'
+const detailEntity = 'entities-player-effects-playereffectdetails'
 const widget = 'widgets-player-effects-playereffectsstripwidget'
 const stripSelector = '#storybook-root > div > .player-effects-strip'
 
@@ -21,7 +22,9 @@ test('PlayerEffectsStrip Default shows a single selectable row', async ({ page }
     await combo.focus()
     await combo.press('Enter')
     await expect(combo).toHaveAttribute('aria-expanded', 'true')
-    await expect(details).toHaveText('Серия ударов · 2/3 · 2 с')
+    await expect(details).toHaveAccessibleName('Серия ударов')
+    await expect(details.getByText('2/3', { exact: true })).toBeVisible()
+    await expect(details.getByText('2 с', { exact: true })).toBeVisible()
     await expect(strip).toHaveScreenshot('player-effects-strip-detail.png')
     await combo.press('Space')
     await expect(combo).toHaveAttribute('aria-expanded', 'false')
@@ -40,9 +43,8 @@ test('PlayerEffectsStrip shows the Road Prayer song and next dash discount at 32
     })
     await expect(song).toBeVisible()
     await dash.press('Enter')
-    await expect(strip.locator('[data-player-effect-detail]')).toHaveText(
-        'Подставить плечо · следующий рывок −10 EN · 8 с'
-    )
+    const detail = strip.getByRole('region', { name: 'Подставить плечо · следующий рывок −10 EN' })
+    await expect(detail.getByText('8 с', { exact: true })).toBeVisible()
     await readyUiStory(page)
     await expectUiFits(strip, 320)
     await expect(strip).toHaveScreenshot('player-effects-strip-road-prayer.png')
@@ -59,6 +61,50 @@ test('PlayerEffectsStripWidget renders all projected statuses at 320px', async (
     await readyUiStory(page)
     await expectUiFits(strip, 320)
     await expect(strip).toHaveScreenshot('player-effects-strip-widget-all.png')
+})
+
+test('PlayerEffectsStrip shows the exhaustion rank and time at 320px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto(uiStoryUrl(`${entity}--ash-exhaustion`))
+    const strip = page.locator(stripSelector)
+    const curse = strip.getByRole('button', { name: /^Истощение Праха/ })
+    const description = 'Истощение Праха · Ранг 2 · пределы ресурсов −30% · 30:00'
+    await expect(curse).toHaveAccessibleName(description)
+    await curse.press('Enter')
+    const detail = strip.getByRole('region', { name: 'Истощение Праха' })
+    await expect(detail.getByText('Ранг 2 · пределы ресурсов −30%', { exact: true })).toBeVisible()
+    await expect(detail.getByText('30:00', { exact: true })).toBeVisible()
+    await expect(curse).toHaveAttribute('aria-controls', await detail.evaluate((node) => node.id))
+    await readyUiStory(page)
+    await expectUiFits(strip, 320)
+    await expect(strip).toHaveScreenshot('player-effects-strip-ash-exhaustion.png')
+})
+
+test('PlayerEffectDetails Default frames the title, rank and duration at 320px', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto(uiStoryUrl(`${detailEntity}--default`))
+    const detail = page.getByRole('region', { name: 'Истощение Праха' })
+    await expect(detail.getByRole('heading', { name: 'Истощение Праха' })).toBeVisible()
+    await expect(detail.getByText('16:38', { exact: true })).toBeVisible()
+    await expect(detail.getByText('Ранг 2 · пределы ресурсов −30%')).toBeVisible()
+    await readyUiStory(page)
+    await expectUiFits(detail, 320)
+    await expect(detail).toHaveScreenshot('player-effect-details-default.png')
+})
+
+test('PlayerEffectDetails frames an untimed status without an empty timer at 320px', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto(uiStoryUrl(`${detailEntity}--untimed`))
+    const detail = page.getByRole('region', { name: 'В чёрном списке Новогорода' })
+    await expect(detail.getByRole('heading')).toBeVisible()
+    await expect(detail.locator('.player-effect-details__timer')).toHaveCount(0)
+    await readyUiStory(page)
+    await expectUiFits(detail, 320)
+    await expect(detail).toHaveScreenshot('player-effect-details-untimed.png')
 })
 
 test('PlayerEffectsStripWidget Default Controls update effects from server time', async ({

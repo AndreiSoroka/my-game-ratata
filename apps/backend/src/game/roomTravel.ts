@@ -3,6 +3,7 @@ import {
     type Vector2,
 } from '@my-game-ratata/contracts'
 
+import { ashRegionalTravelIntent } from './ashRegionalTravel'
 import type { GameCharacter } from './character'
 import { rememberObservedCrossing } from './characterControl'
 import { quickShotBlocksMovement } from './combatArchery'
@@ -18,9 +19,11 @@ export function characterMovementIntent(
     now: number,
     deltaMs: number
 ): Vector2 {
-    const flee = mobFleeTravelIntent(character, now)
-    if (flee !== undefined) {
-        return flee
+    const crossing =
+        mobFleeTravelIntent(character, now) ??
+        ashRegionalTravelIntent(character, now)
+    if (crossing !== undefined) {
+        return crossing
     }
     if (
         character.movement.dashUntil > now - deltaMs &&

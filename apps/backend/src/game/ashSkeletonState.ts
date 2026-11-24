@@ -5,6 +5,8 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { cancelCharacterControl } from './characterControl'
+import { clearPursuit, territories } from './pursuitState'
 
 export interface AshSkeletonOrder {
     ownerId: string
@@ -15,10 +17,124 @@ export interface AshSkeletonOrder {
     anchor: Vector2
 }
 
+export interface AshSkeletonBond {
+    owner: GameCharacter
+    deathSequence: number
+    guard?: { locationId: string; position: Vector2 }
+}
+
 const orders = new WeakMap<GameCharacter, AshSkeletonOrder>()
 const summons = new WeakMap<GameCharacter, string>()
 const wanderingSummons = new WeakSet<GameCharacter>()
 const grantedGifts = new WeakSet<GameCharacter>()
+const bonds = new WeakMap<GameCharacter, AshSkeletonBond>()
+const followers = new WeakMap<GameCharacter, Set<GameCharacter>>()
+const attackOrders = new WeakMap<GameCharacter, GameCharacter>()
+
+export function ashSkeletonBond(
+    actor: GameCharacter
+): AshSkeletonBond | undefined {
+    const bond = bonds.get(actor)
+    if (
+        bond !== undefined &&
+        (bond.deathSequence !== actor.deathSequence ||
+            bond.owner.tags.has('state.retired'))
+    ) {
+        releaseAshSkeleton(actor)
+        return undefined
+    }
+    return bond
+}
+
+export function releaseAshSkeleton(actor: GameCharacter): void {
+    const bond = bonds.get(actor)
+    if (bond !== undefined) {
+        followers.get(bond.owner)?.delete(actor)
+        bonds.delete(actor)
+        orders.delete(actor)
+        attackOrders.delete(actor)
+    }
+}
+
+export function ashBoundSkeletons(owner: GameCharacter): GameCharacter[] {
+    return [...(followers.get(owner) ?? [])].filter(
+        (actor) => ashSkeletonBond(actor)?.owner === owner && actor.alive
+    )
+}
+
+export function bindAshSkeleton(
+    actor: GameCharacter,
+    owner: GameCharacter,
+    guard?: AshSkeletonBond['guard']
+): void {
+    const group = followers.get(owner) ?? new Set<GameCharacter>()
+    group.add(actor)
+    followers.set(owner, group)
+    bonds.set(actor, {
+        owner,
+        deathSequence: actor.deathSequence,
+        ...(guard === undefined ? {} : { guard }),
+    })
+    orders.delete(actor)
+    territories.delete(actor)
+    actor.tags.delete('grave.guardian')
+    cancelCharacterControl(actor)
+    clearPursuit(actor)
+    actor.clearPendingAttackHit()
+}
+
+export function guardAshSkeleton(
+    actor: GameCharacter,
+    guard: NonNullable<AshSkeletonBond['guard']>
+): void {
+    const bond = ashSkeletonBond(actor)
+    if (bond !== undefined) {
+        bond.guard = guard
+        orders.delete(actor)
+    }
+}
+
+export function ashSkeletonGuard(
+    actor: GameCharacter
+): AshSkeletonBond['guard'] {
+    const order = ashSkeletonOrder(actor)
+    if (order === undefined) {
+        return ashSkeletonBond(actor)?.guard
+    }
+    return order.kind === 'guard'
+        ? { locationId: order.locationId, position: order.anchor }
+        : undefined
+}
+
+export function ashSkeletonOwnerId(actor: GameCharacter): string | undefined {
+    return (
+        ashSkeletonBond(actor)?.owner.id ??
+        ashSummoner(actor) ??
+        ashSkeletonOrder(actor)?.ownerId
+    )
+}
+
+export function ashAssaultTarget(
+    actor: GameCharacter
+): GameCharacter | undefined {
+    return attackOrders.get(actor)
+}
+
+export function directAshAssault(
+    actor: GameCharacter,
+    target: GameCharacter | undefined
+): void {
+    if (attackOrders.get(actor) === target) {
+        return
+    }
+    if (target === undefined) {
+        attackOrders.delete(actor)
+    } else {
+        attackOrders.set(actor, target)
+    }
+    actor.clearPath()
+    actor.clearPendingAttackHit()
+}
 
 export function ashSkeletonOrder(
     actor: GameCharacter

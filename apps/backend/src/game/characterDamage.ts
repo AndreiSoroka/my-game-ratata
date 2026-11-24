@@ -1,5 +1,8 @@
 import { HERO_REVIVAL_WINDOW_MS } from '@my-game-ratata/contracts'
 
+import { clearAshExhaustion } from './ashExhaustion'
+import { markAshExhaustionCastDamaged } from './ashExhaustionCast'
+import { cancelAshTame } from './ashTaming'
 import type { GameCharacter } from './character'
 import { notifyCharacterDeath } from './characterDeathObservers'
 import { clearCombatTransient } from './combatState'
@@ -17,6 +20,8 @@ export function applyCharacterDamage(
     }
 
     if (amount > 0) {
+        markAshExhaustionCastDamaged(character)
+        cancelAshTame(character)
         delete character.combat.combo
         character.interruptWork?.()
     }
@@ -28,6 +33,7 @@ export function applyCharacterDamage(
         clearResourcePractice(character)
         character.deathSequence += 1
         character.alive = false
+        clearAshExhaustion(character)
         clearCombatTransient(character, now)
         character.combat.stunImmuneUntil = 0
         notifyCharacterDeath(character)

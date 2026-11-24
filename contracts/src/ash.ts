@@ -13,7 +13,17 @@ export const ASH_RULES = {
     raiseDurationMs: 60_000,
     raiseHpFraction: 0.5,
     heartReturnMs: 600_000,
+    exhaustion: {
+        chanceBonus: 0.1,
+        drain: 12,
+        durationMs: 30 * 60_000,
+        rangeCells: 6,
+        speed: 160,
+        reductions: [0.2, 0.3, 0.7],
+    },
 } as const
+
+export type AshExhaustionRank = 1 | 2 | 3
 
 function ranked(ids: ReadonlySet<string>, family: string, ranks: number) {
     let count = 0
@@ -21,6 +31,14 @@ function ranked(ids: ReadonlySet<string>, family: string, ranks: number) {
         count += Number(ids.has(`prayer_grave.${family}${String(index)}`))
     }
     return count
+}
+
+function exhaustionRank(ids: ReadonlySet<string>): AshExhaustionRank | 0 {
+    return (
+        ([3, 2, 1] as const).find((rank) =>
+            ids.has(`prayer_grave.exhaustion${String(rank)}`)
+        ) ?? 0
+    )
 }
 
 /** The same rank bonuses drive casts, summons and the build atlas. */
@@ -44,6 +62,7 @@ export function resolveAshParameters(ids: ReadonlySet<string>) {
             ASH_RULES.raiseWindupMs -
             Number(ids.has('prayer_grave.raise_focus')) * 300,
         omenRank: ranked(ids, 'omen', 4),
+        exhaustionRank: exhaustionRank(ids),
         brand: ids.has('prayer_grave.brand'),
         dash: ids.has('prayer_grave.dash'),
         mana: ids.has('prayer_grave.mana'),

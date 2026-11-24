@@ -1,7 +1,10 @@
-import { Actor, Canvas, Color, Particle } from 'excalibur'
+import type { MagicEffectSnapshot } from '@my-game-ratata/contracts'
+import { Actor, Canvas, Color, ImageSource, Particle } from 'excalibur'
 
 import type { EffectCue } from '../../src/game/runtime/combatEffectPlan'
 import { CombatParticles } from '../../src/game/runtime/combatParticles'
+import { MagicViews } from '../../src/game/runtime/magicViews'
+import { worldFixture } from '../../src/game/testing/characterFixture'
 import { capture, mountEngine, pixel, startEngine, type TestEngine } from './engineSupport'
 
 const roadCue = {
@@ -97,4 +100,61 @@ async function drawDynamicTexture(run: TestEngine): Promise<number[][]> {
     color = '#2090cc'
     graphic.flagDirty()
     return [first, pixel(await capture(run), 118, 54)]
+}
+
+export async function verifyAshExhaustionRendering() {
+    const run = mountEngine()
+    const views = new MagicViews(
+        run.engine,
+        new ImageSource('/game/assets/world/magic/fire-spells.png')
+    )
+    run.owner.addCleanup(() => views.dispose())
+    const flight = {
+        id: 'ash:flight',
+        abilityId: 'ash_exhaustion',
+        phase: 'flight',
+        position: { x: 44, y: 60 },
+        direction: { x: 1, y: 0 },
+        radius: 5,
+        expiresAt: 10_000,
+    } satisfies MagicEffectSnapshot
+    const sync = (effect: MagicEffectSnapshot, at: number, visible = true) =>
+        views.sync({ ...worldFixture([], at), magicEffects: [effect] }, () => visible)
+    try {
+        await startEngine(run)
+        sync(flight, 1000)
+        const start = await capture(run)
+        const moved = { ...flight, position: { x: 112, y: 60 } }
+        sync(moved, 1080)
+        const end = await capture(run)
+        sync({ ...moved, phase: 'impact' }, 1160)
+        const impact = await capture(run)
+        sync(moved, 1240, false)
+        const hidden = await capture(run)
+        sync(moved, moved.expiresAt)
+        const expired = await capture(run)
+        return {
+            ...run.contextStatus(),
+            start: ashPixels(start, 44),
+            moved: ashPixels(end, 112),
+            noTrail: ashPixels(end, 44) === 0,
+            impact: ashPixels(impact, 112),
+            noFlightTailOnImpact: ashPixels(impact, 112, -20, -12) === 0,
+            hidden: ashPixels(hidden, 112) === 0,
+            expired: ashPixels(expired, 112) === 0,
+        }
+    } finally {
+        await run.owner.cancel()
+    }
+}
+
+function ashPixels(image: ImageData, center: number, left = -20, right = 20): number {
+    let count = 0
+    for (let x = center + left; x <= center + right; x += 1) {
+        for (let y = 40; y <= 80; y += 1) {
+            const [r = 0, g = 0, b = 0] = pixel(image, x, y)
+            if (r > g + 10 && b > r + 8) count += 1
+        }
+    }
+    return count
 }

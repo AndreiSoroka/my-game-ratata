@@ -10,8 +10,8 @@ it('describes all prayer nodes with independent readable complete mathematical l
     const prayers = fullConstellationCatalog.filter((node) =>
         node.constellationId.startsWith('prayer')
     )
-    expect(prayers).toHaveLength(87)
-    expect(prayers.filter((node) => node.constellationId === 'prayer_grave')).toHaveLength(40)
+    expect(prayers).toHaveLength(91)
+    expect(prayers.filter((node) => node.constellationId === 'prayer_grave')).toHaveLength(44)
     for (const node of prayers) {
         const result = description(node.id)
         expect(result.summary.length).toBeGreaterThan(0)
@@ -63,6 +63,15 @@ it('applies Ash healing and revival ranks to distinct outcomes', () => {
     expect(describe('prayer_grave.brand')?.formulas[0]).toBe('B')
     expect(describe('prayer_grave.raise')?.deterministic).toBe(true)
     expect(describe('prayer_grave.heart')?.formulas).toContain('floor(X × 0,70)')
+})
+it('shows the curse as a separate mood roll with a reduction specific to each rank', () => {
+    expect(description('prayer_grave.exhaustion1').examples.map(({ value }) => value)).toEqual([
+        'Успех 90%.',
+        'Успех 65%.',
+        'Успех 35%.',
+    ])
+    expect(description('prayer_grave.exhaustion2').formulas).toEqual(['B + 10', '12', '30', '30'])
+    expect(description('prayer_grave.exhaustion3').formulas).toEqual(['B + 10', '12', '70', '30'])
 })
 it('reports the song multiplier separately from the final Road Prayer roll', () => {
     const root = description('prayer_road.root')
