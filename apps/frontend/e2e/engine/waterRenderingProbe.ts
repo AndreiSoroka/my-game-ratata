@@ -2,7 +2,7 @@ import { Actor, Color, vec } from 'excalibur'
 
 import { SceneMapView } from '../../src/game/runtime/sceneMapActor'
 import { loadRenderedTiledMap, type RenderedTiledMap } from '../../src/game/runtime/tiledMap'
-import { mountEngine, pixel, startEngine, type TestEngine } from './engineSupport'
+import { capture, mountEngine, pixel, startEngine, type TestEngine } from './engineSupport'
 
 interface Point {
     x: number
@@ -13,7 +13,9 @@ interface Basin {
     map: string
     camera: Point
     shore: Point
+    northBank: Point
     insideCorner: Point
+    insideCornerShadow: Point
     center: Point
     land: Point
 }
@@ -21,16 +23,20 @@ interface Basin {
 const pond: Basin = {
     map: 'map-1-1.json',
     camera: { x: 1140, y: 151 },
-    shore: { x: 1126, y: 152 },
+    shore: { x: 1126, y: 168 },
+    northBank: { x: 1163, y: 142 },
     insideCorner: { x: 1141, y: 144 },
+    insideCornerShadow: { x: 1144, y: 157 },
     center: { x: 1160, y: 152 },
     land: { x: 1118, y: 152 },
 }
 const lake: Basin = {
     map: 'map-0-1.json',
     camera: { x: 1043, y: 119 },
-    shore: { x: 1030, y: 120 },
+    shore: { x: 1030, y: 136 },
+    northBank: { x: 1053, y: 111 },
     insideCorner: { x: 1045, y: 112 },
+    insideCornerShadow: { x: 1048, y: 125 },
     center: { x: 1064, y: 120 },
     land: { x: 1021, y: 120 },
 }
@@ -53,8 +59,8 @@ export async function verifyWaterRendering() {
         const oldActor = mapActor(run)
         if (!oldActor) throw new Error('The animated lake actor is missing')
         view.setMap(city)
-        const dryFirst = await readFrame(run)
-        const dryLater = await readFrame(run, cycleMs + frameMs)
+        const dryFirst = await capture(run, 1)
+        const dryLater = await capture(run, cycleMs + frameMs)
 
         return {
             ...run.contextStatus(),
@@ -80,9 +86,9 @@ async function checkBasin(
 ) {
     aimCamera(run, basin.camera)
     await setAnimatedMap(run, view, map)
-    const first = await readFrame(run)
-    const next = await readFrame(run, frameMs)
-    const repeated = await readFrame(run, cycleMs - frameMs)
+    const first = await capture(run, 1)
+    const next = await capture(run, frameMs)
+    const repeated = await capture(run, cycleMs - frameMs)
 
     const marker = new Actor({
         x: basin.shore.x + 0.5,
@@ -93,12 +99,14 @@ async function checkBasin(
         color: Color.fromHex('#ff00ff'),
     })
     run.engine.add(marker)
-    const foreground = worldPixel(run, await readFrame(run, frameMs), basin.shore)
+    const foreground = worldPixel(run, await capture(run, frameMs), basin.shore)
     marker.kill()
 
     return {
         shore: worldPixel(run, [first, next], basin.shore),
+        northBank: worldPixel(run, [first, next], basin.northBank),
         insideCorner: worldPixel(run, [first, next], basin.insideCorner),
+        insideCornerShadow: worldPixel(run, [first, next], basin.insideCornerShadow),
         center: worldPixel(run, [first, next], basin.center),
         land: worldPixel(run, [first, next], basin.land),
         loopDifferentPixels: countChangedPixels(first, repeated),
@@ -110,10 +118,10 @@ async function compareFractionalFrame(run: TestEngine, view: SceneMapView, map: 
     aimCamera(run, { x: lake.camera.x + 0.17, y: lake.camera.y + 0.41 })
     const baked = await bakeSecondFrame(map)
     view.setMap({ ...map, bitmap: baked, animatedWater: undefined })
-    const expected = await readFrame(run)
+    const expected = await capture(run, 1)
     await setAnimatedMap(run, view, map)
-    const base = await readFrame(run)
-    const actual = await readFrame(run, frameMs)
+    const base = await capture(run, 1)
+    const actual = await capture(run, frameMs)
     return {
         ...measureShorelineMotion(base, expected, actual),
         shore: worldPixel(run, [base, actual], lake.shore),
@@ -123,6 +131,7 @@ async function compareFractionalFrame(run: TestEngine, view: SceneMapView, map: 
 function measureShorelineMotion(base: ImageData, expected: ImageData, actual: ImageData) {
     const { width, height } = expected
     const shoreline = new Uint8Array(width * height)
+    const strongShoreline = new Uint8Array(width * height)
     const strongMotion = 24
     let expectedStrongPixels = 0
     for (let y = 0; y < height; y++) {
@@ -133,11 +142,10 @@ function measureShorelineMotion(base: ImageData, expected: ImageData, actual: Im
             if (delta >= strongMotion) expectedStrongPixels++
             // Pixel and blended sampling can round the edge to adjacent screen pixels.
             for (let row = Math.max(0, y - 1); row <= Math.min(height - 1, y + 1); row++) {
-                shoreline.fill(
-                    1,
-                    row * width + Math.max(0, x - 1),
-                    row * width + Math.min(width, x + 2)
-                )
+                const left = row * width + Math.max(0, x - 1)
+                const right = row * width + Math.min(width, x + 2)
+                shoreline.fill(1, left, right)
+                if (delta >= strongMotion) strongShoreline.fill(1, left, right)
             }
         }
     }
@@ -146,8 +154,7 @@ function measureShorelineMotion(base: ImageData, expected: ImageData, actual: Im
     for (let index = 0; index < shoreline.length; index++) {
         const delta = rgbDelta(base, actual, index)
         if (delta !== 0 && !shoreline[index]) outsideShoreline++
-        if (delta >= strongMotion && rgbDelta(base, expected, index) >= strongMotion)
-            animatedStrongPixels++
+        if (delta >= strongMotion && strongShoreline[index]) animatedStrongPixels++
     }
     return {
         outsideShoreline,
@@ -192,20 +199,22 @@ export async function verifyWaterFallback() {
         await startEngine(run)
         aimCamera(run, pond.camera)
         const results = await observeWaterLoad(() => view.setMap(wet))
-        const first = await readFrame(run)
-        const later = await readFrame(run, frameMs)
+        const first = await capture(run, 1)
+        const later = await capture(run, frameMs)
         const hadOverlay = Boolean(mapActor(run)?.graphics.onPostDraw)
 
         view.setMap(dry)
         run.clock.step(1)
         await setAnimatedMap(run, view, wet)
-        const retryFirst = await readFrame(run)
-        const retryAnimated = await readFrame(run, frameMs)
+        const retryFirst = await capture(run, 1)
+        const retryAnimated = await capture(run, frameMs)
         return {
             failedFrames: results.filter((loaded) => !loaded).length,
             staticDifferentPixels: countChangedPixels(first, later),
             hadOverlay,
+            staticNorthBank: worldPixel(run, first, pond.northBank),
             retriedShore: worldPixel(run, [retryFirst, retryAnimated], pond.shore),
+            retriedNorthBank: worldPixel(run, [retryFirst, retryAnimated], pond.northBank),
         }
     } finally {
         await run.owner.cancel()
@@ -219,9 +228,12 @@ export async function verifyReducedWaterMotion() {
         await startEngine(run)
         aimCamera(run, pond.camera)
         await setAnimatedMap(run, view, map)
-        const first = await readFrame(run)
-        const later = await readFrame(run, frameMs)
-        return { differentPixels: countChangedPixels(first, later) }
+        const first = await capture(run, 1)
+        const later = await capture(run, frameMs)
+        return {
+            differentPixels: countChangedPixels(first, later),
+            northBank: worldPixel(run, first, pond.northBank),
+        }
     } finally {
         await run.owner.cancel()
     }
@@ -285,19 +297,6 @@ async function setAnimatedMap(run: TestEngine, view: SceneMapView, map: Rendered
         if (performance.now() >= deadline) throw new Error('Shoreline atlas did not become ready')
         await new Promise(requestAnimationFrame)
     }
-}
-
-async function readFrame(run: TestEngine, elapsed = 1): Promise<ImageData> {
-    const pending = run.engine.screenshot()
-    run.clock.step(elapsed)
-    const source = await pending
-    const canvas = document.createElement('canvas')
-    canvas.width = source.width
-    canvas.height = source.height
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Could not read WebGL screenshot')
-    ctx.drawImage(source, 0, 0)
-    return ctx.getImageData(0, 0, source.width, source.height)
 }
 
 function worldPixel(run: TestEngine, image: ImageData, point: Point): number[]

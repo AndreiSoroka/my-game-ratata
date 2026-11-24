@@ -2,6 +2,26 @@
 export const interiorTerrainTile = 8
 export const terrainQuarterSize = 8
 
+const waterAtlasStart = 110
+
+type TerrainQuadrants = [number, number, number, number]
+
+// The four connections represented by each complete Mystic Woods water tile.
+const waterTileShapes: Partial<Record<number, TerrainQuadrants>> = {
+    1: [1, 2, 7, 8],
+    2: [2, 2, 8, 8],
+    3: [2, 3, 8, 9],
+    4: [8, 8, 8, 4],
+    5: [8, 8, 5, 8],
+    7: [7, 8, 7, 8],
+    9: [8, 9, 8, 9],
+    10: [8, 10, 8, 8],
+    11: [11, 8, 8, 8],
+    13: [7, 8, 13, 14],
+    14: [8, 8, 14, 14],
+    15: [8, 9, 14, 15],
+}
+
 export interface TerrainQuarter {
     sourceX: number
     sourceY: number
@@ -13,7 +33,7 @@ export interface TerrainQuarter {
 
 export function terrainAtlasStart(gid: number): number | undefined {
     if (gid >= 38 && gid < 62) return 38
-    if (gid >= 110 && gid < 134) return 110
+    if (gid >= waterAtlasStart && gid < waterAtlasStart + 24) return waterAtlasStart
     return undefined
 }
 
@@ -23,7 +43,7 @@ export function terrainQuadrants(
     width: number,
     height: number,
     index: number
-): number[] | undefined {
+): TerrainQuadrants | undefined {
     const atlas = terrainAtlasStart(data[index] ?? 0)
     if (atlas === undefined) return undefined
     const x = index % width,
@@ -57,6 +77,23 @@ export function terrainQuadrants(
     ]
 }
 
+function waterSourceTiles(quadrants: TerrainQuadrants): TerrainQuadrants {
+    // The bank and its shadow can cross both quadrant boundaries in the atlas.
+    const wholeTile = quadrants.find((tile) =>
+        waterTileShapes[tile]?.every((quarter, index) => quarter === quadrants[index])
+    )
+    if (wholeTile !== undefined) return [wholeTile, wholeTile, wholeTile, wholeTile]
+
+    // On compound shores, extend the north bank where it will not replace a south edge.
+    const [northwest, northeast, southwest, southeast] = quadrants
+    return [
+        northwest,
+        northeast,
+        southwest === interiorTerrainTile || southwest === 7 ? northwest : southwest,
+        southeast === interiorTerrainTile || southeast === 9 ? northeast : southeast,
+    ]
+}
+
 export function terrainQuarters(
     data: readonly number[],
     width: number,
@@ -67,9 +104,13 @@ export function terrainQuarters(
 ): (TerrainQuarter & { tile: number })[] | undefined {
     const quadrants = terrainQuadrants(data, width, height, index)
     if (!quadrants) return undefined
+    const tiles =
+        terrainAtlasStart(data[index] ?? 0) === waterAtlasStart
+            ? waterSourceTiles(quadrants)
+            : quadrants
     const x = (index % width) * tileWidth
     const y = Math.floor(index / width) * tileHeight
-    return quadrants.map((tile, quadrant) => {
+    return tiles.map((tile, quadrant) => {
         const column = quadrant % 2
         const row = Math.floor(quadrant / 2)
         return {

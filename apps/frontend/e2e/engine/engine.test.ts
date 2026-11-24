@@ -7,6 +7,9 @@ const animatedShoreColors = [
     [80, 54, 37],
     [33, 17, 13],
 ]
+const northBankShadow = [66, 91, 158]
+const flatWater = [77, 138, 179]
+const animatedNorthBankColors = [northBankShadow, flatWater]
 
 test.beforeEach(async ({ page }) => {
     await page.goto('/e2e/engine/')
@@ -43,9 +46,12 @@ test('animates the shoreline of shipped ponds and lakes in WebGL2', async ({ pag
     expect(result.fractional.animatedStrongPixels).toBeGreaterThan(
         result.fractional.expectedStrongPixels * 0.75
     )
+    expect(result.pond.northBank).toEqual(animatedNorthBankColors)
+    expect(result.lake.northBank).toEqual([flatWater, northBankShadow])
     for (const basin of [result.pond, result.lake]) {
         expect(basin.shore).toEqual(animatedShoreColors)
         expect(basin.insideCorner).toEqual(animatedShoreColors)
+        expect(basin.insideCornerShadow).toEqual([flatWater, northBankShadow])
         expect(basin.center[0]).toEqual(basin.center[1])
         expect(basin.land[0]).toEqual(basin.land[1])
         expect(basin.loopDifferentPixels).toBe(0)
@@ -70,7 +76,9 @@ test('keeps the shore static after an atlas failure and retries when revisiting'
         failedFrames: 1,
         staticDifferentPixels: 0,
         hadOverlay: false,
+        staticNorthBank: northBankShadow,
         retriedShore: animatedShoreColors,
+        retriedNorthBank: animatedNorthBankColors,
     })
     expect(attempts).toBe(2)
 })
@@ -78,7 +86,7 @@ test('keeps the shore static after an atlas failure and retries when revisiting'
 test('holds the still shoreline when reduced motion is requested', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const result = await page.evaluate(() => window.engineHarness.waterReducedMotion())
-    expect(result.differentPixels).toBe(0)
+    expect(result).toEqual({ differentPixels: 0, northBank: northBankShadow })
 })
 
 test('plays isolated real tracks and restores one music track when visible', async ({ page }) => {

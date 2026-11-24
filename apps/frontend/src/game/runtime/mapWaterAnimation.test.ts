@@ -32,7 +32,7 @@ const singleTile = {
 }
 
 describe('animated Mystic Woods shoreline', () => {
-    it('finds five extra atlases and uses the static concave quadrant at the authored tile size', () => {
+    it('finds five extra atlases and animates the complete concave bank at the authored scale', () => {
         const map = {
             width: 3,
             height: 3,
@@ -47,7 +47,12 @@ describe('animated Mystic Woods shoreline', () => {
         )
         expect(
             animation?.quarters.filter(({ x, y }) => x >= 24 && x < 48 && y >= 20 && y < 40)
-        ).toEqual([{ sourceX: 80, sourceY: 16, x: 24, y: 20, width: 12, height: 10 }])
+        ).toEqual([
+            { sourceX: 80, sourceY: 16, x: 24, y: 20, width: 12, height: 10 },
+            { sourceX: 88, sourceY: 16, x: 36, y: 20, width: 12, height: 10 },
+            { sourceX: 80, sourceY: 24, x: 24, y: 30, width: 12, height: 10 },
+            { sourceX: 88, sourceY: 24, x: 36, y: 30, width: 12, height: 10 },
+        ])
     })
 
     it('keeps an overlaid water cell in the static map', () => {

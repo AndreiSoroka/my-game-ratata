@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { drawConnectedTerrain, terrainQuadrants } from './terrainAutotile'
+import { drawConnectedTerrain, terrainQuadrants, terrainQuarters } from './terrainAutotile'
 
 const tile = 110 + 8
 const grid = (cells: number[]) => cells.map((value) => (value ? tile : 0))
@@ -29,6 +29,23 @@ describe('connected terrain atlas quadrants', () => {
         cells[4] = 38 + 8
         expect(terrainQuadrants(cells, 3, 3, 4)).toEqual([1, 3, 13, 15])
         expect(terrainQuadrants([0], 1, 1, 0)).toBeUndefined()
+    })
+    it.each([
+        ['north edge', [0, 0, 0, 1, 1, 1, 1, 1, 1], [2, 2, 2, 2]],
+        ['northwest outside corner', [0, 0, 0, 0, 1, 1, 0, 1, 1], [1, 1, 1, 1]],
+        ['northwest inside corner', [0, 1, 1, 1, 1, 1, 1, 1, 1], [11, 11, 11, 11]],
+        ['two northern inside corners', [0, 1, 0, 1, 1, 1, 1, 1, 1], [11, 10, 11, 10]],
+        ['opposing banks', [0, 0, 0, 1, 1, 1, 0, 0, 0], [2, 2, 14, 14]],
+    ])('chooses the water atlas sources for %s', (_, cells, expected) => {
+        expect(terrainQuarters(grid(cells), 3, 3, 4, 16, 16)?.map(({ tile }) => tile)).toEqual(
+            expected
+        )
+    })
+    it('keeps dirt atlas sources independent of water bank art', () => {
+        const cells = [0, 0, 0, 46, 46, 46, 46, 46, 46]
+        expect(terrainQuarters(cells, 3, 3, 4, 16, 16)?.map(({ tile }) => tile)).toEqual([
+            2, 2, 8, 8,
+        ])
     })
     it('draws four matching source quarters at the authored map scale', () => {
         const drawImage = vi.fn<CanvasRenderingContext2D['drawImage']>()

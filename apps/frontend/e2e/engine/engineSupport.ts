@@ -100,8 +100,10 @@ export async function startEngine(run: TestEngine, loader?: DefaultLoader): Prom
     if (!ready || !run.engine.isReady) throw new Error('Engine did not finish starting')
 }
 
-export async function capture(run: TestEngine): Promise<ImageData> {
-    const image = await stepUntil(run.engine.screenshot(), run.clock)
+export async function capture(run: TestEngine, elapsed?: number): Promise<ImageData> {
+    const pending = run.engine.screenshot()
+    if (elapsed !== undefined) run.clock.step(elapsed)
+    const image = await (elapsed === undefined ? stepUntil(pending, run.clock) : pending)
     const readback = document.createElement('canvas')
     readback.width = image.width
     readback.height = image.height
