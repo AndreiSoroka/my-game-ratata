@@ -37,9 +37,6 @@ const terminalText = computed(() =>
         ? tGame('game.trade.exchangeCompleted')
         : (props.exchange.notice ?? tGame('game.trade.exchangeCancelled'))
 )
-function whisper(text: string): void {
-    emit('command', { type: 'whisper', targetId: props.exchange.partnerId, text })
-}
 </script>
 <template>
     <SocialWindow
@@ -136,7 +133,6 @@ function whisper(text: string): void {
                 v-if="conversation?.partnerId === exchange.partnerId"
                 :conversation="conversation"
                 :player-id="player.id"
-                @send="whisper"
                 @command="emit('command', $event)"
             />
             <footer class="exchange-actions">

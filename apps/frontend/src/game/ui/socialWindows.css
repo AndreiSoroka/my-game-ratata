@@ -88,11 +88,11 @@
     white-space: nowrap;
     text-overflow: ellipsis;
 }
-.social-window--exchange button,
-.social-window--exchange input {
+.social-window--exchange button:where(.game-button),
+.social-window--exchange input:where(.game-input) {
     font-size: 12px;
 }
-.social-window--exchange button {
+.social-window--exchange button:where(.game-button) {
     min-height: 29px;
 }
 .social-window--exchange .social-window__header button {
@@ -100,24 +100,24 @@
     min-width: 32px;
     padding: 0;
 }
-.social-window button,
-.social-window input,
-.social-window select {
+.social-window button:where(.game-button),
+.social-window input:where(.game-input),
+.social-window select:where(.game-select) {
     padding: 6px 10px;
 }
-.social-window button {
+.social-window button:where(.game-button) {
     cursor: pointer;
 }
-.social-window button:disabled {
+.social-window button:where(.game-button):disabled {
     opacity: 0.5;
     cursor: default;
 }
-.social-window input {
+.social-window input:where(.game-input) {
     min-width: 0;
 }
-.social-window button:focus-visible,
-.social-window input:focus-visible,
-.social-window select:focus-visible {
+.social-window button:where(.game-button):focus-visible,
+.social-window input:where(.game-input):focus-visible,
+.social-window select:where(.game-select):focus-visible {
     outline: 2px solid #dfc36f;
     outline-offset: 2px;
 }

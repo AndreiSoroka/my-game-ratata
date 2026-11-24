@@ -5,23 +5,35 @@ import { expect, it } from 'vitest'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import PrivateConversation from './PrivateConversation.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
-import { exchangeFixture, questOfferFixture, whisperFixture } from './socialFixtures'
+import {
+    exchangeFixture,
+    questOfferFixture,
+    questTurnInFixture,
+    whisperFixture,
+} from './socialFixtures'
 import SocialPanels from './SocialPanels.vue'
 
 it('sends whisper privately, clears text and rejects sending after lost reach', async () => {
     const wrapper = mount(PrivateConversation, {
         props: { conversation: whisperFixture(), playerId: 'self' },
     })
+    const whispers = () =>
+        wrapper
+            .emitted<[ClientMessage]>('command')
+            ?.flat()
+            .filter((command) => command.type === 'whisper')
     try {
         const field = wrapper.get('input')
         await field.setValue('  Что у торговца?  ')
         await wrapper.get('form').trigger('submit')
-        expect(wrapper.emitted('send')).toEqual([['Что у торговца?']])
+        expect(whispers()).toEqual([
+            { type: 'whisper', targetId: 'partner', text: 'Что у торговца?' },
+        ])
         expect((field.element as HTMLInputElement).value).toBe('')
         await wrapper.setProps({ conversation: { ...whisperFixture(), available: false } })
         await field.setValue('Не должно отправиться')
         await wrapper.get('form').trigger('submit')
-        expect(wrapper.emitted('send')).toHaveLength(1)
+        expect(whispers()).toHaveLength(1)
         expect(wrapper.get('button').attributes('disabled')).toBeDefined()
     } finally {
         wrapper.unmount()
@@ -268,6 +280,46 @@ it('retains quest whisper text and reward selection across revisions of the same
             accept: true,
             rewardMode: 'submitter',
         })
+    } finally {
+        view.unmount()
+    }
+})
+
+it('binds the turn-in whisper to its issuer while another quest offer is present', async () => {
+    const player = characterFixture('self')
+    const questTurnIn = questTurnInFixture()
+    const offerWhisper = whisperFixture()
+    const snapshot = {
+        ...worldFixture([player], 1000),
+        social: { questTurnIn, questOffer: questOfferFixture(), whisper: offerWhisper },
+    }
+    const view = mount(SocialPanels, {
+        props: { snapshot, player, characters: [player], connected: true },
+    })
+    try {
+        expect(view.text()).toContain(questTurnIn.title)
+        expect(view.findComponent(PrivateConversation).exists()).toBe(false)
+        const whisper = {
+            ...offerWhisper,
+            partnerId: questTurnIn.issuerId,
+            partnerName: questTurnIn.issuerName,
+            messages: [{ id: '2', senderId: questTurnIn.issuerId, text: 'Слушаю вас.', at: 200 }],
+        }
+        await view.setProps({ snapshot: { ...snapshot, social: { ...snapshot.social, whisper } } })
+        const conversation = view.getComponent(PrivateConversation)
+        expect(conversation.text()).toContain('Слушаю вас.')
+        expect(conversation.text()).not.toContain(offerWhisper.messages[0]!.text)
+        const field = conversation.get('input')
+        await field.setValue('У меня вопрос о награде.')
+        await field.trigger('keydown', { code: 'Enter', key: 'Enter' })
+        await conversation.get('form').trigger('submit')
+        const commands = view.emitted<[ClientMessage]>('command')?.flat()
+        expect(commands?.filter((entry) => entry.type !== 'speech_activity')).toEqual([
+            { type: 'release_input' },
+            { type: 'whisper', targetId: questTurnIn.issuerId, text: 'У меня вопрос о награде.' },
+        ])
+        const submitQuest = view.findAll('button').find((button) => button.text() === 'Сдать')!
+        expect(submitQuest.attributes('disabled')).toBeUndefined()
     } finally {
         view.unmount()
     }

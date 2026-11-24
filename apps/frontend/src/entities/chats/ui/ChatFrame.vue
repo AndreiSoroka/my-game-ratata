@@ -36,7 +36,7 @@ defineSlots<{
 
 <style scoped>
 .chat-frame:not(.chat-frame--collapsed) {
-    block-size: clamp(208px, 33dvh + 12px, 276px);
+    block-size: var(--chat-frame-height, clamp(208px, 33dvh + 12px, 276px));
 }
 
 .chat-frame__layout {
@@ -45,7 +45,7 @@ defineSlots<{
     flex-direction: column;
     min-block-size: 0;
     min-inline-size: 0;
-    gap: 6px;
+    gap: var(--chat-frame-gap, 6px);
 }
 
 .chat-frame__layout > :not(.chat-frame__history) {

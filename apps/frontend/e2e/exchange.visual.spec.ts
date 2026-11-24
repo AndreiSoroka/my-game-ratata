@@ -49,6 +49,47 @@ for (const width of [1280, 390, 320]) {
     }
 }
 
+test('exchange keeps whisper and actions reachable on a short 320px screen', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 460 })
+    await page.goto('/iframe.html?id=game-exchangewindow--draft&viewMode=story')
+    const dialog = page.getByRole('dialog', { name: /^Обмен:/ })
+    const whisper = dialog.getByRole('region', { name: 'Приватный разговор' })
+    const history = whisper.getByRole('list', { name: 'История шёпота' })
+    const input = whisper.getByRole('textbox', { name: 'Сказать шёпотом' })
+    const send = whisper.getByRole('button', { name: 'Отправить', exact: true })
+    const footer = dialog.locator('.exchange-actions')
+    const propose = footer.getByRole('button', { name: 'Предложить', exact: true })
+    const confirm = footer.getByRole('button', { name: 'Подтвердить', exact: true })
+    const cancel = footer.getByRole('button', { name: 'Отменить', exact: true })
+
+    await prepareDraft(dialog)
+    await input.fill('Личное сообщение')
+    await expect(send).toBeEnabled()
+    await waitForArt(page)
+    await expect(history).toBeVisible()
+    await expect(send).toBeInViewport({ ratio: 1 })
+    await expect(propose).toBeInViewport({ ratio: 1 })
+    await expect(confirm).toBeInViewport({ ratio: 1 })
+    await expect(cancel).toBeInViewport({ ratio: 1 })
+    const [historyBox, sendBox, footerBox] = await Promise.all([
+        history.boundingBox(),
+        send.boundingBox(),
+        footer.boundingBox(),
+    ])
+    expect(historyBox!.height).toBeGreaterThan(0)
+    expect(historyBox!.y + historyBox!.height).toBeLessThanOrEqual(sendBox!.y)
+    expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(footerBox!.y)
+
+    await input.press('Enter')
+    await expect(input).toHaveValue('')
+    await expect(input).toBeFocused()
+    await expect(send).toBeDisabled()
+    await expect(propose).toBeEnabled()
+    await expect(confirm).toBeDisabled()
+    await expect(dialog.locator('#exchange-apple')).toHaveValue('2')
+    await expect(dialog.getByLabel('Предложить золото', { exact: true })).toHaveValue('7')
+})
+
 test('independent handshake states', async ({ page }) => {
     await page.goto('/iframe.html?id=game-exchangewindow--consent&viewMode=story')
     const gallery = page.getByLabel('Подтверждение обмена', { exact: true })

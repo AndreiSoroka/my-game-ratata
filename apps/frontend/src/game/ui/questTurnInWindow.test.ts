@@ -1,27 +1,13 @@
-import type { QuestTurnInPromptSnapshot } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
 import QuestTurnInWindow from './QuestTurnInWindow.vue'
+import { questTurnInFixture } from './socialFixtures'
 
-const prompt: QuestTurnInPromptSnapshot = {
-    id: 'confirm-1',
-    instanceId: 'contract-1',
-    source: 'npc',
-    issuerId: 'mira',
-    issuerName: 'Мира',
-    title: 'Доставить кость',
-    description: 'Принесите трофей.',
-    objectives: [],
-    objectiveLabels: ['Кость получена'],
-    rewardGold: 15,
-    rewardItems: [{ instanceId: 'apple-1', itemId: 'food' }],
-    rewardMode: 'party_equal',
-    revision: 2,
-    expiresAt: 30_000,
-}
+const prompt = questTurnInFixture()
+
 it('requires an explicit button, confirms the server prompt once and blocks repeated activation', async () => {
-    const view = mount(QuestTurnInWindow, { props: { prompt, serverTime: 1000 } })
+    const view = mount(QuestTurnInWindow, { props: { prompt, serverTime: 1000, playerId: 'self' } })
     try {
         expect(view.get('[role="dialog"]').attributes('aria-modal')).toBe('true')
         expect(view.get('img').attributes('alt')).toBe('Яблоко')
@@ -38,7 +24,9 @@ it('requires an explicit button, confirms the server prompt once and blocks repe
     }
 })
 it('disables an expired prompt and closes through the same explicit confirmation protocol', async () => {
-    const view = mount(QuestTurnInWindow, { props: { prompt, serverTime: prompt.expiresAt } })
+    const view = mount(QuestTurnInWindow, {
+        props: { prompt, serverTime: prompt.expiresAt, playerId: 'self' },
+    })
     try {
         const take = view.findAll('button').find((button) => button.text() === 'Сдать')!
         expect(take.attributes('disabled')).toBeDefined()
@@ -56,7 +44,9 @@ it('disables an expired prompt and closes through the same explicit confirmation
 
 it('labels a worker report and waits for explicit confirmation before submitting the trophy', async () => {
     const report = { ...prompt, source: 'guild', action: 'report' } as const
-    const view = mount(QuestTurnInWindow, { props: { prompt: report, serverTime: 1000 } })
+    const view = mount(QuestTurnInWindow, {
+        props: { prompt: report, serverTime: 1000, playerId: 'self' },
+    })
     try {
         expect(view.text()).toContain('Награду выдадут после проверочного рейса')
         expect(view.emitted('command')).toBeUndefined()

@@ -10,6 +10,7 @@ interface StoryArgs {
     filter: ChatHistoryFilter
     collapsed: boolean
     listId?: string
+    privateConversation?: { partnerName: string; available: boolean }
 }
 
 const entries = [
@@ -33,6 +34,7 @@ const meta = {
         filter: { control: 'inline-radio', options: ['all', 'say', 'whisper'] },
         collapsed: { control: 'boolean' },
         listId: { control: 'text' },
+        privateConversation: { control: 'object' },
     },
     render(args) {
         const host = renderVueStory(ChatHistoryPanel, {
@@ -54,6 +56,10 @@ export const Empty: Story = { args: { entries: [] } }
 export const Collapsed: Story = { args: { collapsed: true } }
 
 export const Private: Story = { args: { filter: 'whisper' } }
+
+export const WhisperThread: Story = {
+    args: { privateConversation: { partnerName: 'Лада', available: true } },
+}
 
 export const Translated: Story = {
     args: {

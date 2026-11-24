@@ -49,6 +49,15 @@ for (const scenario of scenarios) {
         const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
         await expect(offer).toBeVisible()
         await assertCenteredViewport(offer)
+        const whisper = offer.getByRole('textbox', { name: 'Сказать шёпотом' })
+        await whisper.fill('Спасибо за пояснение.')
+        await whisper.press('Enter')
+        await expect(offer.getByRole('list', { name: 'История шёпота' })).toContainText(
+            'Спасибо за пояснение.'
+        )
+        await expect(whisper).toBeFocused()
+        await expect(whisper).toHaveValue('')
+        await expect(offer).toBeVisible()
         await expect(offer.getByRole('radio', { name: 'Поровну группе' })).toBeChecked()
         await offer.getByRole('radio', { name: scenario.workerLabel }).focus()
         await page.keyboard.press('KeyF')

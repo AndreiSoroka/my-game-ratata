@@ -5,7 +5,7 @@ import { tGame } from '@/shared/lib/i18n'
 import { UiInput, type UiInputHandle } from '@/shared/ui/common'
 
 defineOptions({ inheritAttrs: false })
-const props = defineProps<{ maxLength: number; autofocus?: boolean }>()
+const props = defineProps<{ maxLength: number; autofocus?: boolean; focusRing?: boolean }>()
 const draft = defineModel<string>('draft', { required: true })
 const input = useTemplateRef<UiInputHandle>('input')
 
@@ -34,7 +34,7 @@ onMounted(() => {
             enterkeyhint="send"
             v-bind="$attrs"
             v-model="draft"
-            :focus-ring="false"
+            :focus-ring="focusRing"
             :framed="false"
             :maxlength="maxLength"
         >

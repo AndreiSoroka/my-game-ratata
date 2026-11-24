@@ -38,10 +38,10 @@ const whisper = computed(() => social.value?.whisper)
 const exchange = computed(() => social.value?.exchange)
 const available = computed(() => props.player.alive && props.connected)
 const turnInVisible = computed(() => available.value && Boolean(social.value?.questTurnIn))
-const questOfferVisible = computed(
-    () => available.value && !turnInVisible.value && Boolean(social.value?.questOffer)
+const visibleQuestOffer = computed(() =>
+    available.value && !turnInVisible.value ? social.value?.questOffer : undefined
 )
-const hasServerQuestWindow = computed(() => turnInVisible.value || questOfferVisible.value)
+const hasServerQuestWindow = computed(() => turnInVisible.value || Boolean(visibleQuestOffer.value))
 const canShowGuildOffer = computed(
     () => available.value && !hasServerQuestWindow.value && exchange.value?.status !== 'active'
 )
@@ -168,7 +168,7 @@ watch(
 )
 watch(
     [
-        () => (questOfferVisible.value ? social.value?.questOffer?.id : undefined),
+        () => visibleQuestOffer.value?.id,
         () => (turnInVisible.value ? social.value?.questTurnIn?.id : undefined),
     ],
     ([offerId, turnInId], previous) => {
@@ -177,11 +177,8 @@ watch(
             return
         }
         prepare()
-        if (turnInId) {
-            whisperTarget.value = undefined
-            return
-        }
-        const issuerId = social.value?.questOffer?.issuerId
+        if (turnInId) whisperTarget.value = undefined
+        const issuerId = visibleQuestOffer.value?.issuerId
         if (issuerId && whisper.value?.partnerId !== issuerId)
             emit('command', { type: 'whisper_open', targetId: issuerId })
     },
@@ -254,12 +251,14 @@ defineExpose({ command, hasOpenWindow })
         :key="social.questTurnIn.id"
         :prompt="social.questTurnIn"
         :server-time="snapshot.serverTime"
+        :player-id="player.id"
+        :conversation="whisper"
         @command="command"
     />
     <QuestOfferWindow
-        v-else-if="questOfferVisible && social?.questOffer"
-        :key="social.questOffer.id"
-        :offer="social.questOffer"
+        v-else-if="visibleQuestOffer"
+        :key="visibleQuestOffer.id"
+        :offer="visibleQuestOffer"
         :characters="characters"
         :server-time="snapshot.serverTime"
         :player-id="player.id"
@@ -270,7 +269,7 @@ defineExpose({ command, hasOpenWindow })
                 ['active', 'ready', 'reward_missing'].includes(snapshot.party.activeJob.status)
             ) ||
             Boolean(
-                social.quest && ['active', 'ready', 'reward_missing'].includes(social.quest.status)
+                social?.quest && ['active', 'ready', 'reward_missing'].includes(social.quest.status)
             )
         "
         @command="command"

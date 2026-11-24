@@ -10,6 +10,7 @@ interface StoryArgs {
     draft: string
     maxLength: number
     autofocus: boolean
+    focusRing: boolean
     onDraftChange: (value: string) => void
 }
 
@@ -19,12 +20,14 @@ const meta = {
         draft: 'Встретимся у северных ворот.',
         maxLength: 400,
         autofocus: false,
+        focusRing: false,
         onDraftChange: fn().mockName('update:draft'),
     },
     argTypes: {
         draft: { control: 'text' },
         maxLength: { control: { type: 'number', min: 1, step: 1 } },
         autofocus: { control: 'boolean' },
+        focusRing: { control: 'boolean' },
         onDraftChange: { control: false, table: { disable: true } },
     },
     render({ onDraftChange, ...args }) {

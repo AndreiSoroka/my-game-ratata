@@ -48,7 +48,10 @@ it('sends bounded text-free typing hints and clears them on idle, blur, submit a
         await field.setValue('Отправляю')
         const third = commands().at(-1)
         await wrapper.get('form').trigger('submit')
-        expect(commands().at(-1)).toEqual({ ...third, active: false })
+        expect(commands().slice(-2)).toEqual([
+            { ...third, active: false },
+            { type: 'whisper', targetId: 'partner', text: 'Отправляю' },
+        ])
         await field.setValue('Последний черновик')
         const fourth = commands().at(-1)
         wrapper.unmount()

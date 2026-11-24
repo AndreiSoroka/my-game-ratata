@@ -14,7 +14,7 @@
     scrollbar-width: thin;
     scrollbar-color: #65784f #122118;
 }
-.exchange-content [tabindex='0']:focus-visible {
+.exchange-content :where(.exchange-sides, .exchange-sides *)[tabindex='0']:focus-visible {
     outline: 1px solid #d1b66d;
     outline-offset: -2px;
 }
@@ -85,11 +85,8 @@
     color: #e4ae8b;
 }
 .exchange-content > .private-conversation {
-    flex: 0 1 190px;
-    min-height: 125px;
-}
-.exchange-content > .private-conversation .private-conversation__history {
-    max-height: none;
+    --whisper-panel-height: 190px;
+    flex: none;
 }
 .exchange-actions {
     flex: 0 0 auto;
@@ -130,8 +127,7 @@
         flex-basis: 330px;
     }
     .exchange-content > .private-conversation {
-        flex-basis: 148px;
-        min-height: 112px;
+        --whisper-panel-height: 148px;
     }
     .exchange-actions {
         gap: 5px;
@@ -152,10 +148,9 @@
         font-size: 9px;
     }
 }
-@media (max-height: 650px) and (min-width: 601px) {
+@media (max-height: 650px) {
     .exchange-content > .private-conversation {
-        flex-basis: 125px;
-        min-height: 100px;
+        --whisper-panel-height: 128px;
     }
 }
 @media (max-height: 650px) and (max-width: 600px) {
@@ -168,17 +163,6 @@
     .exchange-sides > .exchange-offer {
         flex: 0 0 200px;
         min-height: 200px;
-    }
-    .exchange-content > .private-conversation {
-        flex: 0 0 104px;
-        min-height: 104px;
-    }
-    .exchange-content > .private-conversation .private-conversation__header {
-        min-height: 24px;
-        padding-block: 1px;
-    }
-    .exchange-content > .private-conversation .private-conversation__history {
-        min-height: 0;
     }
     .exchange-sides .exchange-own-items,
     .exchange-sides .exchange-offer__items {

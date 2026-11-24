@@ -68,6 +68,28 @@ it.each(['chat', 'whisper'] as const)(
             rewardGold: 40,
             action: 'turn_in',
         })
+        expect(ready.social?.whisper?.partnerId).toBe(miraId)
+        const otherIssuer = actor(f, 'npc_cleric_1')
+        const competingOffer = {
+            ...offer,
+            issuerId: otherIssuer.id,
+            issuerName: otherIssuer.nickname,
+        }
+        const currentQuests = f.room.social.quests.snapshot(
+            f.player.actor.id,
+            Date.now()
+        )
+        const questSnapshot = vi
+            .spyOn(f.room.social.quests, 'snapshot')
+            .mockReturnValueOnce({
+                ...currentQuests,
+                questOffer: competingOffer,
+            })
+        const competing = f.room.social.snapshot(f.player.actor, Date.now())
+        questSnapshot.mockRestore()
+        expect(competing.questOffer?.issuerId).toBe(otherIssuer.id)
+        expect(competing.questTurnIn?.issuerId).toBe(miraId)
+        expect(competing.whisper?.partnerId).toBe(miraId)
         expect(ready.adventure?.gold).toBe(0)
         expect(f.player.actor.inventory).toHaveLength(3)
         const confirm = {

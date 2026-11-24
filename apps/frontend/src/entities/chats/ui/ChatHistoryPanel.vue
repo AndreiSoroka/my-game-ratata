@@ -22,6 +22,7 @@ const props = withDefaults(
         collapsed?: boolean
         listId?: string
         buttonAttrs?: Record<string, unknown>
+        privateConversation?: { partnerName: string; available: boolean }
     }>(),
     { filter: 'all', collapsed: false }
 )
@@ -30,7 +31,11 @@ const defaultBorder = 'border-006'
 const borderWidth = getFantasyBorderMetrics(defaultBorder).cornerSize
 const theme = useDarkPanelTheme()
 const historyStyle = computed(() => darkPanelThemeStyle(theme.value))
-const visible = computed(() => filterChatHistory(props.entries, props.filter))
+const visible = computed(() =>
+    props.privateConversation
+        ? props.entries.filter((entry) => entry.channel === 'whisper')
+        : filterChatHistory(props.entries, props.filter)
+)
 const preview = computed(() => visible.value.at(-1))
 const speakerName = (entry: ChatHistoryEntry): string =>
     entry.self ? tGame('game.chat.you') : characterName(entry.actorId ?? '', entry.name)
@@ -52,7 +57,7 @@ function latest(): void {
 }
 
 watch(
-    () => props.entries.at(-1)?.id,
+    () => (props.privateConversation ? visible.value : props.entries).at(-1)?.id,
     (id) => {
         if (!id || atBottom) latest()
         else unread.value += 1
@@ -81,8 +86,9 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
 <template>
     <aside
         class="chat-history"
+        :class="{ 'chat-history--private': privateConversation }"
         :style="historyStyle"
-        :aria-label="tGame('game.chat.history')"
+        :aria-label="tGame(privateConversation ? 'game.chat.privateHistory' : 'game.chat.history')"
         tabindex="-1"
     >
         <p v-if="collapsed" class="chat-history__preview">
@@ -96,23 +102,37 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                     >{{ speechDisplayText(preview) }}</span
                 >
             </template>
-            <span v-else class="chat-history__empty">{{ tGame('game.chat.empty') }}</span>
+            <span v-else class="chat-history__empty">{{
+                tGame(privateConversation ? 'game.chat.privateEmpty' : 'game.chat.empty')
+            }}</span>
         </p>
         <FantasyBorder
             v-show="!collapsed"
             class="chat-history__surface"
             :border="theme?.border ?? defaultBorder"
-            :border-width="borderWidth"
+            :border-width="privateConversation ? 4 : borderWidth"
             color="var(--chat-history-accent)"
         >
+            <header v-if="privateConversation" class="chat-history__heading">
+                <span role="heading" aria-level="3" :title="tGame('game.chat.privateAudience')">{{
+                    tGame('game.chat.privateTitle', { name: privateConversation.partnerName })
+                }}</span>
+                <small v-if="!privateConversation.available" role="status">{{
+                    tGame('game.chat.privateUnavailable')
+                }}</small>
+            </header>
             <ol
                 :id="listId"
                 ref="scroller"
                 class="chat-history__entries"
+                :class="{ 'private-conversation__history': privateConversation }"
                 role="list"
                 tabindex="0"
-                :aria-label="tGame('game.chat.heard')"
-                aria-live="off"
+                :aria-label="
+                    tGame(privateConversation ? 'game.chat.privateHistory' : 'game.chat.heard')
+                "
+                :aria-live="privateConversation ? 'polite' : 'off'"
+                :aria-relevant="privateConversation ? 'additions' : undefined"
                 @scroll="scroll"
             >
                 <li
@@ -120,7 +140,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                     :key="entry.id"
                     :class="`chat-history__${entry.channel}`"
                 >
-                    <small v-if="entry.channel === 'whisper'"
+                    <small v-if="entry.channel === 'whisper' && !privateConversation"
                         >{{ tGame('game.chat.whisper') }} ·
                         {{ characterName(entry.partnerId ?? '', entry.partnerName ?? '') }}</small
                     >
@@ -141,7 +161,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                     </details>
                 </li>
                 <li v-if="!visible.length" class="chat-history__empty">
-                    {{ tGame('game.chat.empty') }}
+                    {{ tGame(privateConversation ? 'game.chat.privateEmpty' : 'game.chat.empty') }}
                 </li>
             </ol>
             <UiButton
@@ -150,10 +170,15 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
                 appearance="panel"
                 panel="panel-001"
                 class="chat-button"
+                :class="{ 'private-conversation__unread': privateConversation }"
                 :colors="hudPanelButtonColors"
                 @click="latest"
             >
-                {{ tGame('game.chat.unread', { count: unread }) }}
+                {{
+                    privateConversation
+                        ? tGame('game.chat.privateUnread')
+                        : tGame('game.chat.unread', { count: unread })
+                }}
             </UiButton>
         </FantasyBorder>
     </aside>
@@ -178,6 +203,47 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
     grid-template-rows: minmax(0, 1fr) auto;
     min-block-size: 0;
     background: var(--chat-history-surface);
+}
+
+.chat-history--private .chat-history__surface {
+    grid-template: auto minmax(0, 1fr) / minmax(0, 1fr) auto;
+}
+
+.chat-history__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
+    grid-area: 1 / 1;
+    min-inline-size: 0;
+    padding-inline: 4px;
+    color: var(--ui-dark-panel-title);
+}
+
+.chat-history__heading span,
+.chat-history__heading small {
+    display: block;
+    min-inline-size: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.chat-history__heading small {
+    color: var(--ui-dark-panel-warning);
+}
+
+.chat-history--private .chat-history__entries {
+    grid-area: 2 / 1 / 3 / -1;
+    margin-block: 0;
+    padding-inline: 4px;
+}
+
+.chat-history .private-conversation__unread {
+    grid-area: 1 / 2;
+    align-self: start;
+    min-block-size: 20px;
+    font: inherit;
 }
 
 .chat-history__preview {

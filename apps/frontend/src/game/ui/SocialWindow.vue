@@ -36,7 +36,7 @@ function key(event: KeyboardEvent): void {
     if (event.code !== 'Tab') return
     const fields = Array.from(
         panel.value?.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
+            'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'
         ) ?? []
     )
     if (!fields.length) return

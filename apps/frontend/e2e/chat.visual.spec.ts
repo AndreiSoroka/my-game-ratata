@@ -5,6 +5,7 @@ import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
 const historyStory = 'entities-chats-chathistorypanel'
 const composerStory = 'entities-chats-chatcomposer'
 const widgetStory = 'widgets-chats-chatwidget'
+const whisperStory = 'widgets-chats-whisperwidget'
 const toolbarName = 'Каналы чата'
 const historyName = 'История чата'
 const listName = 'Услышанные реплики'
@@ -226,4 +227,74 @@ test('ChatWidget Default Controls show or hide the composed editor', async ({ pa
     await expect(preview.getByRole('list', { name: listName })).toBeVisible()
     await typing.press('Space')
     await expect(draft).toHaveValue('К пристани.')
+})
+
+async function openWhisper(page: Page, width: number, state: string) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto(uiStoryUrl(`${whisperStory}--${state}`))
+    const widget = page.getByRole('region', { name: 'Приватный разговор' })
+    const history = widget.getByRole('list', { name: 'История шёпота' })
+    const draft = widget.getByRole('textbox', { name: 'Сказать шёпотом' })
+    const send = widget.getByRole('button', { name: 'Отправить', exact: true })
+    await expect(widget).toBeVisible()
+    await readyUiStory(page)
+    await expectUiFits(widget, width)
+    return { widget, history, draft, send }
+}
+
+for (const width of [1280, 320]) {
+    test(`WhisperWidget composes private history and an editor at ${width}px`, async ({ page }) => {
+        const { widget, history, draft, send } = await openWhisper(page, width, 'default')
+        await expect(widget.getByText('Шёпот: Мира', { exact: true })).toBeVisible()
+        await expect(widget.getByRole('navigation')).toHaveCount(0)
+        await expect(history.getByRole('listitem')).toHaveCount(2)
+        await expect(draft).toHaveValue('Я уже в пути.')
+        await expect(send).toBeEnabled()
+        const [historyBox, draftBox, sendBox] = await Promise.all([
+            history.boundingBox(),
+            draft.boundingBox(),
+            send.boundingBox(),
+        ])
+        expect(draftBox!.y).toBeGreaterThanOrEqual(historyBox!.y + historyBox!.height)
+        expect(draftBox!.x + draftBox!.width).toBeLessThanOrEqual(sendBox!.x)
+        await expect(widget).toHaveScreenshot(`whisper-widget-default-${width}.png`)
+        await draft.press('Enter')
+        await expect(history.getByText('Я уже в пути.', { exact: true })).toBeVisible()
+        await expect(draft).toHaveValue('')
+        await expect(draft).toBeFocused()
+    })
+}
+
+test('WhisperWidget shows empty history at 320px', async ({ page }) => {
+    const { widget, history, draft, send } = await openWhisper(page, 320, 'empty')
+    await expect(history).toContainText('Пока нет сообщений.')
+    await expect(draft).toBeEditable()
+    await expect(send).toBeDisabled()
+    await expect(widget).toHaveScreenshot('whisper-widget-empty-320.png')
+    await draft.fill('  Увидимся у ворот.  ')
+    await send.click()
+    await expect(history.getByText('Увидимся у ворот.', { exact: true })).toBeVisible()
+})
+
+test('WhisperWidget scrolls a long translated history at 320px', async ({ page }) => {
+    const { widget, history } = await openWhisper(page, 320, 'translated')
+    expect(await history.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
+        true
+    )
+    await expect(history.getByText('Встретимся у северных ворот.', { exact: true })).toBeVisible()
+    const original = history.getByText('Meet me at the north gate.', { exact: true })
+    await expect(original).toBeHidden()
+    await history.getByText('Оригинал', { exact: true }).click()
+    await history.evaluate((element) => (element.scrollTop = element.scrollHeight))
+    await expect(original).toBeInViewport()
+    await expect(widget).toHaveScreenshot('whisper-widget-translated-320.png')
+})
+
+test('WhisperWidget disables input for an unavailable partner at 320px', async ({ page }) => {
+    const { widget, history, draft, send } = await openWhisper(page, 320, 'unavailable')
+    await expect(widget.getByText('Собеседник недоступен', { exact: true })).toBeVisible()
+    await expect(history.getByRole('listitem')).toHaveCount(2)
+    await expect(draft).toBeDisabled()
+    await expect(send).toBeDisabled()
+    await expect(widget).toHaveScreenshot('whisper-widget-unavailable-320.png')
 })

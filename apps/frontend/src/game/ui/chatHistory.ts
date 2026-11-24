@@ -109,7 +109,7 @@ class ChatHistory {
                 senderName: world.social!.whisper!.partnerName,
             })) ??
             []
-        for (const message of messages) this.add(privateEntry(message, id))
+        for (const message of messages) this.add(privateChatHistoryEntry(message, id))
         world.social?.requestStatuses?.forEach((value) => this.status(value))
     }
     public event(value: GameEventPayload): void {
@@ -128,7 +128,10 @@ export function createChatHistory() {
     return new ChatHistory()
 }
 
-function privateEntry(message: HeardPrivateSpeech, playerId: string): ChatHistoryEntry {
+export function privateChatHistoryEntry(
+    message: HeardPrivateSpeech,
+    playerId: string
+): ChatHistoryEntry {
     const self = message.senderId === playerId
     return {
         id: `private:${message.id}`,

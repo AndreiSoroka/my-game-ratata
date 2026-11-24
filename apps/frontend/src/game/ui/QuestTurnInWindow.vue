@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { ClientMessage, QuestTurnInPromptSnapshot } from '@my-game-ratata/contracts'
+import type {
+    ClientMessage,
+    QuestTurnInPromptSnapshot,
+    WhisperSnapshot,
+} from '@my-game-ratata/contracts'
 import { computed, ref, watch } from 'vue'
 
 import { QuestTurnInPanel } from '@/entities/quests'
@@ -7,11 +11,17 @@ import { characterName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import ItemIcon from './ItemIcon.vue'
 import { itemStackLabel } from './itemLabels'
+import PrivateConversation from './PrivateConversation.vue'
 import QuestRewardSummary from './QuestRewardSummary.vue'
 import { questObjectiveText } from './questTermsText'
 import SocialWindow from './SocialWindow.vue'
 
-const props = defineProps<{ prompt: QuestTurnInPromptSnapshot; serverTime: number }>()
+const props = defineProps<{
+    prompt: QuestTurnInPromptSnapshot
+    serverTime: number
+    playerId: string
+    conversation?: WhisperSnapshot | null
+}>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const pending = ref(false)
 const expired = computed(() => props.serverTime >= props.prompt.expiresAt)
@@ -83,6 +93,12 @@ function answer(accept: boolean): void {
             <p v-if="expired" class="social-status" role="status">
                 {{ tGame('game.quests.confirmationExpiredAskQuestGiver') }}
             </p>
+            <PrivateConversation
+                v-if="conversation?.partnerId === prompt.issuerId"
+                :conversation="conversation"
+                :player-id="playerId"
+                @command="emit('command', $event)"
+            />
         </QuestTurnInPanel>
     </SocialWindow>
 </template>

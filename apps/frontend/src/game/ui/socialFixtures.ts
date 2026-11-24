@@ -1,6 +1,7 @@
 import type {
     ExchangeSnapshot,
     QuestOfferSnapshot,
+    QuestTurnInPromptSnapshot,
     WhisperSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -46,5 +47,24 @@ export function questOfferFixture(): QuestOfferSnapshot {
         rewardMode: 'party_equal',
         itemRecipient: 'submitter',
         expiresAt: 200_000,
+    }
+}
+
+export function questTurnInFixture(): QuestTurnInPromptSnapshot {
+    return {
+        id: 'confirm-1',
+        instanceId: 'contract-1',
+        source: 'npc',
+        issuerId: 'mira',
+        issuerName: 'Мира',
+        title: 'Доставить кость',
+        description: 'Принесите трофей.',
+        objectives: [],
+        objectiveLabels: ['Кость получена'],
+        rewardGold: 15,
+        rewardItems: [{ instanceId: 'apple-1', itemId: 'food' }],
+        rewardMode: 'party_equal',
+        revision: 2,
+        expiresAt: 30_000,
     }
 }

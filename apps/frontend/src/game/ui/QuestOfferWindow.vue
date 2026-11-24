@@ -35,9 +35,6 @@ watch(
         initialRevision.value = props.offer.revision
     }
 )
-function whisper(text: string): void {
-    emit('command', { type: 'whisper', targetId: props.offer.issuerId, text })
-}
 function answer(accept: boolean): void {
     if (accept && (props.occupied || expired.value)) return
     emit('command', {
@@ -84,7 +81,6 @@ function answer(accept: boolean): void {
                 v-if="conversation?.partnerId === offer.issuerId"
                 :conversation="conversation"
                 :player-id="playerId ?? ''"
-                @send="whisper"
                 @command="emit('command', $event)"
             />
         </QuestOfferPanel>

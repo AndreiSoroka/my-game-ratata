@@ -43,8 +43,8 @@ export function createRoomSocialSnapshot(
         const questView = quests.snapshot(actor.id, now)
         const questTurnIn = turnIns.snapshot(actor, now)
         const partnerId =
-            questView.questOffer?.issuerId ??
             questTurnIn?.issuerId ??
+            questView.questOffer?.issuerId ??
             (exchange !== null &&
             ['active', 'invited'].includes(exchange.status)
                 ? exchange.partnerId
