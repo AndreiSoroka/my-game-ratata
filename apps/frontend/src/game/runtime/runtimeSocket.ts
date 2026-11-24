@@ -15,6 +15,7 @@ import { watch, type WatchHandle } from 'vue'
 import { resolveBackendHttpUrl, resolveBackendWebSocketUrl } from '@/shared/api'
 import { tGame } from '@/shared/lib/i18n'
 
+import { MotionReceiptProbes } from './motionReceiptProbes'
 import {
     RuntimeSnapshotStream,
     type SnapshotReceipt,
@@ -36,7 +37,8 @@ interface RuntimeSocketHandlers {
         playerId: string,
         snapshot: WorldSnapshot,
         map: MapSummary,
-        reference: SnapshotReference
+        reference: SnapshotReference,
+        tickMs: number
     ) => void
 }
 
@@ -47,11 +49,15 @@ export class RuntimeSocket {
     private sentLocale: GameLocale | undefined
     private stopLocaleWatch: WatchHandle | undefined
     private readonly snapshots = new RuntimeSnapshotStream(import.meta.env.DEV || testMode())
+    private readonly motionProbes = new MotionReceiptProbes((message) => this.send(message))
     private resyncTimer: ReturnType<typeof setTimeout> | undefined
 
     public constructor(handlers: RuntimeSocketHandlers) {
         this.handlers = handlers
     }
+
+    public readonly estimateMotionReceiptTime = (localTime: number): number | undefined =>
+        this.motionProbes.estimateReceiptTime(localTime)
 
     public connect(nickname: string, heroClass?: HeroClass, createOnly = false): void {
         if (this.handlers.isStopped()) return
@@ -81,10 +87,9 @@ export class RuntimeSocket {
             if (this.socket === socket) this.handleSocketMessage(event)
         })
         socket.addEventListener('close', () => {
-            if (!this.handlers.isStopped() && this.socket === socket) {
-                this.disconnect()
-                this.handlers.onStatus('Disconnected')
-            }
+            if (this.socket !== socket) return
+            this.disconnect()
+            if (!this.handlers.isStopped()) this.handlers.onStatus('Disconnected')
         })
         socket.addEventListener('error', () => {
             if (!this.handlers.isStopped() && this.socket === socket) {
@@ -107,6 +112,7 @@ export class RuntimeSocket {
         this.stopLocaleWatch = undefined
         this.clearResync()
         this.snapshots.clear()
+        this.motionProbes.stop()
     }
 
     private updateLocale(): void {
@@ -147,6 +153,8 @@ export class RuntimeSocket {
                 return this.handlers.onEvent(message.event)
             case 'speech_translation':
                 return this.deliverTranslation(message)
+            case 'motion_pong':
+                return this.motionProbes.receive(message, performance.now())
         }
     }
 
@@ -158,13 +166,19 @@ export class RuntimeSocket {
     private deliverSnapshot(receipt: SnapshotReceipt): void {
         if (receipt.kind === 'ignored') return
         if (receipt.kind === 'resync') {
+            this.motionProbes.stop()
             this.handlers.onSnapshotInvalidated?.()
             this.requestResync()
             return
         }
+        const recovered = receipt.full && this.resyncTimer !== undefined
         if (receipt.full) this.clearResync()
-        if (receipt.reset) this.handlers.onStreamReset?.()
+        if (receipt.reset) {
+            this.motionProbes.stop()
+            this.handlers.onStreamReset?.()
+        }
         this.handlers.onSnapshot(receipt.snapshot, receipt.reference)
+        if (receipt.reset || recovered) this.startMotionProbes()
     }
 
     private requestResync(): void {
@@ -197,6 +211,7 @@ export class RuntimeSocket {
             return
         }
         this.clearResync()
+        this.motionProbes.stop()
         this.handlers.onStreamReset?.()
         this.initialized = true
         this.updateLocale()
@@ -204,8 +219,20 @@ export class RuntimeSocket {
             message.playerId,
             receipt.snapshot,
             message.map,
-            receipt.reference
+            receipt.reference,
+            message.tickMs
         )
+        this.startMotionProbes()
+    }
+
+    private startMotionProbes(): void {
+        if (
+            this.initialized &&
+            this.socket?.readyState === WebSocket.OPEN &&
+            !this.handlers.isStopped()
+        ) {
+            this.motionProbes.start()
+        }
     }
 }
 

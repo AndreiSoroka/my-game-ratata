@@ -88,7 +88,7 @@ function correctionScenario() {
         velocity: { x: 5, y: 0 },
         animation: { action: 'walk', startedAt: 1000 },
     })
-    const remote = { ...walking, id: 'npc' }
+    const remote = { ...walking, id: 'npc', controllerKind: 'scripted' as const }
     motion.setMap(map)
     let tick = 0
     const observe = (
@@ -111,6 +111,7 @@ function correctionScenario() {
     }
     observe(0, {})
     motion.frame(50)
+    motion.recordDrawnOwner(motion.position('hero'))
     const request = motion.beginStop('hero', 7, 52)
     return { motion, map, observe, request }
 }

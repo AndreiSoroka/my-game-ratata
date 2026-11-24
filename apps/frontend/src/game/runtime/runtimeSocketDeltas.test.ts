@@ -1,6 +1,7 @@
 import {
     CONTRACT_PROTOCOL_VERSION,
     diffSnapshots,
+    type MotionPingClientMessage,
     type ServerMessage,
 } from '@my-game-ratata/contracts'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -10,6 +11,7 @@ import { RuntimeSocket } from './runtimeSocket'
 
 afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
 })
 
@@ -190,4 +192,35 @@ it.each(['close', 'disconnect'] as const)('cancels recovery timers on %s', async
     else f.socket.dispatchEvent(new Event('close'))
     await vi.advanceTimersByTimeAsync(9000)
     expect(f.resyncs()).toHaveLength(1)
+})
+
+it('resamples after a same-stream recovery and ignores pongs from the invalidated scope', () => {
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+    const f = setup()
+    const pings = () =>
+        f.socket.send.mock.calls
+            .map(([command]) => JSON.parse(command) as MotionPingClientMessage)
+            .filter((message) => message.type === 'motion_ping')
+
+    for (let sample = 0; sample < 3; sample++) {
+        const ping = pings().at(-1)!
+        const serverReceivedAt = 10020 + performance.now()
+        vi.advanceTimersByTime(100)
+        f.emit({ type: 'motion_pong', id: ping.id, serverReceivedAt })
+        vi.advanceTimersByTime(900)
+    }
+    expect(f.runtime.estimateMotionReceiptTime(performance.now())).toBe(13020)
+    const stalePing = pings().at(-1)!
+    f.emit({ type: 'snapshot_delta', streamId: 1, seq: 2, baseSeq: 1 })
+    expect(f.runtime.estimateMotionReceiptTime(performance.now())).toBeUndefined()
+    vi.advanceTimersByTime(1000)
+    expect(pings().at(-1)).toEqual(stalePing)
+    f.emit({ type: 'snapshot', streamId: 1, seq: 3, snapshot: f.snapshot })
+    expect(pings().at(-1)?.id).toBe(stalePing.id + 1)
+    f.emit({ type: 'motion_pong', id: stalePing.id, serverReceivedAt: 50000 })
+    expect(f.runtime.estimateMotionReceiptTime(performance.now())).toBeUndefined()
+    const lastPing = pings().at(-1)!
+    f.runtime.close()
+    vi.advanceTimersByTime(1000)
+    expect(pings().at(-1)).toEqual(lastPing)
 })

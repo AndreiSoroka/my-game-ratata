@@ -16,6 +16,7 @@ import { focusWorldInput } from '../ui/keyboardOwnership'
 import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
 import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
 import type { TargetHighlight } from './interactionTargetViews'
+import type { MotionTiming } from './ownerMotionLead'
 import { PlantingPreview } from './plantingPreview'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { projectCharacter, projectPosition } from './runtimeCharacterTargets'
@@ -42,6 +43,7 @@ export class RatataGame {
     private localPlayerId: string | undefined
     private snapshot: WorldSnapshot | undefined
     private snapshotReference: SnapshotReference | undefined
+    private motionTiming: MotionTiming | undefined
     private connected = false
     private stopped = false
     private mapId: string = CENTER_LOCATION_ID
@@ -105,10 +107,16 @@ export class RatataGame {
                 }
                 options.onStatus(status)
             },
-            onWorldInit: (playerId, snapshot, map, reference) => {
+            onWorldInit: (playerId, snapshot, map, reference, tickMs) => {
                 this.initialMap = map
                 this.connected = true
                 this.localPlayerId = playerId
+                this.motionTiming = {
+                    tickMs,
+                    manualAxis: () => this.movementControls.manualAxis,
+                    estimateReceiptTime: this.socket.estimateMotionReceiptTime,
+                }
+                this.view?.sceneActors.setMotionTiming(this.motionTiming)
                 this.applySnapshot(snapshot, reference)
             },
         })
@@ -132,6 +140,7 @@ export class RatataGame {
             },
             mounted: (view) => {
                 this.view = view
+                if (this.motionTiming) view.sceneActors.setMotionTiming(this.motionTiming)
                 this.selectionTileSize = map.tileWidth
                 this.buildingEntrances.replace(mapId, map.buildings)
                 this.mapId = mapId

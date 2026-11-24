@@ -68,6 +68,7 @@ import type {
     ProgressionClientMessage,
     ProgressionSnapshot,
 } from './progression'
+export type * from './motionProbe'
 export * from './progression'
 export * from './snapshots'
 export type * from './viewport'
@@ -289,6 +290,7 @@ export type ChatClientMessage = import('./social').ChatClientMessage
 
 export type ClientMessage =
     | { type: 'snapshot_resync' }
+    | import('./motionProbe').MotionPingClientMessage
     | import('./viewport').SetViewportClientMessage
     | import('./social').SpeechActivityCommand
     | { type: 'set_locale'; locale: import('./locales').GameLocale }

@@ -9,37 +9,48 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { MotionClock } from './motionClock'
-import { clipMotion, motionLineClear, type MotionMap } from './motionCollision'
+import type { MotionMap } from './motionCollision'
+import {
+    correctTrack,
+    createTrack,
+    discontinuous,
+    forcedMotion,
+    matchesMotionAxis,
+    motionBlocked,
+    type MotionTrack,
+    ordinaryWalk,
+    renderTrack,
+    samePosition,
+    sameWalk,
+    validStep,
+} from './motionTrack'
+import { type MotionTiming, OwnerMotionLead } from './ownerMotionLead'
+import { RemotePlayerMotion } from './remotePlayerMotion'
 import type { SnapshotReference } from './runtimeSnapshotStream'
 
-interface Track {
-    snapshot: CharacterSnapshot
-    velocity: Vector2
-    position: Vector2
-    time: number
-    until: number
-    correction: Vector2
-    correctionAt: number
-    correctionMs: number
-    snapNext: boolean
-    reference: SnapshotReference | undefined
-}
+export type DrawnOwnerPose = SnapshotReference & { position: Vector2 }
 
 type ManualStop = { actorId: string; from: Vector2 } & (
     | { phase: 'waiting'; requestId: number; deadline: number }
     | { phase: 'blending'; target: Vector2; startedAt: number }
 )
 
-const continuationMs = 200
-const correctionMs = 100
-
 /** All positions in this class are presentation state; authoritative snapshots stay untouched. */
 export class NetworkMotion {
     private readonly clock = new MotionClock()
-    private readonly tracks = new Map<string, Track>()
+    private readonly ownerLead = new OwnerMotionLead()
+    private readonly tracks = new Map<string, MotionTrack>()
     private held = false
     private map: MotionMap | undefined
     private stop: ManualStop | undefined
+    private playerId: string | undefined
+    private timing: MotionTiming | undefined
+    private drawnOwner: DrawnOwnerPose | undefined
+
+    public setTiming(timing: MotionTiming): void {
+        this.timing = { ...timing, tickMs: validStep(timing.tickMs) ? timing.tickMs : 50 }
+        this.ownerLead.reset()
+    }
 
     public setMap(map: MotionMap): void {
         this.map = map
@@ -55,6 +66,11 @@ export class NetworkMotion {
         if (!this.clock.observe(snapshot.serverTime, snapshot.tick, localTime) && !this.held) return
         const now = this.clock.now(localTime)
         const active = new Set(snapshot.characters.map((character) => character.id))
+        if (this.playerId !== playerId || (playerId !== undefined && !active.has(playerId))) {
+            this.drawnOwner = undefined
+            this.ownerLead.reset()
+        }
+        this.playerId = playerId
         if (this.stop && (this.stop.actorId !== playerId || !active.has(this.stop.actorId)))
             this.cancelStop()
         for (const id of this.tracks.keys()) if (!active.has(id)) this.tracks.delete(id)
@@ -67,8 +83,29 @@ export class NetworkMotion {
         if (this.held) return
         const now = this.clock.now(localTime)
         for (const track of this.tracks.values()) {
-            if (!track.snapNext && !this.renderStop(track, localTime)) this.render(track, now)
+            if (track.snapNext) continue
+            if (track.remote) {
+                track.remote.frame(now, localTime, this.timing?.tickMs ?? 50, this.map)
+                track.position = track.remote.position
+            } else {
+                const playback = this.playbackTime(track, now, localTime)
+                if (!this.renderStop(track, localTime))
+                    track.position = renderTrack(track, playback, this.map)
+            }
         }
+    }
+
+    public recordDrawnOwner(position: Vector2 | undefined): void {
+        const track = this.tracks.get(this.playerId ?? '')
+        this.drawnOwner =
+            position && track?.reference && !track.snapNext && !this.held
+                ? { ...track.reference, position: { ...position } }
+                : undefined
+    }
+
+    public lastDrawnOwnerPose(): DrawnOwnerPose | undefined {
+        const drawn = this.drawnOwner
+        return drawn && { ...drawn, position: { ...drawn.position } }
     }
 
     public beginStop(
@@ -77,16 +114,19 @@ export class NetworkMotion {
         localTime: number
     ): StopCorrectionRequest | undefined {
         const track = this.tracks.get(actorId)
+        const drawn = this.drawnOwner
         if (
-            !track?.reference ||
+            actorId !== this.playerId ||
+            !track ||
+            !drawn ||
             this.held ||
             track.snapNext ||
             motionBlocked(track.snapshot) ||
-            track.snapshot.movement?.dashing ||
-            track.snapshot.combat?.action?.abilityId === 'lunge'
+            forcedMotion(track.snapshot)
         )
             return undefined
-        const from = { ...track.position }
+        const from = { ...drawn.position }
+        track.position = from
         this.stop = {
             actorId,
             from,
@@ -94,7 +134,7 @@ export class NetworkMotion {
             requestId,
             deadline: localTime + STOP_CORRECTION_MAX_AGE_MS,
         }
-        return { id: requestId, ...track.reference, position: { ...from } }
+        return { id: requestId, ...drawn, position: { ...from } }
     }
 
     public cancelStop(): void {
@@ -109,8 +149,11 @@ export class NetworkMotion {
         const track = this.tracks.get(id)
         if (!track) return undefined
         const snapshot = track.snapshot
-        const expired =
-            this.held || this.stop?.actorId === id || this.clock.now(localTime) >= track.until
+        if (track.remote && !this.held && !track.snapNext)
+            return track.remote.presentation(snapshot)
+        const now = this.clock.now(localTime)
+        const playback = id === this.playerId ? Math.max(now, this.ownerLead.time) : now
+        const expired = this.held || this.stop?.actorId === id || playback >= track.until
         return expired && snapshot.animation.action === 'walk'
             ? { ...snapshot, animation: { ...snapshot.animation, action: 'idle' } }
             : snapshot
@@ -125,13 +168,19 @@ export class NetworkMotion {
             return
         const track = this.tracks.get(event.actorId ?? '')
         if (!track || samePosition(track.snapshot.position, event.position)) return
-        if (this.stop?.actorId === event.actorId) this.cancelStop()
+        if (track.snapshot.id === this.playerId) {
+            this.drawnOwner = undefined
+            this.ownerLead.reset()
+            this.cancelStop()
+        }
         track.snapNext = true
         track.until = track.time
     }
 
     public hold(): void {
         this.cancelStop()
+        this.drawnOwner = undefined
+        this.ownerLead.reset()
         this.held = true
     }
 
@@ -139,6 +188,8 @@ export class NetworkMotion {
         this.tracks.clear()
         this.clock.reset()
         this.cancelStop()
+        this.drawnOwner = undefined
+        this.ownerLead.reset()
         this.held = false
     }
 
@@ -151,17 +202,77 @@ export class NetworkMotion {
     ): void {
         const previous = this.tracks.get(character.id)
         const step = validStep(frame.stepMs) && !motionBlocked(character) ? frame.stepMs : 0
-        const track = createTrack(character, frame.serverTime, step, now, reference)
-        const snap = !previous || this.held || step === 0 || discontinuous(previous, character)
-        if (snap) {
-            if (this.stop?.actorId === character.id) this.cancelStop()
-        } else if (!this.renderStop(track, localTime, frame.stopCorrection?.id)) {
-            this.correct(track, previous, now)
-        }
+        const track = createTrack(character, frame.serverTime, step, reference)
+        if (this.isRemotePlayer(character)) this.acceptRemote(track, previous, frame.stepMs)
+        else this.acceptTrack(track, previous, step, now, localTime, frame.stopCorrection?.id)
         this.tracks.set(character.id, track)
     }
 
-    private renderStop(track: Track, localTime: number, receiptId?: number): boolean {
+    private isRemotePlayer(character: CharacterSnapshot): boolean {
+        return (
+            this.playerId !== undefined &&
+            character.id !== this.playerId &&
+            character.controllerKind === 'network_player'
+        )
+    }
+
+    private acceptRemote(
+        track: MotionTrack,
+        previous: MotionTrack | undefined,
+        stepMs: number | undefined
+    ): void {
+        const { snapshot, time } = track
+        if (!previous?.remote) {
+            track.remote = new RemotePlayerMotion(snapshot, time)
+            return
+        }
+        const snap =
+            this.held ||
+            !validStep(stepMs) ||
+            discontinuous(previous, snapshot) ||
+            !snapshot.alive ||
+            forcedMotion(snapshot)
+        track.remote = previous.remote
+        track.remote.observe(snapshot, time, this.map, snap)
+        track.position = track.remote.position
+    }
+
+    private acceptTrack(
+        track: MotionTrack,
+        previous: MotionTrack | undefined,
+        step: number,
+        now: number,
+        localTime: number,
+        receiptId: number | undefined
+    ): void {
+        const own = track.snapshot.id === this.playerId
+        const snap = !previous || this.held || step === 0 || discontinuous(previous, track.snapshot)
+        if (snap) {
+            if (own) {
+                this.drawnOwner = undefined
+                this.ownerLead.reset()
+                this.cancelStop()
+            }
+        } else if (!this.renderStop(track, localTime, receiptId)) {
+            const playback = this.playbackTime(track, now, localTime)
+            const aligned =
+                playback > now && sameWalk(previous, track) && previous.until >= playback
+            correctTrack(track, previous, playback, this.map, aligned)
+        }
+    }
+
+    private playbackTime(track: MotionTrack, now: number, localTime: number): number {
+        if (!this.timing || track.snapshot.id !== this.playerId) return now
+        const axis = this.timing.manualAxis()
+        const eligible = ordinaryWalk(track) && (axis.x !== 0 || axis.y !== 0)
+        const estimate =
+            eligible && matchesMotionAxis(track, axis)
+                ? this.timing.estimateReceiptTime(localTime)
+                : undefined
+        return this.ownerLead.update(now, localTime, eligible, estimate)
+    }
+
+    private renderStop(track: MotionTrack, localTime: number, receiptId?: number): boolean {
         const stop = this.stop
         if (!stop || track.snapshot.id !== stop.actorId) return false
         if (stop.phase === 'waiting' && localTime < stop.deadline) {
@@ -192,121 +303,4 @@ export class NetworkMotion {
         track.correctionMs = 0
         return true
     }
-
-    private correct(track: Track, previous: Track, now: number): void {
-        const desired = this.target(track, now)
-        const residual = {
-            x: previous.position.x - desired.x,
-            y: previous.position.y - desired.y,
-        }
-        const tile = Math.max(this.map?.tileWidth ?? 16, this.map?.tileHeight ?? 16)
-        const speed =
-            Math.hypot(previous.velocity.x, previous.velocity.y) +
-            Math.hypot(track.velocity.x, track.velocity.y)
-        const threshold = Math.max(2 * tile, speed * 250 + tile / 2)
-        if (
-            Math.hypot(residual.x, residual.y) > threshold ||
-            !motionLineClear(this.map, previous.position, desired)
-        ) {
-            track.position = desired
-            return
-        }
-        track.correctionMs = Math.max(0, Math.min(correctionMs, track.until - now))
-        if (track.correctionMs === 0) {
-            track.position = desired
-            return
-        }
-        track.correction = residual
-        track.position = { ...previous.position }
-    }
-
-    private render(track: Track, now: number): void {
-        const target = this.target(track, now)
-        const remaining =
-            track.correctionMs > 0
-                ? Math.max(0, 1 - (now - track.correctionAt) / track.correctionMs)
-                : 0
-        track.position = this.clipPosition(track, {
-            x: target.x + track.correction.x * remaining,
-            y: target.y + track.correction.y * remaining,
-        })
-    }
-
-    private target(track: Track, now: number): Vector2 {
-        const age = Math.max(0, Math.min(now, track.until) - track.time)
-        return this.clipPosition(track, {
-            x: track.snapshot.position.x + track.velocity.x * age,
-            y: track.snapshot.position.y + track.velocity.y * age,
-        })
-    }
-
-    private clipPosition(track: Track, position: Vector2): Vector2 {
-        let dx = position.x - track.snapshot.position.x
-        let dy = position.y - track.snapshot.position.y
-        const point = track.snapshot.path[0]
-        const maximum = point
-            ? Math.hypot(point.x - track.snapshot.position.x, point.y - track.snapshot.position.y)
-            : Infinity
-        const distance = Math.hypot(dx, dy)
-        if (distance > maximum && distance > 0) {
-            dx *= maximum / distance
-            dy *= maximum / distance
-        }
-        return clipMotion(this.map, track.snapshot.position, {
-            x: track.snapshot.position.x + dx,
-            y: track.snapshot.position.y + dy,
-        })
-    }
-}
-
-function createTrack(
-    snapshot: CharacterSnapshot,
-    time: number,
-    step: number,
-    now: number,
-    reference: SnapshotReference | undefined
-): Track {
-    const deadline = snapshot.movement?.continuationUntil ?? Infinity
-    return {
-        snapshot,
-        velocity: step
-            ? { x: snapshot.velocity.x / step, y: snapshot.velocity.y / step }
-            : { x: 0, y: 0 },
-        position: { ...snapshot.position },
-        time,
-        until: step ? Math.max(time, Math.min(time + continuationMs, deadline)) : time,
-        correction: { x: 0, y: 0 },
-        correctionAt: now,
-        correctionMs: 0,
-        snapNext: false,
-        reference,
-    }
-}
-
-function discontinuous(previous: Track, character: CharacterSnapshot): boolean {
-    return (
-        previous.snapNext ||
-        previous.snapshot.alive !== character.alive ||
-        previous.snapshot.movement?.positionDiscontinuity !==
-            character.movement?.positionDiscontinuity
-    )
-}
-
-function validStep(stepMs: number | undefined): stepMs is number {
-    return stepMs !== undefined && Number.isFinite(stepMs) && stepMs >= 1 && stepMs <= 250
-}
-
-function motionBlocked(character: CharacterSnapshot): boolean {
-    return (
-        !character.alive ||
-        Boolean(character.life?.retired) ||
-        character.tags.includes('offline') ||
-        character.tags.includes('state.cc.stunned') ||
-        character.cooldowns.stunMsLeft > 0 ||
-        character.combat?.defensiveStance === true
-    )
-}
-
-function samePosition(first: Vector2, second: Vector2 | undefined): boolean {
-    return second !== undefined && first.x === second.x && first.y === second.y
 }

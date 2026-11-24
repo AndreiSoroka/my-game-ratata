@@ -1,5 +1,6 @@
 import type { GameEventPayload } from './events'
 import type { MapSummary, WorldSnapshot } from './index'
+import type { MotionPongServerMessage } from './motionProbe'
 import type { PlantTreePreview } from './planting'
 import type { ContractProtocolVersion } from './service'
 import type { SnapshotPatch } from './snapshotPatchTypes'
@@ -56,6 +57,7 @@ export type ServerMessage =
     | PlantTreePreview
     | ErrorServerMessage
     | GameEventServerMessage
+    | MotionPongServerMessage
     | SnapshotServerMessage
     | SnapshotDeltaServerMessage
     | SpeechTranslationServerMessage

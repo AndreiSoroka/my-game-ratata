@@ -32,6 +32,10 @@ export class RuntimeMovementControls {
 
     public constructor(private readonly send: (command: ClientMessage) => void) {}
 
+    public get manualAxis(): Readonly<Vector2> {
+        return this.lastAxis
+    }
+
     public keyDown(event: KeyboardEvent): boolean {
         if (event.code === 'KeyC') {
             if (!event.repeat && !this.walkingPrayer) {
