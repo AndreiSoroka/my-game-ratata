@@ -83,6 +83,7 @@ for (const mobile of [false, true]) {
         await page.keyboard.insertText('Привет ')
         await page.keyboard.type('first drat')
         await page.keyboard.press('ArrowLeft')
+        await expectTabKeepsDraft(page, draft, 'Привет first drat')
         await page.keyboard.insertText('f')
         await page.keyboard.press('ArrowRight')
         await expect(draft).toHaveValue('Привет first draft')
@@ -119,6 +120,7 @@ for (const mobile of [false, true]) {
         await page.keyboard.press('Enter')
         await expect(draft).toBeFocused()
         await expect(draft).toHaveValue('keep draft')
+        await expectTabKeepsDraft(page, draft, 'keep draft', history)
         await history.focus()
         await page.keyboard.press('Escape')
         await expect(draft).toHaveCount(0)
@@ -139,6 +141,21 @@ for (const mobile of [false, true]) {
         expect(await position(page)).toEqual(modalAt)
         await page.keyboard.press('Escape')
     })
+}
+
+async function expectTabKeepsDraft(
+    page: Page,
+    draft: Locator,
+    text: string,
+    initialFocus = draft
+): Promise<void> {
+    for (const key of ['Tab', 'Shift+Tab']) {
+        await initialFocus.focus()
+        await expect(initialFocus).toBeFocused()
+        await page.keyboard.press(key)
+        await expect(draft).toBeFocused()
+        await expect(draft).toHaveValue(text)
+    }
 }
 
 async function joinOnPlaza(page: Page, name: string): Promise<void> {

@@ -5,13 +5,23 @@ import type { ChatHistoryEntry } from '@/entities/chats'
 import { ChatWidget } from '@/widgets/chats'
 
 import type { ChatInputState } from '../runtime/chatInput'
-import { isWorldHudButton, permitsWorldMovement } from './keyboardOwnership'
+import { isWorldHudButton, permitsWorldMovement, publicChatOwnsKey } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { worldHudButtonAttrs } from './uiKeyboard'
 
 const props = defineProps<{ state: ChatInputState; entries: readonly ChatHistoryEntry[] }>()
 const emit = defineEmits<{ draft: [value: string] }>()
 const collapsed = ref(true)
+
+function handleChatTab(event: KeyboardEvent): void {
+    if (!props.state.active || event.key !== 'Tab' || !publicChatOwnsKey(event)) return
+    event.preventDefault()
+    if (!(event.currentTarget instanceof HTMLElement)) return
+    const editor = event.currentTarget.querySelector<HTMLInputElement>(
+        'input[data-public-chat-input]'
+    )
+    if (editor !== document.activeElement) editor?.focus({ preventScroll: true })
+}
 
 function handleHistoryKey(event: KeyboardEvent): void {
     if (isWorldHudButton(event.target)) return
@@ -55,6 +65,7 @@ useEscapeOwner({
         :history-attrs="historyAttrs"
         :composer-attrs="composerAttrs"
         :button-attrs="worldHudButtonAttrs"
+        @keydown.capture="handleChatTab"
         @pointerdown.stop
         @update:draft="emit('draft', $event)"
     />
