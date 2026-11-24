@@ -6,16 +6,17 @@ test('regular chest shows the slot limit and updates its count after transfers',
 }) => {
     test.setTimeout(60_000)
     await join(page, 'chest-slots')
-    const chest = await page.evaluate(() =>
+    expect(await page.evaluate(() => window.__ratataGameDebug?.setCameraZoom?.(1))).toBe(true)
+    const observed = await page.waitForFunction(() =>
         window
             .__ratataTest!.getState()
             .snapshot!.chests.find(
                 ({ kind, itemCount }) => (kind === undefined || kind === 'chest') && itemCount > 0
             )
     )
-    expect(chest).toBeDefined()
+    const chest = (await observed.jsonValue())!
     expect(chest).not.toHaveProperty('capacity')
-    const { opened, panel, heading } = await openChest(page, chest!)
+    const { opened, panel, heading } = await openChest(page, chest)
     const item = opened.items[0]!
     await panel.locator(`[data-dialog-action="chest:${item.instanceId}"]`).click()
     await expect(heading).toHaveText(`Сундук ${opened.items.length - 1} / ${CHEST_CAPACITY}`)
