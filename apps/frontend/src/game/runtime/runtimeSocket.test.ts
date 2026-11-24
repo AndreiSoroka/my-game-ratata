@@ -43,7 +43,7 @@ it.each([undefined, false, true])(
         })
     }
 )
-it.each(['0.1.0', '0.2.0'])(
+it.each(['0.1.0', '0.2.0', '0.15.0'])(
     'rejects protocol %s before delivering legacy resource snapshots to presentation',
     (protocolVersion) => {
         const sockets: EventTarget[] = []
@@ -91,6 +91,10 @@ it.each(['0.1.0', '0.2.0'])(
 it('ignores late messages from a retired client runtime after starting another life', () => {
     const sockets: EventTarget[] = []
     class TestSocket extends EventTarget {
+        public static readonly OPEN = 1
+        public readonly readyState = TestSocket.OPEN
+        public readonly send = vi.fn<(data: string) => void>()
+        public readonly close = vi.fn<() => void>()
         public constructor() {
             super()
             sockets.push(this)
@@ -134,6 +138,7 @@ it('ignores late messages from a retired client runtime after starting another l
     expect(onSnapshot).not.toHaveBeenCalled()
     expect(onWorldInit).not.toHaveBeenCalled()
     expect(onError).not.toHaveBeenCalled()
+    runtime.close()
 })
 
 it('does not create a stopped connection or send a join when an old socket opens late', () => {
@@ -178,6 +183,9 @@ it('does not create a stopped connection or send a join when an old socket opens
 it('does not deliver snapshots or animation events before the authoritative world initialization', () => {
     const sockets: EventTarget[] = []
     class TestSocket extends EventTarget {
+        public static readonly OPEN = 1
+        public readonly readyState = TestSocket.OPEN
+        public readonly send = vi.fn<(data: string) => void>()
         public close(): void {}
         public constructor() {
             super()
@@ -213,13 +221,18 @@ it('does not deliver snapshots or animation events before the authoritative worl
         playerId: 'hero',
         snapshot,
         map,
+        tickMs: 50,
     })
-    expect(onWorldInit).toHaveBeenCalledExactlyOnceWith('hero', snapshot, map, {
-        streamId: 1,
-        seq: 0,
-    })
+    expect(onWorldInit).toHaveBeenCalledExactlyOnceWith(
+        'hero',
+        snapshot,
+        map,
+        { streamId: 1, seq: 0 },
+        50
+    )
     receive({ type: 'snapshot', streamId: 1, seq: 1, snapshot })
     expect(onSnapshot).toHaveBeenCalledOnce()
+    runtime.close()
 })
 
 it('resolves dynamic maps at the backend origin and static test maps at the frontend', () => {

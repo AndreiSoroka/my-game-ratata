@@ -2,6 +2,7 @@
 
 import type { WorldSnapshot } from '@my-game-ratata/contracts'
 
+import type { DrawnOwnerPose } from './src/game/runtime/networkMotion'
 import type { PrayerAreaState } from './src/game/runtime/prayerAreaViews'
 
 declare global {
@@ -18,6 +19,7 @@ declare global {
             characterNameOpacity?: (id: string) => number | undefined
             heardFootstepIds?: () => number[]
             renderedCharacters?: () => { id: string; position: { x: number; y: number } }[]
+            lastDrawnOwnerPose?: () => DrawnOwnerPose | undefined
         }
     }
 }

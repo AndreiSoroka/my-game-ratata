@@ -1,8 +1,12 @@
 import type { ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 
+import type { MotionTiming } from './ownerMotionLead'
 import type { PlantingPreview } from './plantingPreview'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
+import type { RuntimeMovementControls } from './runtimeMovementControls'
 import { createRuntimePresentation } from './runtimePresentation'
+import type { SnapshotReference } from './runtimeSnapshotStream'
+import type { RuntimeSocket } from './runtimeSocket'
 import { RuntimeViewport } from './runtimeViewport'
 import type { RenderedTiledMap } from './tiledMap'
 
@@ -64,4 +68,28 @@ export function observeRuntimeAudio(
     playerId: string | undefined
 ): void {
     view?.audio.observeWorld(snapshot, playerId, view.sceneActors.isPositionVisible)
+}
+
+export function updateRuntimeScene(
+    view: RuntimePresentation | undefined,
+    snapshot: WorldSnapshot | undefined,
+    playerId: string | undefined,
+    reference: SnapshotReference | undefined
+): void {
+    if (snapshot) view?.sceneActors.update(snapshot, playerId, reference)
+}
+
+export function applyMotionTiming(
+    view: RuntimePresentation | undefined,
+    tickMs: number,
+    movement: Pick<RuntimeMovementControls, 'manualAxis'>,
+    socket: Pick<RuntimeSocket, 'estimateMotionReceiptTime'>
+): MotionTiming {
+    const timing = {
+        tickMs,
+        manualAxis: () => movement.manualAxis,
+        estimateReceiptTime: socket.estimateMotionReceiptTime,
+    }
+    view?.sceneActors.setMotionTiming(timing)
+    return timing
 }

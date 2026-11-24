@@ -18,6 +18,7 @@ import {
 import { DamageFeedback } from './damageFeedback'
 import type { MapVisibility } from './mapVisibility'
 import { NetworkMotion } from './networkMotion'
+import type { MotionTiming } from './ownerMotionLead'
 import type { SnapshotReference } from './runtimeSnapshotStream'
 
 /** Owns character views and a single pre-camera presentation update for this scene. */
@@ -44,11 +45,16 @@ export class SceneCharacterViews {
             (id) => this.snapshot(id)?.trainingTarget !== undefined
         )
         engine.on('preupdate', this.frame)
+        engine.on('postdraw', this.captureDrawnOwner)
         document.addEventListener('visibilitychange', this.visibility)
     }
 
     public setMap(map: MapVisibility): void {
         this.motion.setMap(map)
+    }
+
+    public setMotionTiming(timing: MotionTiming): void {
+        this.motion.setTiming(timing)
     }
 
     public sync(
@@ -117,6 +123,10 @@ export class SceneCharacterViews {
         }))
     }
 
+    public lastDrawnOwnerPose() {
+        return this.motion.lastDrawnOwnerPose()
+    }
+
     public resetMotion(): void {
         this.motion.reset()
     }
@@ -144,6 +154,7 @@ export class SceneCharacterViews {
         if (this.disposed) return
         this.disposed = true
         this.engine.off('preupdate', this.frame)
+        this.engine.off('postdraw', this.captureDrawnOwner)
         document.removeEventListener('visibilitychange', this.visibility)
         this.damage.dispose()
         this.motion.reset()
@@ -166,6 +177,13 @@ export class SceneCharacterViews {
     }
 
     private readonly visibility = (): void => this.motion.reset()
+
+    private readonly captureDrawnOwner = (): void => {
+        const id = this.playerId
+        this.motion.recordDrawnOwner(
+            id && !document.hidden && this.visible(id) ? this.position(id) : undefined
+        )
+    }
 
     private refreshGraphic(id: string): void {
         const bundle = this.bundles.get(id)

@@ -7,6 +7,7 @@ import type {
 
 import type { GameCharacter } from './character'
 import { parseSocketMessage } from './messages'
+import { replyToMotionPing } from './motionProbe'
 import { plantingPreview } from './plantingPreview'
 import {
     type ClientContext,
@@ -61,11 +62,25 @@ export function createRoomMessageHandler(
 ) {
     return (ws: RoomSocket, raw: unknown): void =>
         dispatchRawRoomMessage(ws, raw, (message, invalidStopCorrectionId) => {
+            const current = context()
+            const now = current.room.gameplayNow()
+            if (message.type === 'motion_ping') {
+                if (current.characters.has(current.connections.get(ws) ?? '')) {
+                    replyToMotionPing(
+                        ws,
+                        message.id,
+                        now,
+                        current.room.realNow()
+                    )
+                }
+                return
+            }
             dispatchRoomClientMessage(
-                context(),
+                current,
                 ws,
                 message,
-                invalidStopCorrectionId
+                invalidStopCorrectionId,
+                now
             )
             onDispatched()
         })
@@ -74,9 +89,9 @@ export function createRoomMessageHandler(
 function dispatchRoomClientMessage(
     context: DispatchContext,
     ws: RoomSocket,
-    message: ClientMessage,
+    message: Exclude<ClientMessage, { type: 'motion_ping' }>,
     invalidStopCorrectionId: number | undefined,
-    now = context.room.gameplayNow()
+    now: number
 ): void {
     if (message.type === 'join') {
         context.join(

@@ -208,6 +208,34 @@ it('leaves ordinary movement intact while cancelling a pending correction on a r
     expect(receipt(player)).toEqual({ id: 1, status: 'rejected' })
 })
 
+it('answers only the requesting socket without interrupting a walk or its pending stop', () => {
+    const { room, player } = fixture()
+    const observer = joinScenarioRoom(room, 'Motion observer')
+    move(player)
+    advance()
+    const firstTime = room.gameplayNow()
+    player.send({ type: 'motion_ping', id: 1 })
+    player.send({ type: 'motion_ping', id: 2 })
+    vi.advanceTimersByTime(500)
+    const requestedX = player.actor.position.x - 2
+    stop(player, proposal(player, 1, requestedX))
+    const secondTime = room.gameplayNow()
+    player.send({ type: 'motion_ping', id: 3 })
+    advance()
+
+    expect(
+        player.sent.filter((message) => message.type === 'motion_pong')
+    ).toEqual([
+        { type: 'motion_pong', id: 1, serverReceivedAt: firstTime },
+        { type: 'motion_pong', id: 3, serverReceivedAt: secondTime },
+    ])
+    expect(
+        observer.sent.filter((message) => message.type === 'motion_pong')
+    ).toHaveLength(0)
+    expect(player.actor.position.x).toBe(requestedX)
+    expect(receipt(player)).toEqual({ id: 1, status: 'accepted' })
+}, 15_000)
+
 it.each([
     'old revision',
     'bad position',

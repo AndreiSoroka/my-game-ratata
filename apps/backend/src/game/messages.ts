@@ -11,6 +11,7 @@ import { isChestCommandType, parseChestCommand } from './chestCommands'
 import { parseCombatReference } from './combatTargetParsing'
 import { parseExtraCommand } from './extraCommands'
 import { parseAbandonLife, parseJoin, parseLocale } from './identityMessages'
+import { parseMotionPing } from './motionProbe'
 import { parseStopCorrection } from './movementInputCommand'
 import { parsePortalBoundary } from './portalCommand'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
@@ -104,6 +105,8 @@ function parseLocationBoundary(
             return parseViewportCommand(record)
         case 'snapshot_resync':
             return { message: { type: 'snapshot_resync' } }
+        case 'motion_ping':
+            return parseMotionPing(record['id'])
         default:
             return undefined
     }

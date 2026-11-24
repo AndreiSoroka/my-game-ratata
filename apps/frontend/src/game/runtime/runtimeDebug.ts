@@ -15,6 +15,7 @@ export function updateRuntimeDebug(
                   | 'characterNameOpacity'
                   | 'heardFootstepIds'
                   | 'renderedCharacters'
+                  | 'lastDrawnOwnerPose'
               >
           }
         | undefined,
@@ -40,6 +41,7 @@ export function updateRuntimeDebug(
                   characterNameOpacity: (id: string) => view?.sceneActors.characterNameOpacity(id),
                   heardFootstepIds: () => view?.sceneActors.heardFootstepIds() ?? [],
                   renderedCharacters: () => view?.sceneActors.renderedCharacters() ?? [],
+                  lastDrawnOwnerPose: () => view?.sceneActors.lastDrawnOwnerPose(),
               }
             : {}),
         worldToPage: (point) => {

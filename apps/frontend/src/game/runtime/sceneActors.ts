@@ -24,6 +24,7 @@ import {
     type MapVisibility,
     updateResourceVisibility,
 } from './mapVisibility'
+import type { MotionTiming } from './ownerMotionLead'
 import type { PrayerAreaViews } from './prayerAreaViews'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { RouteWaypointViews } from './routeWaypointViews'
@@ -224,13 +225,11 @@ export class SceneActors {
             },
             player
         )
-        this.followLocalPlayer(localPlayerId)
+        const body = player && this.characters.body(player.id)
+        if (body) this.mapView.follow(body)
     }
 
-    public buildingCoverStates(): { id: string; visible: boolean }[] {
-        return this.buildingViews.coverStates()
-    }
-
+    public readonly buildingCoverStates = () => this.buildingViews.coverStates()
     public readonly prayerAreaStates = () => this.prayerAreas.states()
     public readonly heardFootstepIds = () => this.footsteps.ids()
     public readonly characterOpacity = (id: string) =>
@@ -238,6 +237,9 @@ export class SceneActors {
     public readonly characterNameOpacity = (id: string) => this.characters.nameOpacity(id)
 
     public readonly renderedCharacters = () => this.characters.rendered()
+    public readonly lastDrawnOwnerPose = () => this.characters.lastDrawnOwnerPose()
+    public readonly setMotionTiming = (timing: MotionTiming) =>
+        this.characters.setMotionTiming(timing)
     public readonly resetMotion = () => this.characters.resetMotion()
     public readonly holdMotion = () => this.characters.holdMotion()
     public readonly beginStop = (requestId: number) =>
@@ -308,11 +310,6 @@ export class SceneActors {
 
     public isCharacterVisible(id: string): boolean {
         return this.characters.visible(id)
-    }
-
-    private followLocalPlayer(localPlayerId: string | undefined): void {
-        const body = localPlayerId ? this.characters.body(localPlayerId) : undefined
-        if (body) this.mapView.follow(body)
     }
 
     private placeAttachedViews(): void {

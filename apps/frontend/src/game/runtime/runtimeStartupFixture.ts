@@ -10,7 +10,7 @@ import { beforeEach, expect, vi } from 'vitest'
 import { EngineRun } from './engineRun'
 import { RatataGame } from './ratataGame'
 import type { RatataGameOptions } from './runtimeOptions'
-import type { SnapshotReference } from './runtimeSnapshotStream'
+import type { RuntimeSocket } from './runtimeSocket'
 import type { RenderedTiledMap } from './tiledMap'
 
 const calls = vi.hoisted(() => ({
@@ -23,19 +23,7 @@ const calls = vi.hoisted(() => ({
     loaderComplete: true,
     present: vi.fn<(locationId: string) => void>(),
     connect: vi.fn<() => void>(),
-    socketHandlers: undefined as
-        | {
-              onWorldInit: (
-                  id: string,
-                  snapshot: WorldSnapshot,
-                  map: MapSummary,
-                  reference: SnapshotReference
-              ) => void
-              onSnapshot: (snapshot: WorldSnapshot, reference: SnapshotReference) => void
-              onSnapshotInvalidated: () => void
-              onEvent: (event: GameEventPayload) => void
-          }
-        | undefined,
+    socketHandlers: undefined as ConstructorParameters<typeof RuntimeSocket>[0] | undefined,
     music: vi.fn<() => void>(),
     ambience: vi.fn<() => void>(),
     audioMap: vi.fn<(map: RenderedTiledMap, locationId: string) => void>(),
@@ -128,6 +116,7 @@ vi.mock('./runtimePresentation', () => ({
                 clearDamage: vi.fn<(...args: unknown[]) => void>(),
                 isPositionVisible: calls.positionVisible,
                 holdMotion: vi.fn<() => void>(),
+                setMotionTiming: vi.fn<() => void>(),
                 beginStop: (requestId: number) => {
                     calls.beginStop(requestId)
                     return { id: requestId, streamId: 1, seq: 0, position: { x: 83, y: 80 } }
@@ -162,6 +151,7 @@ vi.mock('./runtimeSocket', () => ({
         }
         public connect = calls.connect
         public send = calls.send
+        public estimateMotionReceiptTime = () => undefined
         public close(): void {
             /* No server is needed for an unjoined runtime. */
         }
@@ -209,7 +199,7 @@ export function initialize(epoch = 'a', locationId = 'map-2-2'): void {
         characters: [],
         location: { id: map.id, map },
     } as unknown as WorldSnapshot
-    calls.socketHandlers?.onWorldInit('hero', snapshot, map, { streamId: 1, seq: 0 })
+    calls.socketHandlers?.onWorldInit('hero', snapshot, map, { streamId: 1, seq: 0 }, 50)
 }
 export async function startWorld(game: RatataGame): Promise<void> {
     await game.start()

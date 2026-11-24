@@ -1,6 +1,6 @@
 # Network synchronization
 
-Client and server use protocol **0.15.0** and must be updated together. Reload old
+Client and server use protocol **0.16.0** and must be updated together. Reload old
 clients after restarting the server. The transport remains WebSocket over HTTP
 or HTTPS, with negotiated per-message compression; HTTP/3 is not required.
 
@@ -56,7 +56,7 @@ permissions and viewport. This command works while a joined character is dead
 or an exchange is open. Disconnect and socket replacement clear retry timers.
 
 Set `GAME_SNAPSHOT_DELTAS=0` before starting the backend to send only full frames
-within protocol 0.15.0. Compression and viewport filtering remain enabled. The
+within protocol 0.16.0. Compression and viewport filtering remain enabled. The
 flag does not restore compatibility with an older client.
 
 ## Server movement input timing
@@ -100,11 +100,19 @@ unfinished attack, a projectile or a combat area.
 
 The owner snapshot carries the request ID and `accepted`, `clamped` or
 `rejected` as `stopCorrection`. The ordinary character position gives the
-resolved point. On release the client stops continuation immediately, holds the
-displayed position for up to 300 ms, then reaches the confirmed position in
-100 ms. Repeated stationary frames share that deadline. New movement or a
+resolved point. On release the client captures the last drawn map position and
+its snapshot reference, holds that position for up to 300 ms, then reaches the
+confirmed position in 100 ms. Repeated stationary frames share that deadline. New movement or a
 synchronization, map or life transition cancels the wait. Death and forced
 displacements apply immediately.
+
+After joining, a visible browser sends a `motion_ping` every second. The server
+answers that connection with `motion_pong` carrying the probe ID and gameplay time
+at receipt. The browser estimates when the server will receive an input by
+adding that clock offset to the local monotonic send time. RTT filters samples,
+and the offset incorporates the measured delay to the server. The estimate
+gradually advances the owner's confirmed manual walking display by up to 100 ms
+inside the existing presentation and collision limits.
 
 ## Cosmetic movement
 
@@ -113,11 +121,16 @@ initial frames use zero. It is optional only for older local fixtures.
 `velocity` is still displacement per step. Presentation divides by `stepMs` to
 obtain speed; authoritative movement and the `GameCharacter` model are unchanged.
 
-Every rendered character continues its last confirmed movement for at most
-200 ms from the sample's server time, then freezes. Ordinary walking changes to
-idle after that limit. There is no prediction of unconfirmed local input. A
-bounded server-clock estimate does not rewind on delayed delivery. Stream
-changes reset it.
+The owner and NPCs continue their last confirmed movement for at most 200 ms
+from the sample's server time, then freeze. Ordinary walking changes to idle
+after that limit. The bounded server-clock estimate starts fresh on stream
+changes. The owner starts moving after the server confirms movement.
+
+Other network players play between confirmed snapshots, two nominal server ticks
+behind. They hold their last confirmed point when data runs out and resume at
+up to 1.5 times normal playback speed. An ordinary stop with a server correction
+can move the target back along the confirmed path, which plays without an
+instant position jump. Combat results arrive immediately.
 
 Continuation stops at known solid tiles, map edges, the current path segment and
 an optional `movement.continuationUntil` deadline. Dash/lunge deadlines come from
@@ -140,6 +153,7 @@ Headless Chromium network scenarios are manual:
 
 ```sh
 bun run test:e2e -- e2e/snapshot-deltas.spec.ts e2e/network-motion.spec.ts e2e/viewport-network.spec.ts --project chromium
+bun run test:e2e -- e2e/movement-stop-timing.spec.ts e2e/remote-movement-stop.spec.ts e2e/dash-feedback.spec.ts --project chromium
 bun run benchmark:snapshots
 ```
 

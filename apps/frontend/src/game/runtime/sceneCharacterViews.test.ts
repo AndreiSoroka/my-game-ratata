@@ -88,6 +88,7 @@ function setup() {
             time = now
             handlers.get('preupdate')?.()
         },
+        draw: () => handlers.get('postdraw')?.(),
     }
 }
 afterEach(() => {
@@ -127,7 +128,50 @@ describe('scene character presentation scheduling', () => {
         expect(remove).toHaveBeenCalledTimes(4)
         views.dispose()
         views.dispose()
-        expect(off).toHaveBeenCalledExactlyOnceWith('preupdate', expect.any(Function))
+        expect(off).toHaveBeenCalledTimes(2)
+        expect(off).toHaveBeenNthCalledWith(1, 'preupdate', expect.any(Function))
+        expect(off).toHaveBeenNthCalledWith(2, 'postdraw', expect.any(Function))
+    })
+
+    it('uses the painted point and its snapshot reference even if a newer snapshot updated the body', () => {
+        const { views, frame, draw } = setup()
+        const owner = characterFixture('hero', {
+            position: { x: 80, y: 80 },
+            velocity: { x: 5, y: 0 },
+            animation: { action: 'walk', startedAt: 1050 },
+        })
+        try {
+            views.sync(
+                { ...worldFixture([owner], 1050), tick: 2, stepMs: 50 },
+                owner.id,
+                () => true,
+                { streamId: 1, seq: 1 }
+            )
+            frame(50)
+            draw()
+            const next = {
+                ...owner,
+                position: { x: 89, y: 80 },
+                movement: { ...owner.movement!, continuationUntil: 1090 },
+            }
+            views.sync(
+                { ...worldFixture([next], 1100), tick: 3, stepMs: 50 },
+                owner.id,
+                () => true,
+                { streamId: 1, seq: 2 }
+            )
+            expect(views.position(owner.id)).toEqual({ x: 89, y: 80 })
+            expect(views.beginStop(owner.id, 3)).toEqual({
+                id: 3,
+                streamId: 1,
+                seq: 1,
+                position: { x: 85, y: 80 },
+            })
+            frame(66)
+            expect(views.position(owner.id)).toEqual({ x: 85, y: 80 })
+        } finally {
+            views.dispose()
+        }
     })
 
     it('dims only other names and applies the focus to newly rendered characters', () => {

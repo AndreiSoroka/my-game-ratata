@@ -5,6 +5,8 @@ import {
 } from '@my-game-ratata/contracts'
 import { describe, expect, it, vi } from 'vitest'
 
+import { parseClientMessage } from '../src/game/messages'
+import { replyToMotionPing } from '../src/game/motionProbe'
 import {
     broadcast,
     type RoomSocket,
@@ -38,6 +40,47 @@ const notice: ServerMessage = {
     serverTime: 1000,
     event: { kind: 'notice', actorId: 'player', text: 'Action resolved' },
 }
+
+describe('motion probes', () => {
+    it.each([null, 0, -1, 0.5, '1', Number.MAX_SAFE_INTEGER + 1])(
+        'rejects invalid probe identifiers (%s)',
+        (id) => {
+            expect(
+                parseClientMessage(JSON.stringify({ type: 'motion_ping', id }))
+            ).toEqual({
+                error: 'Invalid motion probe id',
+            })
+        }
+    )
+
+    it('skips queued sockets and limits replies by wall time', () => {
+        const f = connection(1)
+        replyToMotionPing(f.socket, 1, 150, 5000)
+        expect(f.send).not.toHaveBeenCalled()
+        f.getBufferedAmount.mockReturnValue(0)
+        replyToMotionPing(f.socket, 2, 150, 5000)
+        replyToMotionPing(f.socket, 3, 150, 5499)
+        replyToMotionPing(f.socket, 4, 150, 5500)
+        expect(f.send.mock.calls).toEqual([
+            [
+                JSON.stringify({
+                    type: 'motion_pong',
+                    id: 2,
+                    serverReceivedAt: 150,
+                }),
+                true,
+            ],
+            [
+                JSON.stringify({
+                    type: 'motion_pong',
+                    id: 4,
+                    serverReceivedAt: 150,
+                }),
+                true,
+            ],
+        ])
+    })
+})
 
 describe('room snapshot delivery', () => {
     it('skips expensive snapshot construction while a connection has queued data', () => {

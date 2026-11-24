@@ -45,7 +45,7 @@ it.each(['stream gap', 'death', 'permadeath'] as const)(
         try {
             initialize('a', 'map-2-1')
             const socket = calls.socketHandlers!
-            if (cause === 'stream gap') socket.onSnapshotInvalidated()
+            if (cause === 'stream gap') socket.onSnapshotInvalidated?.()
             else if (cause === 'death') socket.onEvent({ kind: 'death', targetId: 'hero' })
             else socket.onEvent({ kind: 'permadeath', actorId: 'hero' })
             expect(calls.audioInvalidated).toHaveBeenCalledOnce()

@@ -29,6 +29,8 @@ interface StopWireRequest extends StopCorrectionRequest {
     emittedAt: number
 }
 
+const stopSampleMs = 1_300
+
 export function movementKey(axis: Vector2): string {
     if (axis.x !== 0) {
         return axis.x > 0 ? 'KeyD' : 'KeyA'
@@ -36,19 +38,28 @@ export function movementKey(axis: Vector2): string {
     return axis.y > 0 ? 'KeyS' : 'KeyW'
 }
 
-/** Add stop round-trip latency while preserving authoritative snapshot order. */
+/** Delay probes and game traffic on the same FIFO link in each direction. */
 export async function captureStopWire(
     page: Page,
-    { releaseDelayMs, receiptDelayMs }: { releaseDelayMs: number; receiptDelayMs: number }
+    {
+        uplinkMs,
+        downlinkMs,
+        calibration,
+    }: {
+        uplinkMs: number
+        downlinkMs: number
+        calibration: boolean
+    }
 ) {
-    const snapshots = new RuntimeSnapshotStream(true)
     const frames: StopWireFrame[] = []
     const requests: StopWireRequest[] = []
-    const queued: (() => void)[] = []
-    let playerId: string | undefined
-    let waitingFor: number | undefined
+    let deliveredPongs = 0
     await page.routeWebSocket(/\/ws$/, (client) => {
+        const snapshots = new RuntimeSnapshotStream(true)
+        let playerId: string | undefined
         const server = client.connectToServer()
+        const uplink = delayedLink(uplinkMs)
+        const downlink = delayedLink(downlinkMs)
         client.onMessage((raw) => {
             const message = JSON.parse(raw.toString()) as ClientMessage
             if (message.type === 'move_input' && message.stopCorrection) {
@@ -57,11 +68,8 @@ export async function captureStopWire(
                     axis: message.axis,
                     emittedAt: performance.now(),
                 })
-                waitingFor = message.stopCorrection.id
-                setTimeout(() => server.send(raw), releaseDelayMs)
-                return
             }
-            server.send(raw)
+            uplink.enqueue(() => server.send(raw))
         })
         server.onMessage((raw) => {
             const message = JSON.parse(raw.toString()) as ServerMessage
@@ -72,24 +80,56 @@ export async function captureStopWire(
             if (frame) {
                 frames.push(frame)
             }
-            if (waitingFor !== undefined && frame?.stopCorrection?.id === waitingFor) {
-                waitingFor = undefined
-                setTimeout(() => {
-                    for (const send of queued.splice(0)) {
-                        send()
-                    }
-                }, receiptDelayMs)
-                queued.push(() => client.send(raw))
-                return
-            }
-            if (queued.length > 0) {
-                queued.push(() => client.send(raw))
-            } else {
+            if (message.type === 'motion_pong' && !calibration) return
+            downlink.enqueue(() => {
+                if (message.type === 'motion_pong') deliveredPongs += 1
                 client.send(raw)
-            }
+            })
+        })
+        client.onClose((code, reason) => {
+            uplink.clear()
+            downlink.clear()
+            server.close({ code, reason })
+        })
+        server.onClose((code, reason) => {
+            uplink.clear()
+            downlink.clear()
+            client.close({ code, reason })
         })
     })
-    return { frames, requests }
+    return { frames, requests, deliveredPongs: () => deliveredPongs }
+}
+
+function delayedLink(delay: number) {
+    const queue: { delivery: number; send: () => void }[] = []
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    function schedule(): void {
+        const first = queue[0]
+        if (first === undefined) return
+        timer = setTimeout(flush, Math.max(0, Math.ceil(first.delivery - performance.now())))
+    }
+
+    function flush(): void {
+        timer = undefined
+        const now = performance.now()
+        while (queue[0] && queue[0].delivery <= now) {
+            queue.shift()!.send()
+        }
+        schedule()
+    }
+
+    return {
+        enqueue(send: () => void) {
+            queue.push({ delivery: performance.now() + delay, send })
+            if (timer === undefined) schedule()
+        },
+        clear() {
+            clearTimeout(timer)
+            timer = undefined
+            queue.length = 0
+        },
+    }
 }
 
 function receiveStopFrame(
@@ -137,44 +177,54 @@ export interface StopRenderFrame {
     position: Vector2
     rendered: Vector2
     stopCorrection?: StopCorrectionReceipt
+    drawnReference?: Pick<StopCorrectionRequest, 'streamId' | 'seq'>
 }
 
 export function captureStopRendering(page: Page, key: string) {
-    return page.evaluate(async (code): Promise<StopRenderFrame[]> => {
-        const frames: StopRenderFrame[] = []
-        const started = await new Promise<number>((resolve) => {
-            const capture = (event: KeyboardEvent) => {
-                if (event.code !== code) {
-                    return
+    return page.evaluate(
+        async ({ code, duration }): Promise<StopRenderFrame[]> => {
+            const frames: StopRenderFrame[] = []
+            const started = await new Promise<number>((resolve) => {
+                const capture = (event: KeyboardEvent) => {
+                    if (event.code !== code) {
+                        return
+                    }
+                    window.removeEventListener('keyup', capture, true)
+                    const releasedAt = performance.now()
+                    frames.push(readFrame(0))
+                    resolve(releasedAt)
                 }
-                window.removeEventListener('keyup', capture, true)
-                const releasedAt = performance.now()
-                frames.push(readFrame(0))
-                resolve(releasedAt)
+                window.addEventListener('keyup', capture, true)
+            })
+            while (performance.now() - started < duration) {
+                await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+                frames.push(readFrame(performance.now() - started))
             }
-            window.addEventListener('keyup', capture, true)
-        })
-        while (performance.now() - started < 1_300) {
-            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-            frames.push(readFrame(performance.now() - started))
-        }
-        return frames
+            return frames
 
-        function readFrame(at: number): StopRenderFrame {
-            const state = window.__ratataTest!.getState()
-            const actor = state.player!
-            const rendered = window.__ratataGameDebug!.renderedCharacters!().find(
-                (character) => character.id === actor.id
-            )!.position
-            return {
-                at,
-                tick: state.snapshot!.tick,
-                position: { ...actor.position },
-                rendered: { ...rendered },
-                stopCorrection: state.snapshot!.stopCorrection,
+            function readFrame(at: number): StopRenderFrame {
+                const state = window.__ratataTest!.getState()
+                const actor = state.player!
+                const debug = window.__ratataGameDebug!
+                const drawn = at === 0 ? debug.lastDrawnOwnerPose?.() : undefined
+                const rendered =
+                    drawn?.position ??
+                    debug.renderedCharacters!().find((character) => character.id === actor.id)!
+                        .position
+                return {
+                    at,
+                    tick: state.snapshot!.tick,
+                    position: { ...actor.position },
+                    rendered: { ...rendered },
+                    stopCorrection: state.snapshot!.stopCorrection,
+                    ...(drawn === undefined
+                        ? {}
+                        : { drawnReference: { streamId: drawn.streamId, seq: drawn.seq } }),
+                }
             }
-        }
-    }, key)
+        },
+        { code: key, duration: stopSampleMs }
+    )
 }
 
 export function distance(a: Vector2, b: Vector2): number {
@@ -207,15 +257,16 @@ export function readStopResult(
         (frame) => frame.at >= acknowledgementMs + STOP_CORRECTION_BLEND_MS
     )
     // Velocity reports ordinary movement before the separate stop correction.
-    const appliedCorrectionPx = distance(endpoint.position, {
+    const beforeCorrection = {
         x: previous.position.x + endpoint.velocity.x,
         y: previous.position.y + endpoint.velocity.y,
-    })
+    }
     return {
         endpoint,
         previousTick: previous.tick,
         acknowledgementMs,
-        appliedCorrectionPx,
+        beforeCorrection,
+        appliedCorrectionPx: distance(endpoint.position, beforeCorrection),
         settledMs: settled?.at,
         convergenceMs: settled && settled.at - acknowledgementMs,
         frozenGapPx: distance(request.position, endpoint.position),
