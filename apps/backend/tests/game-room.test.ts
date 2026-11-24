@@ -18,7 +18,7 @@ import type { RoomSocket } from '../src/game/roomMessaging'
 
 interface FakeSocket {
     sent: ServerMessage[]
-    send: (payload: string) => void
+    send: (payload: string) => number
 }
 
 afterEach(() => {
@@ -453,7 +453,7 @@ function createSocket(): FakeSocket {
     return {
         sent: [],
         send(payload) {
-            this.sent.push(JSON.parse(payload) as ServerMessage)
+            return this.sent.push(JSON.parse(payload) as ServerMessage)
         },
     }
 }

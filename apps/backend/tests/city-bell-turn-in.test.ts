@@ -12,6 +12,7 @@ import {
 } from './cityBellAiFixture'
 import { giveHearts } from './cityBellFixture'
 import { miraId, npcReply } from './npcAiRuntimeFixture'
+import { receivedSnapshot } from './snapshotTestHelpers'
 
 beforeEach(() => {
     vi.stubGlobal('Bun', { env: {} })
@@ -25,11 +26,7 @@ afterEach(async () => {
 })
 
 function clientView(f: ReturnType<typeof setup>): WorldSnapshot {
-    const message = f.player.sent.findLast((entry) => entry.type === 'snapshot')
-    if (message?.type !== 'snapshot') {
-        throw new Error('No player-visible socket snapshot')
-    }
-    return message.snapshot
+    return receivedSnapshot(f.player.sent)
 }
 
 it.each(['chat', 'whisper'] as const)(

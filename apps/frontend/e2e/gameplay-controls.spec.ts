@@ -1,4 +1,8 @@
-import { healthPercent } from '@my-game-ratata/contracts'
+import {
+    type CharacterSnapshot,
+    healthPercent,
+    type ServerMessage,
+} from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { selectSocialTarget } from './social-helpers'
@@ -122,6 +126,7 @@ test('forms a party, cancels follow on manual input and allows a deliberate hit 
 
 test('can declare a peaceable city resident an enemy and hit them', async ({ page }, info) => {
     const resident = 'npc_merchant_1'
+    const initiallyObserved = initialCharacter(page, resident)
     await join(page, `city-combat-${info.workerIndex}`, 'vanguard')
     const snapshot = () =>
         page.evaluate(
@@ -131,14 +136,16 @@ test('can declare a peaceable city resident an enemy and hit them', async ({ pag
                     .snapshot?.characters.find((actor) => actor.id === id),
             resident
         )
-    const before = (await snapshot())!
-    expect(before.relationship).toBe('friendly')
+    const initial = initiallyObserved()
+    expect(initial).toBeDefined()
     expect(
         await page.evaluate(
             (position) => window.__ratataTest!.navigate(position, { tolerance: 22 }),
-            before.position
+            initial!.position
         )
     ).toMatchObject({ status: 'arrived' })
+    await expect.poll(snapshot).toMatchObject({ id: resident, relationship: 'friendly' })
+    const before = (await snapshot())!
     await page.locator('canvas[data-game-canvas=true]').focus()
     await selectSocialTarget(page, resident)
     await page.keyboard.press('KeyF')
@@ -151,6 +158,20 @@ test('can declare a peaceable city resident an enemy and hit them', async ({ pag
         .toBeLessThan(healthPercent(before.health))
     await page.keyboard.press('Escape')
 })
+
+/** Retain a position the server initially disclosed before the moving camera narrows interest. */
+function initialCharacter(page: Page, id: string): () => CharacterSnapshot | undefined {
+    let observed: CharacterSnapshot | undefined
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framereceived', ({ payload }) => {
+            const message = JSON.parse(String(payload)) as ServerMessage
+            if (message.type === 'world_init')
+                observed = message.snapshot.characters.find((character) => character.id === id)
+        })
+    })
+    return () => observed
+}
 
 async function hitPartyMember(first: Page, second: Page, targetId: string, party: Locator) {
     await first.bringToFront()

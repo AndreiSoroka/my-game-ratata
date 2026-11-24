@@ -21,11 +21,13 @@ export class InteractionTargetViews {
     private readonly name = createWorldNameLabel()
     private shape = ''
     private key: string | undefined
+    private target: TargetHighlight | undefined
     private disposed = false
 
     public constructor(
         engine: Engine,
-        private readonly characterVisible: (id: string) => boolean = () => true
+        private readonly characterVisible: (id: string) => boolean = () => true,
+        private readonly characterPosition: (id: string) => Vector2 | undefined = () => undefined
     ) {
         this.name.graphics.anchor = vec(0.5, 1)
         this.clear()
@@ -39,6 +41,8 @@ export class InteractionTargetViews {
             this.clear()
             return
         }
+        this.target = target
+        target = this.displayedTarget(target)
         this.key = target.key
         if (this.setCompound(target)) return
         const bounds =
@@ -70,6 +74,12 @@ export class InteractionTargetViews {
         this.placeName(target.name, bounds)
     }
 
+    private displayedTarget(target: TargetHighlight): TargetHighlight {
+        const position =
+            target.kind === 'character' ? this.characterPosition(target.key.slice(10)) : undefined
+        return position ? { ...target, position } : target
+    }
+
     private setCompound(target: TargetHighlight): boolean {
         const { bounds, interactionAreas } = target
         if (!bounds || !interactionAreas?.length) return false
@@ -96,8 +106,13 @@ export class InteractionTargetViews {
 
     public clear(): void {
         this.key = undefined
+        this.target = undefined
         this.frame.graphics.isVisible = this.ground.graphics.isVisible = false
         this.name.graphics.isVisible = false
+    }
+
+    public reposition(): void {
+        if (this.target) this.set(this.target)
     }
 
     public forgetCharacter(id: string): void {

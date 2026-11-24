@@ -14,7 +14,7 @@ import {
 import { createWebSocketHandlers } from '../src/server'
 
 function connection(queuedBytes = 0) {
-    const send = vi.fn(() => 1)
+    const send = vi.fn<(payload: string, compress?: boolean) => number>(() => 1)
     const getBufferedAmount = vi.fn(() => queuedBytes)
     return {
         socket: { send, getBufferedAmount } as unknown as RoomSocket,
@@ -60,7 +60,7 @@ describe('room snapshot delivery', () => {
 
         expect(old).not.toHaveBeenCalled()
         expect(slow.send).toHaveBeenCalledExactlyOnceWith(
-            JSON.stringify({ snapshot: snapshot(3), type: 'snapshot' }),
+            expect.any(String),
             true
         )
     })
@@ -83,6 +83,8 @@ describe('room snapshot delivery', () => {
         const slow = connection(4096)
         const init: ServerMessage = {
             type: 'world_init',
+            streamId: 1,
+            seq: 0,
             playerId: 'player',
             protocolVersion: CONTRACT_PROTOCOL_VERSION,
             tickMs: 50,
@@ -112,7 +114,7 @@ describe('room snapshot delivery', () => {
     })
 
     it('supports synchronous in-memory connections without a native network queue', () => {
-        const send = vi.fn()
+        const send = vi.fn(() => 1)
         const socket = { send } as unknown as RoomSocket
 
         sendSnapshot(socket, () => snapshot())

@@ -32,11 +32,15 @@ vi.mock('excalibur', () => ({
     },
     vec: (x: number, y: number) => ({ x, y }),
 }))
-function setup() {
+function setup(positionFor?: (id: string) => Vector2 | undefined) {
     const actors: ViewActor[] = []
-    const view = new InteractionTargetViews({
-        add: (actor: ViewActor) => actors.push(actor),
-    } as unknown as Engine)
+    const view = new InteractionTargetViews(
+        {
+            add: (actor: ViewActor) => actors.push(actor),
+        } as unknown as Engine,
+        () => true,
+        positionFor
+    )
     return { view, ground: actors[0]!, frame: actors[1]!, name: actors[2]! }
 }
 const character: TargetHighlight = {
@@ -156,6 +160,19 @@ describe('exact selected interaction target presentation', () => {
         expect(context.fill).toHaveBeenCalledOnce()
         expect(context.fillStyle).toBe('#ffd97922')
     })
+})
+
+it('tracks the rendered pose between snapshots with no selection or geometry replacement', () => {
+    let position = { x: 108, y: 205 }
+    const { view, frame, ground } = setup(() => position)
+    view.set(character)
+    expect(ground.pos).toEqual({ x: 108, y: 206 })
+    position = { x: 116, y: 210 }
+    view.reposition()
+    expect(frame.pos).toEqual({ x: 101, y: 178 })
+    expect(ground.pos).toEqual({ x: 116, y: 211 })
+    expect(frame.graphics.use).toHaveBeenCalledOnce()
+    expect(character.position).toEqual({ x: 100, y: 200 })
 })
 
 it('distinguishes allied circles and shields from hostile diamonds and crossed blades', () => {

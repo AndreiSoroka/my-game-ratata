@@ -10,6 +10,7 @@ import {
     openScenarioRoom,
     roomScenario,
 } from './scenarioRoomHelpers'
+import { receivedSnapshot } from './snapshotTestHelpers'
 
 const veteranId = 'npc_veteran_1'
 const privateLine = 'Этот ответ я даю только Алисе.'
@@ -74,6 +75,9 @@ function receivedView(
     messages: ServerMessage[],
     type: 'world_init' | 'snapshot'
 ) {
+    if (type === 'snapshot') {
+        return receivedSnapshot(messages)
+    }
     const message = messages.findLast((entry) => entry.type === type)
     if (message === undefined || !('snapshot' in message)) {
         throw new Error('Expected a serialized room snapshot')

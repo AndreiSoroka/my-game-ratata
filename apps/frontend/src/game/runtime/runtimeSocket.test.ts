@@ -1,6 +1,7 @@
 import { CONTRACT_PROTOCOL_VERSION, type GameEventPayload } from '@my-game-ratata/contracts'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { worldFixture } from '../testing/characterFixture'
 import { resolveWorldMapUrl, RuntimeSocket } from './runtimeSocket'
 
 afterEach(() => {
@@ -115,9 +116,11 @@ it('ignores late messages from a retired client runtime after starting another l
         sockets[0]?.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(data) }))
     receive({
         type: 'world_init',
+        streamId: 1,
+        seq: 0,
         protocolVersion: CONTRACT_PROTOCOL_VERSION,
         playerId: 'old',
-        snapshot: { characters: [] },
+        snapshot: worldFixture([]),
     })
     onWorldInit.mockClear()
     receive({ type: 'event', event: { kind: 'notice', actorId: 'old', text: 'Before retirement' } })
@@ -201,15 +204,18 @@ it('does not deliver snapshots or animation events before the authoritative worl
     expect(onSnapshot).not.toHaveBeenCalled()
     expect(onEvent).not.toHaveBeenCalled()
     const map = { id: 'map-2-2', asset: { url: '/world/maps/world/map-2-2.json', revision: 'a' } }
+    const snapshot = worldFixture([])
     receive({
         type: 'world_init',
+        streamId: 1,
+        seq: 0,
         protocolVersion: CONTRACT_PROTOCOL_VERSION,
         playerId: 'hero',
-        snapshot: { characters: [] },
+        snapshot,
         map,
     })
-    expect(onWorldInit).toHaveBeenCalledExactlyOnceWith('hero', { characters: [] }, map)
-    receive({ type: 'snapshot', snapshot: { characters: [] } })
+    expect(onWorldInit).toHaveBeenCalledExactlyOnceWith('hero', snapshot, map)
+    receive({ type: 'snapshot', streamId: 1, seq: 1, snapshot })
     expect(onSnapshot).toHaveBeenCalledOnce()
 })
 

@@ -56,7 +56,7 @@ function fixture(
     const messages: ServerMessage[] = []
     const socket = {
         send(text: string) {
-            messages.push(JSON.parse(text) as ServerMessage)
+            return messages.push(JSON.parse(text) as ServerMessage)
         },
     } as RoomSocket
     const send = (command: ClientMessage) =>

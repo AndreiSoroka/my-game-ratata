@@ -1,4 +1,4 @@
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, Vector2 } from '@my-game-ratata/contracts'
 import { Actor, Color, Engine, Font, Label, Rectangle, vec } from 'excalibur'
 
 import { healthBarPercent } from '@/entities/player-vitals'
@@ -57,11 +57,12 @@ export function syncCharacterBundle(
     bundles: Map<string, CharacterBundle>,
     snapshot: CharacterSnapshot,
     isLocalPlayer: boolean,
-    visible: boolean
+    visible: boolean,
+    position: Vector2 = snapshot.position
 ): CharacterBundle {
     const bundle = bundles.get(snapshot.id) ?? addBundle(engine, bundles, snapshot.id)
     bundle.snapshot = snapshot
-    positionBundle(bundle, snapshot)
+    positionCharacterBundle(bundle, position, snapshot)
     bundle.label.text = characterName(snapshot.id, snapshot.nickname)
     bundle.label.graphics.opacity = isLocalPlayer ? 0 : snapshot.alive ? 1 : 0.55
     updateBundleHealth(bundle, snapshot, isLocalPlayer)
@@ -97,14 +98,18 @@ function updateBundleHealth(
     bundle.hpFill.graphics.opacity = opacity
 }
 
-function positionBundle(bundle: CharacterBundle, snapshot: CharacterSnapshot): void {
+export function positionCharacterBundle(
+    bundle: CharacterBundle,
+    position: Vector2,
+    snapshot: CharacterSnapshot
+): void {
     const overhead = characterOverhead(snapshot.visualId)
-    bundle.body.pos = vec(snapshot.position.x, snapshot.position.y)
-    bundle.body.z = snapshot.position.y
-    bundle.label.pos = vec(snapshot.position.x, snapshot.position.y - overhead.label)
+    bundle.body.pos = vec(position.x, position.y)
+    bundle.body.z = position.y
+    bundle.label.pos = vec(position.x, position.y - overhead.label)
     bundle.label.z = bundle.body.z + 3
     for (const bar of [bundle.hpBack, bundle.hpFill]) {
-        bar.pos = vec(snapshot.position.x - 16, snapshot.position.y - overhead.health)
+        bar.pos = vec(position.x - 16, position.y - overhead.health)
         bar.z = bundle.body.z + 2
     }
 }

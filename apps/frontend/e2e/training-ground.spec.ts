@@ -11,6 +11,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+import { RuntimeSnapshotStream } from '../src/game/runtime/runtimeSnapshotStream'
 import { selectedWorldTarget } from './world-target-ui'
 
 const areaId = 'map-2-2:training:yard-1'
@@ -157,11 +158,24 @@ for (const mobile of [false, true]) {
 
         await navigate(page, yard.outside)
         await expect(canvas).not.toHaveAttribute('data-training-guides')
+        // Keep the target inside the observer's camera interest area on narrow screens.
+        expect(await page.evaluate(() => window.__ratataGameDebug?.setCameraZoom?.(1))).toBe(true)
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (id) =>
+                        window
+                            .__ratataTest!.getState()
+                            .snapshot!.characters.some((actor) => actor.id === id),
+                    dummyId
+                )
+            )
+            .toBe(true)
         const outsideHit = hits.length
         // A second ranger connects and walks through the same validated socket
         // commands. Its shot is observed from outside without opening another
         // WebGL page or changing either character's authoritative state.
-        const guest = await shootAsGuest(page, socketUrl, `${name}-g`, yard.inside)
+        const guest = await shootAsGuest(socketUrl, `${name}-g`, yard.inside)
         expect(guest.amount).toBeGreaterThan(0)
         await expect
             .poll(() => hits.slice(outsideHit).some((hit) => hit.actorId === guest.actorId))
@@ -310,67 +324,70 @@ async function dummyState(page: Page) {
     }, dummyId)
 }
 
-async function shootAsGuest(page: Page, url: string, name: string, inside: Vector2) {
-    return page.evaluate(
-        ({ url, name, dummyId, inside }) =>
-            new Promise<{
-                amount: number | undefined
-                actorId: string
-            }>((resolve, reject) => {
-                const socket = new WebSocket(url)
-                let actorId: string | undefined
-                let fired = false
-                const timeout = window.setTimeout(() => {
-                    socket.close()
-                    reject(new Error('Guest ranger did not reach and hit the dummy'))
-                }, 20_000)
-                socket.addEventListener('open', () =>
+async function shootAsGuest(url: string, name: string, inside: Vector2) {
+    const snapshots = new RuntimeSnapshotStream()
+    return new Promise<{
+        amount: number | undefined
+        actorId: string
+    }>((resolve, reject) => {
+        const socket = new WebSocket(url)
+        let actorId: string | undefined
+        let fired = false
+        const timeout = setTimeout(() => {
+            socket.close()
+            reject(new Error('Guest ranger did not reach and hit the dummy'))
+        }, 20_000)
+        socket.addEventListener('open', () =>
+            socket.send(
+                JSON.stringify({
+                    type: 'join',
+                    nickname: name,
+                    heroClass: 'ranger',
+                })
+            )
+        )
+        socket.addEventListener('message', ({ data }) => {
+            const message = JSON.parse(String(data)) as ServerMessage
+            if (message.type === 'world_init') {
+                actorId = message.playerId
+                socket.send(JSON.stringify({ type: 'move_to', target: inside }))
+            }
+            const receipt =
+                message.type === 'world_init'
+                    ? snapshots.initialize(message)
+                    : message.type === 'snapshot' || message.type === 'snapshot_delta'
+                      ? snapshots.receive(message)
+                      : undefined
+            if (receipt?.kind === 'applied') {
+                const actor = receipt.snapshot.characters.find(
+                    (candidate) => candidate.id === actorId
+                )
+                if (
+                    !fired &&
+                    actor &&
+                    Math.hypot(actor.position.x - inside.x, actor.position.y - inside.y) < 1
+                ) {
+                    fired = true
                     socket.send(
                         JSON.stringify({
-                            type: 'join',
-                            nickname: name,
-                            heroClass: 'ranger',
+                            type: 'use_ability',
+                            abilityId: 'shot',
+                            targetId: dummyId,
                         })
                     )
-                )
-                socket.addEventListener('message', ({ data }) => {
-                    const message = JSON.parse(String(data)) as ServerMessage
-                    if (message.type === 'world_init') {
-                        actorId = message.playerId
-                        socket.send(JSON.stringify({ type: 'move_to', target: inside }))
-                    }
-                    if (message.type === 'snapshot') {
-                        const actor = message.snapshot.characters.find(
-                            (candidate) => candidate.id === actorId
-                        )
-                        if (
-                            !fired &&
-                            actor &&
-                            Math.hypot(actor.position.x - inside.x, actor.position.y - inside.y) < 1
-                        ) {
-                            fired = true
-                            socket.send(
-                                JSON.stringify({
-                                    type: 'use_ability',
-                                    abilityId: 'shot',
-                                    targetId: dummyId,
-                                })
-                            )
-                        }
-                    }
-                    if (
-                        message.type === 'event' &&
-                        message.event.kind === 'damage' &&
-                        message.event.targetId === dummyId &&
-                        message.event.actorId === actorId &&
-                        actorId
-                    ) {
-                        window.clearTimeout(timeout)
-                        resolve({ amount: message.event.amount, actorId })
-                        socket.close()
-                    }
-                })
-            }),
-        { url, name, dummyId, inside }
-    )
+                }
+            }
+            if (
+                message.type === 'event' &&
+                message.event.kind === 'damage' &&
+                message.event.targetId === dummyId &&
+                message.event.actorId === actorId &&
+                actorId
+            ) {
+                clearTimeout(timeout)
+                resolve({ amount: message.event.amount, actorId })
+                socket.close()
+            }
+        })
+    })
 }

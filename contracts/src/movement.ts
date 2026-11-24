@@ -4,6 +4,8 @@ export type MovementClientMessage =
     { type: 'movement_mode'; mode: MovementMode } | { type: 'dash' }
 
 export interface CharacterMovementSnapshot {
+    /** End of a dash, lunge or timed manual stop, in server gameplay time. */
+    continuationUntil?: number
     mode: MovementMode
     dashCooldownMsLeft: number
     roadPrayerDashDiscountMsLeft?: number

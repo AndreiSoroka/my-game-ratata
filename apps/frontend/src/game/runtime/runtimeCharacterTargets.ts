@@ -7,14 +7,18 @@ export function characterAt(
     snapshot: WorldSnapshot | undefined,
     playerId: string | undefined,
     point: Vector2,
-    visible: (id: string) => boolean
+    visible: (id: string) => boolean,
+    positionFor: (id: string) => Vector2 | undefined = () => undefined
 ): string | undefined {
     return snapshot?.characters
         .filter((actor) => actor.id !== playerId && visible(actor.id))
-        .map((actor) => ({
-            id: actor.id,
-            distance: Math.hypot(actor.position.x - point.x, actor.position.y - point.y),
-        }))
+        .map((actor) => {
+            const position = positionFor(actor.id) ?? actor.position
+            return {
+                id: actor.id,
+                distance: Math.hypot(position.x - point.x, position.y - point.y),
+            }
+        })
         .filter((actor) => actor.distance <= 24)
         .sort((a, b) => a.distance - b.distance)[0]?.id
 }

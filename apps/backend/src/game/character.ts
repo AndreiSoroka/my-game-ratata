@@ -43,8 +43,12 @@ import { effectiveMaxHp } from './effectiveResources'
 import { createCharacterConfig } from './heroClasses'
 import { type EquipmentState, type InventoryItemInstance } from './inventory'
 import { createMartyrState } from './martyr'
-import { normalize, resolveFacing, zeroVector } from './math'
+import { resolveFacing, zeroVector } from './math'
 import { createMovementState } from './movementActions'
+import {
+    clearMovementInputHistory,
+    resolveMovementInput,
+} from './movementInputHistory'
 import type { NpcIdentityKey } from './npcIdentityCatalog'
 import {
     bindNpcIdentityKey,
@@ -179,16 +183,8 @@ export class GameCharacter {
         this.baseMaxHp = base
     }
 
-    public setMoveInput(axis: Vector2): void {
-        if (movementInputLocked(this)) {
-            this.input = zeroVector()
-            return
-        }
-        this.input = normalize(axis)
-
-        if (this.input.x !== 0 || this.input.y !== 0) {
-            this.clearPath()
-        }
+    public setMoveInput(axis: Vector2, receivedAt?: number): void {
+        this.input = resolveMovementInput(this, this.input, axis, receivedAt)
     }
 
     public getMoveInput(): Vector2 {
@@ -196,6 +192,7 @@ export class GameCharacter {
     }
 
     public setPath(path: Vector2[]): void {
+        clearMovementInputHistory(this)
         if (movementInputLocked(this)) {
             return
         }

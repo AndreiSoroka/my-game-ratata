@@ -67,9 +67,9 @@ import type {
     ProgressionSnapshot,
 } from './progression'
 export * from './progression'
+export * from './snapshots'
 export type * from './viewport'
 export * from './world'
-export type * from './worldSnapshot'
 import type { CharacterLifeSnapshot, HeroClass } from './life'
 export * from './life'
 import type { UsePortalCommand } from './magic'
@@ -297,6 +297,7 @@ export interface EquipmentActionClientMessage {
 export type ChatClientMessage = import('./social').ChatClientMessage
 
 export type ClientMessage =
+    | { type: 'snapshot_resync' }
     | import('./viewport').SetViewportClientMessage
     | import('./social').SpeechActivityCommand
     | { type: 'set_locale'; locale: import('./locales').GameLocale }
@@ -328,5 +329,4 @@ export type ClientMessage =
     | PickupItemClientMessage
 
 export * from './bladeTechniques'
-export type * from './server'
 export * from './weapons'

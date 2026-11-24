@@ -15,6 +15,8 @@ import { watch, type WatchHandle } from 'vue'
 import { resolveBackendHttpUrl, resolveBackendWebSocketUrl } from '@/shared/api'
 import { tGame } from '@/shared/lib/i18n'
 
+import { RuntimeSnapshotStream, type SnapshotReceipt } from './runtimeSnapshotStream'
+
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
     onError: (message: string) => void
@@ -22,6 +24,8 @@ interface RuntimeSocketHandlers {
     onSpeechTranslation?: (translation: SpeechTranslationServerMessage) => void
     getLocale?: () => GameLocale
     onSnapshot: (snapshot: WorldSnapshot) => void
+    onStreamReset?: () => void
+    onSnapshotInvalidated?: () => void
     onPlantingPreview?: (preview: PlantTreePreview) => void
     onStatus: (message: string) => void
     onWorldInit: (playerId: string, snapshot: WorldSnapshot, map: MapSummary) => void
@@ -33,6 +37,8 @@ export class RuntimeSocket {
     private initialized = false
     private sentLocale: GameLocale | undefined
     private stopLocaleWatch: WatchHandle | undefined
+    private readonly snapshots = new RuntimeSnapshotStream(import.meta.env.DEV || testMode())
+    private resyncTimer: ReturnType<typeof setTimeout> | undefined
 
     public constructor(handlers: RuntimeSocketHandlers) {
         this.handlers = handlers
@@ -90,6 +96,8 @@ export class RuntimeSocket {
         this.sentLocale = undefined
         this.stopLocaleWatch?.()
         this.stopLocaleWatch = undefined
+        this.clearResync()
+        this.snapshots.clear()
     }
 
     private updateLocale(): void {
@@ -107,14 +115,23 @@ export class RuntimeSocket {
 
     private handleSocketMessage(event: MessageEvent<string>): void {
         if (this.handlers.isStopped()) return
-        const message = JSON.parse(event.data) as ServerMessage
+        const message = parseMessage(event.data)
+        if (!message) {
+            if (this.initialized) this.deliverSnapshot(this.snapshots.invalidate())
+            return
+        }
 
         if (message.type === 'world_init') return this.initialize(message)
         if (message.type === 'error') return this.handlers.onError(errorText(message))
         if (!this.initialized) return
+        this.handleInitializedMessage(message)
+    }
+
+    private handleInitializedMessage(message: ServerMessage): void {
         switch (message.type) {
             case 'snapshot':
-                return this.handlers.onSnapshot(message.snapshot)
+            case 'snapshot_delta':
+                return this.deliverSnapshot(this.snapshots.receive(message))
             case 'plant_tree_preview':
                 return this.handlers.onPlantingPreview?.(message)
             case 'event':
@@ -129,6 +146,33 @@ export class RuntimeSocket {
             this.handlers.onSpeechTranslation?.(message)
     }
 
+    private deliverSnapshot(receipt: SnapshotReceipt): void {
+        if (receipt.kind === 'ignored') return
+        if (receipt.kind === 'resync') {
+            this.handlers.onSnapshotInvalidated?.()
+            this.requestResync()
+            return
+        }
+        if (receipt.full) this.clearResync()
+        if (receipt.reset) this.handlers.onStreamReset?.()
+        this.handlers.onSnapshot(receipt.snapshot)
+    }
+
+    private requestResync(): void {
+        if (this.resyncTimer !== undefined) return
+        const retry = () => {
+            if (this.handlers.isStopped() || !this.initialized || !this.socket) return
+            this.send({ type: 'snapshot_resync' })
+            this.resyncTimer = setTimeout(retry, 3000)
+        }
+        retry()
+    }
+
+    private clearResync(): void {
+        clearTimeout(this.resyncTimer)
+        this.resyncTimer = undefined
+    }
+
     private initialize(message: Extract<ServerMessage, { type: 'world_init' }>): void {
         if (message.protocolVersion !== CONTRACT_PROTOCOL_VERSION) {
             this.close()
@@ -136,9 +180,34 @@ export class RuntimeSocket {
             this.handlers.onStatus('Disconnected')
             return
         }
+        const receipt = this.snapshots.initialize(message)
+        if (receipt.kind !== 'applied') {
+            this.close()
+            this.handlers.onError(tGame('game.canvas.protocol'))
+            this.handlers.onStatus('Disconnected')
+            return
+        }
+        this.clearResync()
+        this.handlers.onStreamReset?.()
         this.initialized = true
         this.updateLocale()
-        this.handlers.onWorldInit(message.playerId, message.snapshot, message.map)
+        this.handlers.onWorldInit(message.playerId, receipt.snapshot, message.map)
+    }
+}
+
+function testMode(): boolean {
+    return (
+        typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('test') === '1'
+    )
+}
+
+function parseMessage(data: string): ServerMessage | undefined {
+    try {
+        const message = JSON.parse(data) as ServerMessage
+        return message !== null && typeof message === 'object' ? message : undefined
+    } catch {
+        return undefined
     }
 }
 

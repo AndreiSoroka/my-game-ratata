@@ -3,11 +3,12 @@ import { cancelCharacterControl } from './characterControl'
 
 export function releaseScenarioInput(
     actor: GameCharacter,
-    running: boolean
+    running: boolean,
+    receivedAt?: number
 ): null {
     if (!running) {
         cancelCharacterControl(actor)
     }
-    actor.setMoveInput({ x: 0, y: 0 })
+    actor.setMoveInput({ x: 0, y: 0 }, receivedAt)
     return null
 }

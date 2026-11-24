@@ -22,7 +22,7 @@ import { createDefaultRoomJoiner, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
 import { RoomLife } from './roomLife'
 import { RoomLoop, roomTickMs } from './roomLoop'
-import { type RoomSocket } from './roomMessaging'
+import { openRoomSocket, type RoomSocket } from './roomMessaging'
 import * as roomQueries from './roomQueries'
 import * as roomScenarios from './roomScenarios'
 import { createRoomServices, type RoomServices } from './roomServices'
@@ -39,6 +39,7 @@ export class GameRoom {
     private emptyWorldMode: WorldEmptyMode
     public readonly gameplayNow = (): number => this.clock.now()
     public readonly realNow = (): number => this.clock.realNow()
+    public readonly clockResumeRevision = () => this.clock.resumeRevision
     private readonly characters = new Map<string, GameCharacter>()
     private readonly connections = new Map<RoomSocket, string | undefined>()
     public readonly speechTranslations: RoomSpeechTranslations
@@ -145,7 +146,7 @@ export class GameRoom {
     }
 
     public handleOpen(ws: RoomSocket): void {
-        this.connections.set(ws, undefined)
+        openRoomSocket(this.connections, ws)
     }
 
     public handleClose(ws: RoomSocket): void {

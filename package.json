@@ -12,6 +12,7 @@
         "npc:invitations:dialogue": "bun scripts/npc-invitation-dialogue-check.ts",
         "npc:identity:dialogue": "bun scripts/npc-identity-dialogue-check.ts",
         "npc:navigation:dialogue": "bun scripts/npc-navigation-dialogue-check.ts",
+        "benchmark:snapshots": "bun scripts/snapshot-network-benchmark.ts",
         "dev:backend": "bun run --cwd apps/backend dev",
         "dev:backend:lan": "bun run --cwd apps/backend start",
         "admin:code": "bun apps/backend/src/adminCode.ts",

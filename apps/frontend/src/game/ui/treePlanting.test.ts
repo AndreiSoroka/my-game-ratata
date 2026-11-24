@@ -1,9 +1,14 @@
-import type { ClientMessage, PlantTreePreview, Vector2 } from '@my-game-ratata/contracts'
+import {
+    type ClientMessage,
+    freezeSnapshot,
+    type PlantTreePreview,
+    type Vector2,
+} from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import type { RatataGame } from '../runtime/ratataGame'
-import { characterFixture } from '../testing/characterFixture'
+import { characterFixture, worldFixture } from '../testing/characterFixture'
 import ActionHotbar from './ActionHotbar.vue'
 import TreePlanting from './TreePlanting.vue'
 
@@ -38,7 +43,7 @@ it.each([0, 1, 2, 3])(
         }
     }
 )
-function setup() {
+function setup(frozen = false) {
     vi.useFakeTimers()
     vi.stubGlobal('requestAnimationFrame', () => 1)
     vi.stubGlobal('cancelAnimationFrame', () => undefined)
@@ -64,6 +69,7 @@ function setup() {
     const player = characterFixture('planter', {
         inventory: [{ instanceId: 'seed', itemId: 'sapling' }],
     })
+    if (frozen) freezeSnapshot(worldFixture([player]))
     const onCommand = vi.fn<(message: ClientMessage) => void>()
     const wrapper = mount(TreePlanting, {
         props: {
@@ -251,4 +257,56 @@ it('requires a first touch to select even the initially proposed plot', async ()
     } finally {
         wrapper.unmount()
     }
+})
+
+it('closes an unanswered submission after 500ms even when the frozen player reference never changes', async () => {
+    const { wrapper, player, answer } = setup(true)
+    try {
+        answer()
+        await wrapper.vm.$nextTick()
+        await wrapper.get('button').trigger('click')
+        await vi.advanceTimersByTimeAsync(499)
+        await wrapper.setProps({ player })
+        expect(wrapper.emitted('close')).toBeUndefined()
+        await vi.advanceTimersByTimeAsync(1)
+        expect(wrapper.emitted('close')).toHaveLength(1)
+        expect(Object.isFrozen(player)).toBe(true)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('keeps a real planting approach open at the fallback deadline and closes on its authoritative completion', async () => {
+    const { wrapper, player, answer } = setup(true)
+    try {
+        answer()
+        await wrapper.vm.$nextTick()
+        await wrapper.get('button').trigger('click')
+        await wrapper.setProps({
+            player: {
+                ...player,
+                control: {
+                    mode: 'action',
+                    targetId: null,
+                    action: { kind: 'plant_tree', position: { x: 8, y: 24 } },
+                },
+            },
+        })
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(wrapper.emitted('close')).toBeUndefined()
+        await wrapper.setProps({ player: { ...player, control: { mode: 'none', targetId: null } } })
+        expect(wrapper.emitted('close')).toHaveLength(1)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('disposes the independent submission deadline when the panel unmounts', async () => {
+    const { wrapper, answer } = setup(true)
+    answer()
+    await wrapper.vm.$nextTick()
+    await wrapper.get('button').trigger('click')
+    wrapper.unmount()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(wrapper.emitted('close')).toBeUndefined()
 })

@@ -34,11 +34,7 @@ import {
     type RuntimePresentation,
     suspendRuntimePresentation,
 } from './runtimePresentationLifecycle'
-import {
-    runtimeCanSelect,
-    type RuntimeSelectionContext,
-    runtimeSelectionVisible,
-} from './runtimeSelection'
+import { runtimeCanSelect, runtimeSelectionVisible } from './runtimeSelection'
 import { RuntimeSocket } from './runtimeSocket'
 import type { RenderedTiledMap } from './tiledMap'
 
@@ -64,6 +60,7 @@ export class RatataGame {
         mapReady: this.isMapReady,
         snapshot: this.snapshot,
         playerId: this.localPlayerId,
+        characterPosition: (id) => this.view?.sceneActors?.characterPosition(id),
         canSelect: (key) => this.canSelectTarget(key),
         chat: this.chat,
         plant: (point) => this.planting.pick(point),
@@ -98,6 +95,8 @@ export class RatataGame {
             onSpeechTranslation: options.onSpeechTranslation,
             getLocale: () => gameLocale.value,
             onSnapshot: (snapshot) => this.applySnapshot(snapshot),
+            onStreamReset: () => this.view?.sceneActors?.resetMotion(),
+            onSnapshotInvalidated: () => this.view?.sceneActors?.holdMotion(),
             onPlantingPreview: (preview) => this.planting.receive(preview),
             onStatus: (status) => {
                 this.connected = status === 'Connected'
@@ -217,16 +216,15 @@ export class RatataGame {
         return runtimeCanSelect(key, this.selectionContext())
     }
 
-    private selectionContext(): RuntimeSelectionContext {
-        return {
-            snapshot: this.snapshot,
-            playerId: this.localPlayerId,
-            tileSize: this.selectionTileSize,
-            viewport: this.isMapReady ? this.view?.engine?.currentScene.camera.viewport : undefined,
-            characterVisible: (id) => this.isCharacterVisible(id),
-            positionVisible: (point) => this.isPositionVisible(point),
-        }
-    }
+    private readonly selectionContext = () => ({
+        snapshot: this.snapshot,
+        playerId: this.localPlayerId,
+        tileSize: this.selectionTileSize,
+        viewport: this.isMapReady ? this.view?.engine?.currentScene.camera.viewport : undefined,
+        characterVisible: (id: string) => this.isCharacterVisible(id),
+        characterPosition: (id: string) => this.view?.sceneActors?.characterPosition(id),
+        positionVisible: (point: Vector2) => this.isPositionVisible(point),
+    })
 
     private get isMapReady(): boolean {
         return this.connected && !this.stopped && this.maps.isReady

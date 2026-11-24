@@ -5,6 +5,7 @@ export class WorldClock {
     private pausedAt: number | undefined
     private excluded = 0
     public allowsAutonomy = false
+    public resumeRevision = 0
 
     public constructor(private readonly wallNow: () => number) {}
 
@@ -36,6 +37,7 @@ export class WorldClock {
         } else if (!paused && this.pausedAt !== undefined) {
             this.excluded += this.wallNow() - this.pausedAt
             this.pausedAt = undefined
+            this.resumeRevision += 1
         }
     }
 }

@@ -86,6 +86,10 @@ describe('bounded damage feedback lifecycle', () => {
             expect(feedback.elapsed('hero')).toBe(100)
             expect(refresh).toHaveBeenCalledWith('hero')
             expect(body.pos).toEqual({ x: 10, y: 20 })
+            const previousX = label.pos.x
+            body.pos = { x: 20, y: 30 }
+            frame(10)
+            expect(label.pos.x).toBe(previousX + 10)
             frame(140)
             expect(feedback.elapsed('hero')).toBeUndefined()
             expect(body.graphics.offset).toEqual({ x: 0, y: 0 })

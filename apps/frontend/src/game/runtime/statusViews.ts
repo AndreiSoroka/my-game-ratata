@@ -1,4 +1,4 @@
-import type { CharacterSnapshot } from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, Vector2 } from '@my-game-ratata/contracts'
 import { Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
 
 import { tGame } from '@/shared/lib/i18n'
@@ -8,6 +8,7 @@ import { EFFECT_BUDGET } from './effectBudget'
 interface StatusView {
     label: Label
     until: number
+    position: Vector2
 }
 export class StatusViews {
     private now = 0
@@ -19,7 +20,10 @@ export class StatusViews {
         family: 'system-ui',
         shadow: { color: Color.Black, offset: vec(1, 1), blur: 0 },
     })
-    public constructor(private readonly engine: Engine) {
+    public constructor(
+        private readonly engine: Engine,
+        private readonly characterPosition: (id: string) => Vector2 | undefined = () => undefined
+    ) {
         engine.on('postupdate', this.update)
     }
     public sync(characters: CharacterSnapshot[]): void {
@@ -31,14 +35,13 @@ export class StatusViews {
             if (!view && this.views.size < EFFECT_BUDGET.status) {
                 const label = new Label({ font: this.font, text: '' })
                 label.graphics.anchor = vec(0.5, 1)
-                view = { label, until: 0 }
+                view = { label, until: 0, position: character.position }
                 this.views.set(character.id, view)
                 this.engine.add(label)
             }
             if (view) {
                 view.until = this.now + character.cooldowns.stunMsLeft
-                view.label.pos = vec(character.position.x, character.position.y - 53)
-                view.label.z = character.position.y + 31
+                view.position = character.position
                 view.label.text = `${tGame('game.canvas.stun')} ${(character.cooldowns.stunMsLeft / 1000).toFixed(1)}`
             }
         }
@@ -47,6 +50,14 @@ export class StatusViews {
                 view.label.kill()
                 this.views.delete(id)
             }
+        this.reposition()
+    }
+    public reposition(): void {
+        for (const [id, view] of this.views) {
+            const position = this.characterPosition(id) ?? view.position
+            view.label.pos = vec(position.x, position.y - 53)
+            view.label.z = position.y + 31
+        }
     }
     public clear(): void {
         for (const view of this.views.values()) view.label.kill()

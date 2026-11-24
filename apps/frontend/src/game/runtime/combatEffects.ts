@@ -2,10 +2,17 @@ import {
     type CharacterSnapshot,
     type GameEventPayload,
     PRAYER_RULES,
+    type Vector2,
     type WorldCombatTarget,
 } from '@my-game-ratata/contracts'
-import { Actor, Color, type Engine, Font, Label, type PostUpdateEvent, vec } from 'excalibur'
+import { Actor, type Engine, Label, type PostUpdateEvent, vec } from 'excalibur'
 
+import {
+    combatCaptionFont,
+    endedCombatEffect,
+    repositionCombatAttachments,
+    takePrayerCompletion,
+} from './combatAttachments'
 import {
     captionCharacterId,
     captionColor,
@@ -50,7 +57,8 @@ export class CombatEffects {
         private readonly character: (id: string) => CharacterSnapshot | undefined,
         private readonly worldTarget: (
             target: WorldCombatTarget
-        ) => EffectTarget | undefined = () => undefined
+        ) => EffectTarget | undefined = () => undefined,
+        private readonly characterPosition: (id: string) => Vector2 | undefined = () => undefined
     ) {
         this.particles = new CombatParticles(engine, this.reduced)
         engine.on('postupdate', this.update)
@@ -91,6 +99,16 @@ export class CombatEffects {
             if (channelEnded(effect.cue, this.character)) this.remove(effect)
         }
         this.effects = this.effects.filter((effect) => !effect.actor.isKilled())
+        this.reposition()
+    }
+    public reposition(): void {
+        repositionCombatAttachments(
+            this.barriers,
+            this.effects,
+            (id) => this.characterPosition(id) ?? this.character(id)?.position,
+            this.now,
+            this.reduced
+        )
     }
     public forgetCharacter(id: string): void {
         this.effects = this.effects.filter((effect) => {
@@ -129,10 +147,6 @@ export class CombatEffects {
             this.barriers.set(character.id, actor)
             this.engine.add(actor)
         }
-        if (actor) {
-            actor.pos = vec(character.position.x, character.position.y - 15)
-            actor.z = character.position.y + 5
-        }
     }
     public clear(): void {
         for (const effect of this.effects) this.remove(effect)
@@ -151,28 +165,14 @@ export class CombatEffects {
         if (event.phase === 'started') return
         if (event.kind !== 'cast' && (event.kind !== 'attack' || !event.actionId)) return
         this.effects = this.effects.filter((effect) => {
-            const cue = effect.cue
-            const ended =
-                event.kind === 'cast'
-                    ? cue?.channel && cue.fromId === event.actorId
-                    : cue?.aimActionId === event.actionId
+            const ended = endedCombatEffect(event, effect.cue)
             if (ended) this.remove(effect)
             return !ended
         })
     }
     private removePrayerCompletion(event: GameEventPayload): void {
-        for (let index = this.effects.length - 1; index >= 0; index -= 1) {
-            const effect = this.effects[index]!
-            if (
-                effect.prayerCompletion &&
-                effect.prayerCompletion.actorId === event.actorId &&
-                effect.prayerCompletion.abilityId === event.abilityId
-            ) {
-                this.effects.splice(index, 1)
-                this.remove(effect)
-                return
-            }
-        }
+        const effect = takePrayerCompletion(this.effects, event)
+        if (effect) this.remove(effect)
     }
     private cueTarget(cue: EffectCue): EffectTarget | undefined {
         if (cue.projectile) return { position: cue.projectile.endpoint }
@@ -219,13 +219,7 @@ export class CombatEffects {
             text,
             pos: vec(target.position.x, target.position.y - 42),
             z: target.position.y + 30,
-            font: new Font({
-                size: 8,
-                bold: true,
-                color: Color.fromHex(color),
-                family: 'system-ui',
-                shadow: { color: Color.Black, offset: vec(1, 1), blur: 0 },
-            }),
+            font: combatCaptionFont(color),
         })
         actor.graphics.anchor = vec(0.5, 1)
         this.add({
@@ -302,5 +296,6 @@ export class CombatEffects {
             if (!keep) this.remove(effect)
             return keep
         })
+        this.reposition()
     }
 }

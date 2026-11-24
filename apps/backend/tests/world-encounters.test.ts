@@ -97,7 +97,7 @@ describe('reachable wilderness encounters', () => {
         vi.useFakeTimers()
         vi.setSystemTime(10_000)
         const room = new GameRoom(loadNavigationService(CENTER_LOCATION_ID))
-        const socket = { send: () => 0 } as unknown as RoomSocket
+        const socket = { send: () => 1 } as unknown as RoomSocket
         room.handleOpen(socket)
         room.handleMessage(
             socket,

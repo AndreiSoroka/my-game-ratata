@@ -7,6 +7,7 @@ import {
     npcRuntimeFixture,
 } from './npcAiRuntimeFixture'
 import { nearbyScenarioPoint } from './scenarioRoomHelpers'
+import { receivedSnapshot } from './snapshotTestHelpers'
 
 let fixture: ReturnType<typeof npcRuntimeFixture> | undefined
 beforeEach(() => {
@@ -96,9 +97,7 @@ it('delivers an NPC invitation to the player and wakes the NPC on acceptance', a
     )
     await f.advance()
 
-    const playerExchange = () =>
-        f.alice.sent.findLast((message) => message.type === 'snapshot')
-            ?.snapshot.social?.exchange
+    const playerExchange = () => receivedSnapshot(f.alice.sent).social?.exchange
     const invitation = playerExchange()
     expect(invitation).toMatchObject({
         status: 'invited',

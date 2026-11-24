@@ -21,10 +21,11 @@ import {
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
 import { WorldLocations } from '../src/game/worldLocations'
+import { receivedSnapshot } from './snapshotTestHelpers'
 
 interface FakeSocket {
     sent: ServerMessage[]
-    send(payload: string): void
+    send(payload: string): number
 }
 
 const rooms: GameRoom[] = []
@@ -440,7 +441,7 @@ function socket(): FakeSocket {
     return {
         sent: [],
         send(payload) {
-            this.sent.push(JSON.parse(payload) as ServerMessage)
+            return this.sent.push(JSON.parse(payload) as ServerMessage)
         },
     }
 }
@@ -493,11 +494,5 @@ function findPlayer(
 }
 
 function latestSnapshot(value: FakeSocket): WorldSnapshot {
-    const message = value.sent.findLast(
-        (candidate) => candidate.type === 'snapshot'
-    )
-    if (message?.type !== 'snapshot') {
-        throw new Error('Missing snapshot')
-    }
-    return message.snapshot
+    return receivedSnapshot(value.sent)
 }

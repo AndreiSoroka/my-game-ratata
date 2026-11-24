@@ -20,13 +20,17 @@ interface PointerContext {
     snapshot: WorldSnapshot | undefined
     playerId: string | undefined
     visible: (id: string) => boolean
+    characterPosition?: (id: string) => Vector2 | undefined
     resourceVisible?: (node: AdventureResourceNode) => boolean
     plant: (point: Vector2) => boolean
     select: (id: string) => void
     send: (command: ClientMessage) => void
 }
 
-interface RuntimePointerSource extends Pick<PointerContext, 'snapshot' | 'playerId'> {
+interface RuntimePointerSource extends Pick<
+    PointerContext,
+    'snapshot' | 'playerId' | 'characterPosition'
+> {
     engine: Engine | undefined
     mapReady: boolean
     canSelect: (key: string) => boolean
@@ -47,6 +51,7 @@ export function createRuntimePointerHandlers(read: () => RuntimePointerSource) {
                 snapshot: source.snapshot,
                 playerId: source.playerId,
                 visible: (id) => source.canSelect(`character:${id}`),
+                characterPosition: source.characterPosition,
                 resourceVisible: (node) =>
                     source.canSelect(`resource:${node.id}`) && source.resourceVisible(node),
                 plant: source.plant,
@@ -57,7 +62,16 @@ export function createRuntimePointerHandlers(read: () => RuntimePointerSource) {
         click(event: MouseEvent): void {
             const previous = lastClickedCharacter
             lastClickedCharacter = undefined
-            const { engine, mapReady, chat, snapshot, playerId, canSelect, options } = read()
+            const {
+                engine,
+                mapReady,
+                chat,
+                snapshot,
+                playerId,
+                canSelect,
+                options,
+                characterPosition,
+            } = read()
             if (!engine || !mapReady || chat.isActive || worldPointerBlocked()) return
             if (!isUnmodifiedPrimaryClick(event)) return
             const point = GlobalCoordinates.fromPagePosition(
@@ -65,8 +79,12 @@ export function createRuntimePointerHandlers(read: () => RuntimePointerSource) {
                 event.pageY,
                 engine
             ).worldPos
-            const id = characterAt(snapshot, playerId, point, (actorId) =>
-                canSelect(`character:${actorId}`)
+            const id = characterAt(
+                snapshot,
+                playerId,
+                point,
+                (actorId) => canSelect(`character:${actorId}`),
+                characterPosition
             )
             if (event.detail === 1) lastClickedCharacter = id
             if (event.detail === 2 && id && id === previous) options.onCharacterDoubleClick?.(id)
@@ -97,7 +115,13 @@ export function handleRuntimePointer(event: PointerEvent, context: PointerContex
     if (event.button === PointerButton.Right || worldPointerBlocked()) return
     const target = { x: event.worldPos.x, y: event.worldPos.y }
     if (context.plant(target)) return
-    const id = characterAt(context.snapshot, context.playerId, target, context.visible)
+    const id = characterAt(
+        context.snapshot,
+        context.playerId,
+        target,
+        context.visible,
+        context.characterPosition
+    )
     if (id) {
         context.select(id)
         return

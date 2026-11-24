@@ -68,7 +68,7 @@ export class ScenarioService {
         now: number
     ): string | null {
         if (command.type === 'release_input') {
-            return this.releaseInput(owner)
+            return this.releaseInput(owner, now)
         }
         if (!owner.alive || owner.tags.has('state.retired')) {
             return 'Персонаж сейчас недоступен.'
@@ -290,8 +290,8 @@ export class ScenarioService {
             )
         }
     }
-    private releaseInput(actor: GameCharacter): null {
-        return releaseScenarioInput(actor, this.running(actor.id))
+    private releaseInput(actor: GameCharacter, now: number): null {
+        return releaseScenarioInput(actor, this.running(actor.id), now)
     }
     private library(id: string): ScenarioLibrary {
         return scenarioLibraryFor(this.libraries, id)

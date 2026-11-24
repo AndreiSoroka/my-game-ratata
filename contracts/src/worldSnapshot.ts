@@ -27,6 +27,8 @@ export type FootstepSourceSnapshot = Pick<
 >
 
 export interface WorldSnapshot {
+    /** Resolved simulation interval in milliseconds; zero disables motion continuation. */
+    stepMs?: number
     /** Expanded server interest bounds. Missing spatial entries outside these are omitted, not removed. */
     viewBounds?: ViewportBounds
     footstepSources?: FootstepSourceSnapshot[]

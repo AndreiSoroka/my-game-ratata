@@ -156,5 +156,5 @@ function applyMovementInput(
     if (message.axis.x !== 0 || message.axis.y !== 0) {
         cancelCharacterControl(player)
     }
-    player.setMoveInput(message.axis)
+    player.setMoveInput(message.axis, context.now)
 }

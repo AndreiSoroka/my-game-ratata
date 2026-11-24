@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NavigationService } from '../../../../backend/src/game/navigation'
 import { GameRoom } from '../../../../backend/src/game/room'
 import type { RoomSocket } from '../../../../backend/src/game/roomMessaging'
+import { RuntimeSnapshotStream } from '../runtime/runtimeSnapshotStream'
 import { stopAgentMovement } from './agentMovementStop'
 import { createAgentNavigator } from './agentNavigation'
 import type { RatataTestState, TestCommand } from './testInterface'
@@ -39,12 +40,19 @@ function setup() {
     rooms.push(room)
     let playerId: string | undefined
     let snapshot: WorldSnapshot | undefined
+    const stream = new RuntimeSnapshotStream()
     const socket = {
         send: (raw: string) => {
             const message = JSON.parse(raw) as ServerMessage
             if (message.type === 'world_init') playerId = message.playerId
-            if (message.type === 'world_init' || message.type === 'snapshot')
-                snapshot = message.snapshot
+            const receipt =
+                message.type === 'world_init'
+                    ? stream.initialize(message)
+                    : message.type === 'snapshot' || message.type === 'snapshot_delta'
+                      ? stream.receive(message)
+                      : undefined
+            if (receipt?.kind === 'applied') snapshot = receipt.snapshot
+            return raw.length
         },
     } as unknown as RoomSocket
     room.handleOpen(socket)

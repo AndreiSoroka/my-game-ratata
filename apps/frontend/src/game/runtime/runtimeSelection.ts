@@ -19,6 +19,7 @@ export interface RuntimeSelectionContext {
     viewport: { left: number; top: number; right: number; bottom: number } | undefined
     positionVisible: (position: Vector2) => boolean
     characterVisible: (id: string) => boolean
+    characterPosition?: (id: string) => Vector2 | undefined
 }
 
 export function runtimeSelectionVisible(
@@ -26,7 +27,10 @@ export function runtimeSelectionVisible(
     context: RuntimeSelectionContext
 ): boolean {
     const viewport = context.viewport
-    if (!viewport || !selectionIntersectsViewport(target, viewport)) return false
+    const position =
+        target.kind === 'character' ? context.characterPosition?.(target.id) : undefined
+    const displayed = position ? { ...target, position } : target
+    if (!viewport || !selectionIntersectsViewport(displayed, viewport)) return false
     if (target.kind === 'character') return context.characterVisible(target.id)
     if (target.interactionAreas?.length) {
         const player = context.snapshot?.characters.find((actor) => actor.id === context.playerId)

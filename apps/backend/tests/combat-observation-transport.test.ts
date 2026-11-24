@@ -22,6 +22,7 @@ import {
     privacyRequest,
     privacyToken,
 } from './combatObservationFixture'
+import { receivedSnapshot } from './snapshotTestHelpers'
 
 beforeEach(() => {
     vi.stubGlobal('Bun', { env: {} })
@@ -43,13 +44,6 @@ function receivedEvents(messages: ServerMessage[]): GameEventPayload[] {
     return messages.flatMap((message) =>
         message.type === 'event' ? [message.event] : []
     )
-}
-function receivedSnapshot(messages: ServerMessage[]): WorldSnapshot {
-    const message = messages.findLast((entry) => entry.type === 'snapshot')
-    if (message === undefined) {
-        throw new Error('Expected serialized snapshot')
-    }
-    return message.snapshot
 }
 
 function expectOwnerSegments(owner: CharacterSnapshot | undefined): void {
@@ -162,6 +156,7 @@ describe('serialized WebSocket combat privacy', () => {
                 anonymous.messages.some(
                     (message) =>
                         message.type === 'snapshot' ||
+                        message.type === 'snapshot_delta' ||
                         message.type === 'world_init'
                 )
             ).toBe(false)

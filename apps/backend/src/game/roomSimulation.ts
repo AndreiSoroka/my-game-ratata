@@ -16,13 +16,12 @@ import { trackRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { GameRoom } from './room'
 import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
-import { type RoomSocket, send, sendSnapshot } from './roomMessaging'
+import { type RoomSocket, send } from './roomMessaging'
+import { publishRoomSnapshots } from './roomSnapshotPublication'
 import { characterMovementIntent, travelRoomCharacter } from './roomTravel'
-import { socketViewport } from './roomViewport'
 import { advanceSavvaTerritory, SAVVA_ID } from './savvaTerritory'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
-import { projectViewport } from './viewportProjection'
 import { pauseWorkerActivity } from './workerActivityState'
 import type { WorldLocations } from './worldLocations'
 
@@ -91,11 +90,17 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     }
     advanceControllers(context, reacting, conversations)
     const roadRecovery = trackRoadPrayerRecovery(characters.values(), onEvents)
+    const motionDeadlines = new Map<string, number>()
     for (const character of characters.values()) {
         advanceWorldCharacter(
             character,
             context,
-            roadRecovery?.observe(character)
+            roadRecovery?.observe(character),
+            ({ continuationUntil }) => {
+                if (continuationUntil !== undefined) {
+                    motionDeadlines.set(character.id, continuationUntil)
+                }
+            }
         )
     }
     for (const character of characters.values()) {
@@ -120,16 +125,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     room.refreshPrayerAuraEnvironment()
     context.world.updateChestViews(characters, now)
     context.onEvents(context.parties.update(characters.values(), now))
-    for (const [ws, id] of context.connections) {
-        if (id === undefined) {
-            continue
-        }
-        const locationId = characters.get(id)?.locationId
-        const viewport = socketViewport(ws, id, locationId)
-        sendSnapshot(ws, () =>
-            projectViewport(context.snapshot(now, locationId, id), viewport, id)
-        )
-    }
+    publishRoomSnapshots(context, motionDeadlines)
 }
 
 function reconcileRoomConversations(
@@ -204,7 +200,10 @@ function advanceControllers(
 function advanceWorldCharacter(
     character: GameCharacter,
     context: SimulationContext,
-    onEnergyRegen?: Parameters<typeof advanceCharacter>[0]['onEnergyRegen']
+    onEnergyRegen?: Parameters<typeof advanceCharacter>[0]['onEnergyRegen'],
+    onMotionResolved?: Parameters<
+        typeof advanceCharacter
+    >[0]['onMotionResolved']
 ): void {
     const { now, deltaMs, world, onEvents } = context
     const intent = characterMovementIntent(character, now, deltaMs)
@@ -214,6 +213,7 @@ function advanceWorldCharacter(
         character,
         deltaMs,
         now,
+        ...(onMotionResolved === undefined ? {} : { onMotionResolved }),
         navigation,
         onEvents,
         ...(onEnergyRegen === undefined ? {} : { onEnergyRegen }),

@@ -13,6 +13,7 @@ export function updateRuntimeDebug(
                   | 'prayerAreaStates'
                   | 'characterOpacity'
                   | 'heardFootstepIds'
+                  | 'renderedCharacters'
               >
           }
         | undefined,
@@ -36,6 +37,7 @@ export function updateRuntimeDebug(
                   prayerAreas: () => view?.sceneActors.prayerAreaStates() ?? [],
                   characterOpacity: (id: string) => view?.sceneActors.characterOpacity(id),
                   heardFootstepIds: () => view?.sceneActors.heardFootstepIds() ?? [],
+                  renderedCharacters: () => view?.sceneActors.renderedCharacters() ?? [],
               }
             : {}),
         worldToPage: (point) => {

@@ -5,6 +5,7 @@ import type {
 } from '@my-game-ratata/contracts'
 import { expect, test } from '@playwright/test'
 
+import { RuntimeSnapshotStream } from '../src/game/runtime/runtimeSnapshotStream'
 import { selectedWorldTarget } from './world-target-ui'
 
 for (const width of [390, 1280]) {
@@ -16,6 +17,7 @@ for (const width of [390, 1280]) {
         let channel = false
         let entered = false
         const actions: ClientMessage[] = []
+        const snapshots = new RuntimeSnapshotStream()
 
         // Exercise the game client against a live map. The socket fixture supplies only
         // the UI state of an already-open portal and an already-started channel.
@@ -34,10 +36,19 @@ for (const width of [390, 1280]) {
                 server.send(data)
             })
             server.onMessage((data) => {
-                const message = JSON.parse(data.toString()) as ServerMessage
+                let message = JSON.parse(data.toString()) as ServerMessage
                 if (message.type === 'world_init') playerId = message.playerId
-                if (message.type === 'world_init' || message.type === 'snapshot') {
-                    const snapshot = message.snapshot
+                if (
+                    message.type === 'world_init' ||
+                    message.type === 'snapshot' ||
+                    message.type === 'snapshot_delta'
+                ) {
+                    const receipt =
+                        message.type === 'world_init'
+                            ? snapshots.initialize(message)
+                            : snapshots.receive(message)
+                    if (receipt.kind !== 'applied') throw new Error('Invalid fixture stream')
+                    const snapshot = structuredClone(receipt.snapshot)
                     const player = snapshot.characters.find((actor) => actor.id === playerId)
                     if (player && snapshot.location) {
                         portal ??= {
@@ -45,7 +56,7 @@ for (const width of [390, 1280]) {
                             position: { ...player.position },
                             locationId: snapshot.location.id,
                             destinationLocationId: 'map-1-2',
-                            destinationName: 'Предместье',
+                            destinationName: 'Западные поля',
                             expiresAt: snapshot.serverTime + 60_000,
                         }
                         snapshot.portals = entered ? [] : [portal]
@@ -57,6 +68,15 @@ for (const width of [390, 1280]) {
                             }
                         }
                     }
+                    message =
+                        message.type === 'world_init'
+                            ? { ...message, snapshot }
+                            : {
+                                  type: 'snapshot',
+                                  streamId: message.streamId,
+                                  seq: message.seq,
+                                  snapshot,
+                              }
                 }
                 client.send(JSON.stringify(message))
             })
@@ -77,7 +97,7 @@ for (const width of [390, 1280]) {
             'data-selected-target-key',
             'portal:ui-portal'
         )
-        await expect(page.getByRole('button', { name: /Портал — Предместье/ })).toBeVisible()
+        await expect(page.getByRole('button', { name: /Портал — Западные поля/ })).toBeVisible()
         await page.keyboard.press('KeyF')
         await expect
             .poll(() => actions)

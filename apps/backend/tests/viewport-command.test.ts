@@ -172,12 +172,18 @@ it('does not build or stream snapshots to sockets that have not joined', () => {
 
     expect(build).not.toHaveBeenCalled()
     expect(
-        send.mock.calls.some(
-            ([raw]) => (JSON.parse(raw) as { type: string }).type === 'snapshot'
+        send.mock.calls.some(([raw]) =>
+            ['snapshot', 'snapshot_delta'].includes(
+                (JSON.parse(raw) as { type: string }).type
+            )
         )
     ).toBe(false)
     const joined = joinScenarioRoom(room, 'Snapshot traffic after join')
     expect(joined.sent.some(({ type }) => type === 'world_init')).toBe(true)
     vi.advanceTimersByTime(50)
-    expect(joined.sent.some(({ type }) => type === 'snapshot')).toBe(true)
+    expect(
+        joined.sent.some(
+            ({ type }) => type === 'snapshot' || type === 'snapshot_delta'
+        )
+    ).toBe(true)
 })

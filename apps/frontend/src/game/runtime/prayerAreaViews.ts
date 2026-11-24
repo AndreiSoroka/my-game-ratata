@@ -3,6 +3,7 @@ import {
     PRAYER_RULES,
     type PrayerActionId,
     snapshotPrayerParameters,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 import {
     Actor,
@@ -108,6 +109,13 @@ export class PrayerAreaViews {
             abilityId,
             radius,
         }))
+    }
+
+    public reposition(positionFor: (id: string) => Vector2 | undefined): void {
+        for (const [id, view] of this.views) {
+            const position = positionFor(id)
+            if (position) view.actor.pos = vec(position.x, position.y)
+        }
     }
 
     public clear(): void {

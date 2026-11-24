@@ -24,6 +24,7 @@ interface HitView {
     hit: DamageHit
     x: number
     y: number
+    offsetX: number
 }
 interface FlashView {
     body: Actor
@@ -142,7 +143,7 @@ export class DamageFeedback {
         })
         label.graphics.anchor = vec(0.5, 1)
         this.engine.add(label)
-        this.numbers.set(hit.id, { label, hit, x, y })
+        this.numbers.set(hit.id, { label, hit, x, y, offsetX: x - body.pos.x })
     }
 
     private readonly onFrame = (event: PostUpdateEvent<Engine>): void => {
@@ -153,6 +154,12 @@ export class DamageFeedback {
                 number.label.kill()
                 this.numbers.delete(id)
             } else {
+                const body = this.bodyFor(number.hit.targetId)
+                if (body) {
+                    number.x = body.pos.x + number.offsetX
+                    number.y = body.pos.y - 24
+                    number.label.z = body.z + 20
+                }
                 number.label.pos = vec(number.x, number.y - (this.reduced ? 0 : progress * 18))
                 number.label.graphics.opacity = 1 - progress * progress
             }

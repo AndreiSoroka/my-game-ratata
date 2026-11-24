@@ -100,6 +100,8 @@ function parseLocationBoundary(
             return parsePortalBoundary(record)
         case 'set_viewport':
             return parseViewportCommand(record)
+        case 'snapshot_resync':
+            return { message: { type: 'snapshot_resync' } }
         default:
             return undefined
     }

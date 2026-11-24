@@ -56,9 +56,9 @@ const initialCount = saplings()
 let sequence = 0,
     expected = '',
     lastRequest = -Infinity,
-    submittedAt = 0,
     seenApproach = false
 let timer: ReturnType<typeof setTimeout> | undefined
+let submissionTimer: ReturnType<typeof setTimeout> | undefined
 let unsubscribe: (() => void) | undefined
 let frame = 0
 let disposed = false
@@ -131,7 +131,10 @@ function confirm(): void {
         return
     }
     submitted.value = true
-    submittedAt = performance.now()
+    submissionTimer = setTimeout(() => {
+        submissionTimer = undefined
+        if (!disposed && props.player.control?.action?.kind !== 'plant_tree') closePanel()
+    }, 500)
     props.game.planting.set()
     emit('command', {
         type: 'auto_action',
@@ -143,6 +146,11 @@ function confirm(): void {
 }
 function cancel(): void {
     if (submitted.value) emit('command', { type: 'cancel_control' })
+    closePanel()
+}
+function closePanel(): void {
+    clearTimeout(submissionTimer)
+    submissionTimer = undefined
     emit('close')
 }
 useEscapeOwner({ active: () => true, escape: cancel, element: panel })
@@ -175,13 +183,12 @@ function key(event: KeyboardEvent): void {
 }
 watch([() => props.player, () => props.location?.id], () => {
     if (!props.player.alive || props.location?.id !== locationId) {
-        emit('close')
+        closePanel()
         return
     }
     if (!submitted.value) return
     if (props.player.control?.action?.kind === 'plant_tree') seenApproach = true
-    else if (seenApproach || saplings() < initialCount || performance.now() - submittedAt > 500)
-        emit('close')
+    else if (seenApproach || saplings() < initialCount) closePanel()
 })
 function project(): void {
     if (disposed) return
@@ -201,6 +208,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
     disposed = true
     clearTimeout(timer)
+    clearTimeout(submissionTimer)
     cancelAnimationFrame(frame)
     unsubscribe?.()
     props.game.planting.set()

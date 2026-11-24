@@ -12,7 +12,12 @@ import {
     type ClientContext,
     handleCharacterMessage,
 } from './roomClientMessages'
-import { type RoomSocket, send, sendError } from './roomMessaging'
+import {
+    requestSnapshotResync,
+    type RoomSocket,
+    send,
+    sendError,
+} from './roomMessaging'
 import { setSocketViewport } from './roomViewport'
 
 function dispatchRawRoomMessage(
@@ -72,8 +77,7 @@ function dispatchRoomClientMessage(
         sendError(ws, 'not_joined', 'Join the room before sending input')
         return
     }
-    if (message.type === 'set_viewport') {
-        setSocketViewport(ws, player.id, player.locationId, message)
+    if (handleSnapshotControl(ws, player, message, now)) {
         return
     }
     if (message.type === 'set_locale') {
@@ -104,4 +108,21 @@ function dispatchRoomClientMessage(
         return
     }
     handleCharacterMessage(context, player, message, now)
+}
+
+function handleSnapshotControl(
+    ws: RoomSocket,
+    player: GameCharacter,
+    message: ClientMessage,
+    now: number
+): boolean {
+    if (message.type === 'set_viewport') {
+        setSocketViewport(ws, player.id, player.locationId, message)
+        return true
+    }
+    if (message.type === 'snapshot_resync') {
+        requestSnapshotResync(ws, now)
+        return true
+    }
+    return false
 }

@@ -1,5 +1,4 @@
 import {
-    CONTRACT_PROTOCOL_VERSION,
     type GameEventPayload,
     type GameLocale,
     type HeroClass,
@@ -22,15 +21,17 @@ import { cancelPrayerCast } from './prayerCancellation'
 import type { GameRoom } from './room'
 import {
     broadcastEvent,
+    clearSnapshotStream,
     type RoomSocket,
-    send,
     sendError,
 } from './roomMessaging'
 import { createRoomPlayerFactory } from './roomPlayer'
+import { sendInitialRoomState } from './roomSnapshotPublication'
 import { clearSocketViewport } from './roomViewport'
+import { closeSnapshotSocket } from './snapshotStream'
 import type { WorldLocations } from './worldLocations'
 
-interface JoinContext {
+export interface JoinContext {
     closeChestViews?: (actorId: string) => void
     characters: Map<string, GameCharacter>
     connections: Map<RoomSocket, string | undefined>
@@ -49,6 +50,7 @@ interface JoinContext {
     onAttached?: () => void
     now?: () => number
     tickMs: number
+    clockResumeRevision?: () => number
 }
 
 export function createRoomJoiner(
@@ -71,6 +73,7 @@ export function createRoomJoiner(
                 onJoined: (socket, locale) =>
                     context.room.speechTranslations.joined(socket, locale),
                 now: context.room.gameplayNow,
+                clockResumeRevision: context.room.clockResumeRevision,
                 closeChestViews: (id) => context.world().closeChestViews(id),
                 mapFor: (character) =>
                     context.room.navigationFor(character).summary,
@@ -154,14 +157,9 @@ export function joinRoom(
     context.connections.set(ws, character.id)
     context.onJoined?.(ws, locale)
     context.onAttached?.()
-    send(ws, {
-        map: context.mapFor(character),
-        playerId: character.id,
-        protocolVersion: CONTRACT_PROTOCOL_VERSION,
-        snapshot: context.snapshotFor(character),
-        tickMs: context.tickMs,
-        type: 'world_init',
-    })
+    if (!initializeJoinedPlayer(context, ws, character, now)) {
+        return
+    }
     broadcastEvent(
         context.connections.keys(),
         {
@@ -249,6 +247,7 @@ export function leaveRoom(
     now = Date.now()
 ): void {
     clearSocketViewport(socket)
+    clearSnapshotStream(socket)
     const playerId = connections.get(socket)
     connections.delete(socket)
     if (
@@ -280,4 +279,26 @@ function stopAndPublish(
     for (const event of stopCharacterMovement(character, now)) {
         broadcastEvent(sockets, event, now)
     }
+}
+
+function initializeJoinedPlayer(
+    context: JoinContext,
+    ws: RoomSocket,
+    character: GameCharacter,
+    now: () => number
+): boolean {
+    const initialized = sendInitialRoomState(context, ws, character)
+    if (!initialized) {
+        leaveRoom(
+            context.connections,
+            context.characters,
+            ws,
+            (id) => context.closeChestViews?.(id),
+            context.closeConversations,
+            now()
+        )
+        closeSnapshotSocket(ws)
+        return false
+    }
+    return true
 }

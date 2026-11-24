@@ -13,6 +13,7 @@ import { canWalkDuringPrayer } from './combatMovement'
 import { effectiveDashCost, effectiveDashDuration } from './effectiveParameters'
 import { magicBlocksMovement } from './magicState'
 import { normalize } from './math'
+import { clearMovementInputHistory } from './movementInputHistory'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
     recordResourceSpend,
@@ -61,6 +62,12 @@ export function handleMovementCommand(
             ? cancelPrayerCast(character, now)
             : []
     if (message.type === 'movement_mode') {
+        if (
+            character.movement.mode !== message.mode ||
+            character.movement.dashUntil !== 0
+        ) {
+            clearMovementInputHistory(character)
+        }
         character.movement.mode = message.mode
         character.movement.dashUntil = 0
         if (message.mode === 'sneaking') {
@@ -69,6 +76,7 @@ export function handleMovementCommand(
         return events
     }
     const state = character.movement
+    clearMovementInputHistory(character)
     state.dashDirection = dashDirection(character)
     state.dashStartedAt = now
     state.dashUntil = now + effectiveDashDuration(character)

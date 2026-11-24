@@ -16,6 +16,7 @@ declare global {
             prayerAreas?: () => PrayerAreaState[]
             characterOpacity?: (id: string) => number | undefined
             heardFootstepIds?: () => number[]
+            renderedCharacters?: () => { id: string; position: { x: number; y: number } }[]
         }
     }
 }

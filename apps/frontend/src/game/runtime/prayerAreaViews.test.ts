@@ -197,6 +197,10 @@ it('uses twice the frozen cast radius as the diameter, follows the caster and re
     expect(area.pos).toEqual({ x: 138, y: 142 })
     expect(area.graphics.use).toHaveBeenCalledOnce()
 
+    views.reposition(() => ({ x: 145, y: 146 }))
+    expect(area.pos).toEqual({ x: 145, y: 146 })
+    expect(actor.position).toEqual({ x: 120, y: 150 })
+
     views.sync([caster('priest', 'pray_road')], 2001)
     expect(views.states()).toEqual([{ actorId: 'priest', abilityId: 'pray_road', radius: 68 }])
     expect(add).toHaveBeenCalledOnce()

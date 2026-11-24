@@ -47,7 +47,7 @@ export function joinChestRoom(room: GameRoom, nickname: string) {
     const sent: ServerMessage[] = []
     const socket = {
         send(payload: string) {
-            sent.push(JSON.parse(payload) as ServerMessage)
+            return sent.push(JSON.parse(payload) as ServerMessage)
         },
     } as RoomSocket
     room.handleOpen(socket)
