@@ -1,6 +1,6 @@
 import { type AbilityId, type GameEventPayload, isPrayerAction } from '@my-game-ratata/contracts'
 
-export type CastSound = 'magicCast' | 'prayerWhisper'
+export type CastSound = 'magicCast' | 'prayerWhisper' | 'sparkFlight'
 
 export function isMagicCastAttack(event: GameEventPayload): boolean {
     return (
@@ -15,10 +15,7 @@ export function isMagicCastAttack(event: GameEventPayload): boolean {
 export function instantSound(event: GameEventPayload): CastSound | undefined {
     switch (event.kind) {
         case 'attack':
-            return isMagicCastAttack(event) &&
-                (event.phase === undefined || event.phase === 'started')
-                ? 'magicCast'
-                : undefined
+            return magicAttackSound(event)
         case 'status':
             return event.statusId === 'barrier' && event.abilityId === 'barrier'
                 ? 'magicCast'
@@ -28,6 +25,17 @@ export function instantSound(event: GameEventPayload): CastSound | undefined {
         default:
             return undefined
     }
+}
+
+function magicAttackSound(event: GameEventPayload): CastSound | undefined {
+    if (!isMagicCastAttack(event)) return undefined
+    if (event.abilityId === 'spark') {
+        // Spark's current server event is unphased and starts the visible projectile immediately.
+        return event.phase === undefined || (event.phase === 'completed' && event.projectile)
+            ? 'sparkFlight'
+            : undefined
+    }
+    return event.phase === undefined || event.phase === 'started' ? 'magicCast' : undefined
 }
 
 function completedCastSound(event: GameEventPayload): CastSound | undefined {

@@ -1,4 +1,8 @@
-import { CENTER_LOCATION_ID, type WorldLocation } from '@my-game-ratata/contracts'
+import {
+    CENTER_LOCATION_ID,
+    type MagicChannelSnapshot,
+    type WorldLocation,
+} from '@my-game-ratata/contracts'
 import { Future, Sound } from 'excalibur'
 
 import { isAudioMuteForced, setAudioMuted } from '../../src/game/runtime/audioPreference'
@@ -12,11 +16,12 @@ import { mountEngine, startEngine, stepUntil } from './engineSupport'
 
 const actorId = 'hero'
 const prayerId = 'praying-neighbor'
+const sparkFile = 'spark-flight.mp3'
 const magicFile = 'magic-cast.mp3'
 const prayerFile = 'prayer-whisper.mp3'
 const waterFile = 'water-shore.wav'
 const deathFile = 'human-death.mp3'
-const expectedClips = [magicFile, prayerFile, waterFile, deathFile]
+const expectedClips = [sparkFile, magicFile, prayerFile, waterFile, deathFile] as const
 const tileWidth = 16
 const tileHeight = 16
 const mapSize = 24
@@ -44,7 +49,10 @@ export async function verifyCastAndWaterAudio(context: AudioContext) {
         return sound
     })
     const ambience = new WorldAmbience(run.engine, { sounds: bank, audioContext: () => context })
-    const casts = new CastAudio(bank, { audioRunning: () => context.state === 'running' })
+    const casts = new CastAudio(bank, {
+        now: () => run.clock.now(),
+        audioRunning: () => context.state === 'running',
+    })
     const deaths = new HumanDeathAudio(bank, () => context.state === 'running')
     const audio = new GameAudio(new Map(), new Sound(), ambience, { casts, deaths })
     const updateCasts = () => casts.update()
@@ -59,10 +67,9 @@ export async function verifyCastAndWaterAudio(context: AudioContext) {
         await startEngine(run)
         audio.setMap(shoreMap(), CENTER_LOCATION_ID)
         audio.startWorldAmbience()
-        const world = shorelineSnapshot()
-        const observe = () =>
+        const observe = (at = serverTime, channel?: MagicChannelSnapshot) =>
             audio.observeWorld(
-                world,
+                shorelineSnapshot(at, channel),
                 actorId,
                 () => true,
                 () => true
@@ -75,29 +82,34 @@ export async function verifyCastAndWaterAudio(context: AudioContext) {
         }
         await stepUntil(decoded.promise, run.clock)
         run.clock.step(16)
-        return { requests, ...exerciseWorldCues(audio, clips, observe, () => run.clock.step(16)) }
+        return {
+            requests,
+            ...exerciseWorldCues(audio, clips, observe, (ms = 16) => run.clock.step(ms)),
+        }
     } finally {
         await run.owner.cancel()
         setAudioMuted(false)
     }
 }
 
+type ObserveCastWorld = (serverTime?: number, channel?: MagicChannelSnapshot) => void
+
 function exerciseWorldCues(
     audio: GameAudio,
     clips: Map<string, Sound>,
-    observe: () => void,
-    step: () => void
+    observe: ObserveCastWorld,
+    step: (ms?: number) => void
 ) {
-    const [magic, prayer, water, death] = expectedClips.map((file) => clips.get(file)!) as [
-        Sound,
-        Sound,
-        Sound,
-        Sound,
-    ]
+    const [sparkFlight, magic, prayer, water, death] = expectedClips.map((file) =>
+        clips.get(file)!
+    ) as [Sound, Sound, Sound, Sound, Sound]
+    audio.playEventSound({ ...spark, phase: 'started' }, serverTime)
+    const noWindupBuzz = sparkFlight.playingCount() === 0
     audio.playEventSound(spark, serverTime)
     audio.playEventSound(spark, serverTime)
-    const playing = [magic, prayer, water].map((sound) => sound.playingCount())
-    const tracks = [magic, prayer, water].map((sound) => sound.instances[0]!)
+    const playing = [sparkFlight, prayer, water].map((sound) => sound.playingCount())
+    const tracks = [sparkFlight, prayer, water].map((sound) => sound.instances[0]!)
+    const noCasterWhisper = magic.playingCount() === 0
 
     audio.playEventSound(
         { kind: 'cast', phase: 'interrupted', actorId: prayerId, abilityId: 'pray' },
@@ -107,7 +119,10 @@ function exerciseWorldCues(
     step()
     const stalePrayerStopped = tracks[1]?.isStopped && prayer.playingCount() === 0
 
-    audio.playEventSound({ kind: 'death', targetId: actorId }, serverTime + 200)
+    tracks[0]?.stop()
+    const magicChannels = exerciseMagicChannels(audio, magic, observe, step)
+
+    audio.playEventSound({ kind: 'death', targetId: actorId }, serverTime + 4500)
     const deathVoice = death.instances[0]
     audio.invalidateWorld(true)
     const deathVoiceSurvivesInvalidation = deathVoice?.isPlaying
@@ -117,8 +132,57 @@ function exerciseWorldCues(
         waterLoop: tracks[2]?.loop,
         stoppedOnMute: deathVoice?.isStopped && tracks.every((track) => track.isStopped),
         stalePrayerStopped,
+        noWindupBuzz,
+        noCasterWhisper,
+        instantOneShot: tracks[0]?.loop === false,
+        prayerOneShot: tracks[1]?.loop === false,
+        magicChannels,
         deathVoiceSurvivesInvalidation,
-        durations: [magic, prayer, water, death].map((sound) => sound.data.duration),
+        durations: [sparkFlight, magic, prayer, water, death].map((sound) => sound.data.duration),
+    }
+}
+
+function exerciseMagicChannels(
+    audio: GameAudio,
+    magic: Sound,
+    observe: ObserveCastWorld,
+    step: (ms: number) => void
+) {
+    const chains: MagicChannelSnapshot = {
+        abilityId: 'chains',
+        startedAt: serverTime + 150,
+        completesAt: serverTime + 2800,
+    }
+    observe(serverTime + 160, chains)
+    const chainsTrack = magic.instances.find((track) => track.isPlaying)
+    observe(serverTime + 180, chains)
+    const chainsSingleTrack = magic.playingCount() === 1 && magic.instances.includes(chainsTrack!)
+    audio.playEventSound(
+        { kind: 'cast', phase: 'interrupted', actorId, abilityId: 'chains' },
+        serverTime + 200
+    )
+    observe(serverTime + 210, chains)
+    const chainsStopped = chainsTrack?.isStopped && magic.playingCount() === 0
+
+    const portal: MagicChannelSnapshot = {
+        abilityId: 'city_portal',
+        startedAt: serverTime + 300,
+        completesAt: serverTime + 3800,
+    }
+    observe(serverTime + 400, portal)
+    const portalTrack = magic.instances.find((track) => track.isPlaying)
+    step(1200)
+    const portalHeldBeforeDeadline = portalTrack?.isPlaying
+    step(2200)
+    // TestClock advances its timestamp after the frame, so this update sees the deadline.
+    step(16)
+    return {
+        chainsLoop: chainsTrack?.loop,
+        chainsSingleTrack,
+        chainsStopped,
+        portalLoop: portalTrack?.loop,
+        portalHeldBeforeDeadline,
+        portalStoppedAtDeadline: portalTrack?.isStopped && magic.playingCount() === 0,
     }
 }
 
@@ -132,8 +196,13 @@ function shoreMap() {
     }
 }
 
-function shorelineSnapshot() {
-    const local = characterFixture(actorId, { position: { x: 64, y: 88 } })
+function shorelineSnapshot(at: number, magicChannel?: MagicChannelSnapshot) {
+    const local = characterFixture(actorId, {
+        position: { x: 64, y: 88 },
+        ...(magicChannel && {
+            abilities: { known: [], cooldowns: {}, barrier: null, casting: null, magicChannel },
+        }),
+    })
     const neighbor = characterFixture(prayerId, {
         position: { x: 96, y: 88 },
         abilities: {
@@ -149,7 +218,7 @@ function shorelineSnapshot() {
         },
     })
     return {
-        ...worldFixture([local, neighbor], serverTime),
+        ...worldFixture([local, neighbor], at),
         location: { id: CENTER_LOCATION_ID, biome: 'city' } as WorldLocation,
     }
 }

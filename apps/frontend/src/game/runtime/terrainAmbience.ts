@@ -12,6 +12,12 @@ export type AmbienceMap = Pick<
 >
 
 type CueArea = 'forest' | 'fortification'
+interface CueVoice {
+    id: AmbienceSoundId
+    track: SoundTrack
+    stopAt?: number
+}
+
 const birds = ['bird1', 'bird2'] as const
 const forestSounds = [...birds, 'wind'] as const
 const cueIntervals = {
@@ -21,6 +27,7 @@ const cueIntervals = {
 const waterRadius = 5
 const waterFullVolumeDistance = 1
 const fortificationRadius = 4
+const windFadeMs = 400
 
 /** One continuous shore loop and a shared forest/fortification one-shot slot. */
 export class TerrainAmbience {
@@ -30,7 +37,7 @@ export class TerrainAmbience {
     private waterStartFailed = false
     private woodland = false
     private cueArea: CueArea | undefined
-    private cueVoice: SoundTrack | undefined
+    private cueVoice: CueVoice | undefined
     private cueDueAt: number | undefined
 
     public constructor(
@@ -39,7 +46,12 @@ export class TerrainAmbience {
     ) {}
 
     public get hasWork(): boolean {
-        return this.waterGain > 0 || this.waterVoice !== undefined || this.cueArea !== undefined
+        return (
+            this.waterGain > 0 ||
+            this.waterVoice !== undefined ||
+            this.cueArea !== undefined ||
+            this.cueVoice !== undefined
+        )
     }
 
     public get inWoodland(): boolean {
@@ -49,10 +61,15 @@ export class TerrainAmbience {
     public observe(
         snapshot: WorldSnapshot,
         listener: Vector2,
-        map: AmbienceMap & { locationId: string }
+        map: AmbienceMap & { locationId: string },
+        now: number
     ): void {
         if (map.buildings.some((building) => containsPosition(building, listener))) {
-            this.clear()
+            this.waterGain = 0
+            this.waterStartFailed = false
+            this.stopWater()
+            this.woodland = false
+            this.setCueArea(undefined, now)
             return
         }
         const terrain = map.ambientTerrain
@@ -65,10 +82,7 @@ export class TerrainAmbience {
         const nearWall = terrain && isNearFortification(terrain, listener, map, fortificationRadius)
         this.woodland = hasWoodland(snapshot, listener, map, this.woodland)
         const area = nearWall ? 'fortification' : this.woodland ? 'forest' : undefined
-        if (area !== this.cueArea) {
-            this.stopCue()
-            this.cueArea = area
-        }
+        this.setCueArea(area, now)
     }
 
     public clear(): void {
@@ -86,7 +100,26 @@ export class TerrainAmbience {
 
     public update(now: number): void {
         this.updateWater(now)
+        const voice = this.cueVoice
+        if (voice?.stopAt !== undefined) {
+            if (!voice.track.isStopped && now < voice.stopAt) return
+            this.stopCue()
+        }
         if (this.cueArea) this.updateCue(now, this.cueArea)
+    }
+
+    private setCueArea(area: CueArea | undefined, now: number): void {
+        if (area === this.cueArea) return
+        this.cueArea = area
+        this.cueDueAt = undefined
+        const voice = this.cueVoice
+        if (voice?.id !== 'wind' || voice.track.isStopped) {
+            this.stopCue()
+            return
+        }
+        if (voice.stopAt !== undefined) return
+        voice.track.volume = 0
+        voice.stopAt = now + windFadeMs
     }
 
     private updateWater(now: number): void {
@@ -132,20 +165,23 @@ export class TerrainAmbience {
             this.sounds.request('wind')
         }
         if (this.cueVoice) {
-            if (!this.cueVoice.isStopped) return
+            if (!this.cueVoice.track.isStopped) return
             this.cueVoice = undefined
             this.cueDueAt = this.deadline(now, intervals.next)
         }
         this.cueDueAt ??= this.deadline(now, intervals.first)
         if (now < this.cueDueAt) return
 
-        if (area === 'fortification') {
-            this.cueVoice = this.sounds.play('wind', { volume: 0.5 })
-        } else {
-            const sample = this.pickForestSound()
-            this.cueVoice = sample && this.sounds.play(sample)
-        }
+        this.cueVoice = this.startCue(area)
         this.cueDueAt = this.cueVoice ? undefined : this.deadline(now, intervals.next)
+    }
+
+    private startCue(area: CueArea): CueVoice | undefined {
+        const wall = area === 'fortification'
+        const id = wall ? 'wind' : this.pickForestSound()
+        if (!id) return undefined
+        const track = this.sounds.play(id, wall ? { volume: 0.5 } : undefined)
+        return track && { id, track }
     }
 
     private pickForestSound(): AmbienceSoundId | undefined {
@@ -160,7 +196,7 @@ export class TerrainAmbience {
     }
 
     private stopCue(): void {
-        this.cueVoice?.stop()
+        this.cueVoice?.track.stop()
         this.cueVoice = undefined
         this.cueDueAt = undefined
     }

@@ -36,6 +36,7 @@ test('plays isolated real tracks and restores one music track when visible', asy
         forcedMute: false,
         independentSounds: true,
         menuOpen: { path: '/game/assets/audio/kenney-rpg-audio/bookPlace1.ogg', tracks: 1 },
+        bookClose: { path: '/game/assets/audio/kenney-rpg-audio/bookClose.ogg', tracks: 1 },
         slotSelect: { path: '/game/assets/audio/kenney-ui-audio/rollover2.ogg', tracks: 1 },
         equipment: { path: '/game/assets/audio/kenney-ui-audio/switch11.ogg', tracks: 1 },
         footsteps: {
@@ -82,12 +83,23 @@ test('plays one attenuated portal loop and spaces real forest cues without overl
             afterCooldown: 2,
             stoppedOnLeavingForest: true,
         },
+        wind: {
+            heldSlot: true,
+            stoppedAtDeadline: true,
+            startsBeforeNextCue: 0,
+            nextCue: 1,
+        },
         decoded: ['forest-bird-1.mp3', 'forest-bird-2.mp3', 'forest-wind.mp3', 'portal-hum.wav'],
     })
     expect(result.portal.duration).toBeCloseTo(4.5)
-    expect(result.portal.near).toBeGreaterThan(0.9)
-    expect(result.portal.far).toBeLessThan(0.16)
-    expect(result.portal.far).toBeGreaterThan(0.09)
+    expect(result.portal.near).toBeGreaterThan(0.135)
+    expect(result.portal.far).toBeLessThan(0.013)
+    expect(result.portal.far).toBeGreaterThan(0.01)
+    expect(result.wind.duration).toBeCloseTo(6)
+    expect(result.wind.volume).toBeCloseTo(0.13)
+    expect(result.wind.attackRatio).toBeLessThan(0.1)
+    expect(result.wind.releaseRatio).toBeLessThan(0.1)
+    expect(result.wind.fadedGain).toBeLessThan(0.3)
 })
 
 test('keeps forced silent sessions from loading or playing eligible world ambience', async ({
@@ -105,16 +117,29 @@ test('keeps forced silent sessions from loading or playing eligible world ambien
     })
 })
 
-test('decodes cast, prayer and death voices and the shoreline loop', async ({ page }) => {
+test('plays Spark flight, cast, prayer and death cues and the shoreline loop', async ({ page }) => {
     const result = await page.evaluate(() => window.engineHarness.castAndWaterAudio())
     expect(result).toMatchObject({
-        requests: 4,
+        requests: 5,
         playing: [1, 1, 1],
         waterLoop: true,
         stoppedOnMute: true,
         stalePrayerStopped: true,
+        noWindupBuzz: true,
+        noCasterWhisper: true,
+        instantOneShot: true,
+        prayerOneShot: true,
+        magicChannels: {
+            chainsLoop: true,
+            chainsSingleTrack: true,
+            chainsStopped: true,
+            portalLoop: true,
+            portalHeldBeforeDeadline: true,
+            portalStoppedAtDeadline: true,
+        },
         deathVoiceSurvivesInvalidation: true,
         durations: [
+            expect.closeTo(0.2, 2),
             expect.closeTo(1.09, 1),
             expect.closeTo(2.42, 1),
             expect.closeTo(8, 2),
@@ -123,16 +148,28 @@ test('decodes cast, prayer and death voices and the shoreline loop', async ({ pa
     })
 })
 
-test('loops the real forest battle soundtrack and resumes default music when the opponent dies', async ({
+test('crossfades the real forest battle soundtrack and keeps its position through a retreat', async ({
     page,
 }) => {
     const result = await page.evaluate(() => window.engineHarness.battleMusic())
     expect(result).toMatchObject({
         beforeFight: 1,
         whileLoading: 1,
-        duringFight: { pausedDefault: true, defaultPlaying: 0, battlePlaying: 1, loop: true },
-        afterFight: { battleStopped: true, resumedDefault: true, defaultPlaying: 1 },
+        duringFight: { pausedDefault: true, loop: true },
+        returnedBeforeFade: true,
+        heldAfterDeath: true,
+        reusedBattle: true,
+        afterFight: { battleStopped: true, resumedDefault: true, defaultGain: 1 },
+        noRestartFromSight: true,
+        tracksBeforeMute: 2,
+        tracksAfterMute: 0,
     })
+    for (const gain of [...result.fadeIn, ...result.fadingOut]) {
+        expect(gain).toBeGreaterThan(0)
+        expect(gain).toBeLessThan(1)
+    }
+    expect(result.reversed[0]).toBeLessThan(result.fadingOut[0])
+    expect(result.reversed[1]).toBeGreaterThan(result.fadingOut[1])
     expect(result.duration).toBeCloseTo(177.76, 0)
 })
 
@@ -150,7 +187,7 @@ test('resumes a suspended audio context from a trusted gesture and plays the lat
     ])
     expect(result.before).toEqual({ state: 'suspended', tracks: 0 })
     expect(result.after).toEqual({ state: 'running', tracks: 1 })
-    expect(result.volume).toBeCloseTo(1 / 9)
+    expect(result.volume).toBeCloseTo(1 / 90, 5)
 })
 
 test('cancels application resources immediately and drains the old loader after reentry', async ({

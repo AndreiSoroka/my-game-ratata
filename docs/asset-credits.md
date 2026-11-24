@@ -47,7 +47,7 @@ Menu closing, selection, clicks and reward confirmations use four original clips
 
 ## Kenney RPG Audio
 
-Opening menus and game windows uses `bookPlace1.ogg`, a short, low thump from **RPG Audio 1.0**. All 51 individual effects from the download are included unchanged in `apps/frontend/public/game/assets/audio/kenney-rpg-audio/`, alongside the original CC0 license and archive checksum. [RPG Audio](https://kenney.nl/assets/rpg-audio)
+Opening menus and game windows uses `bookPlace1.ogg`, a short, low thump from **RPG Audio 1.0**. The character window closes with `bookClose.ogg`. All 51 individual effects from the download are included unchanged in `apps/frontend/public/game/assets/audio/kenney-rpg-audio/`, alongside the original CC0 license and archive checksum. [RPG Audio](https://kenney.nl/assets/rpg-audio)
 
 ## Kenney UI Audio
 
@@ -59,13 +59,14 @@ Moving between inventory cells and selecting an item use `rollover2.ogg`. Succes
 
 - `forest-bird-1.mp3` uses the first 2.48 seconds of [Turdus_merula_06.wav by tinga](https://freesound.org/people/tinga/sounds/189526/).
 - `forest-bird-2.mp3` uses the first 2.25 seconds of [Turdus_merula_19.wav by tinga](https://freesound.org/people/tinga/sounds/189549/).
-- `forest-wind.mp3` uses the gust from 40.5 to 46.5 seconds of [Forest, close up of trees rustling in the wind.wav by Anya_Media](https://freesound.org/people/Anya_Media/sounds/523389/).
+- `forest-wind.mp3` uses the gust from 40.5 to 46.5 seconds with a 0.6-second fade in and a one-second fade out. [Forest, close up of trees rustling in the wind.wav by Anya_Media](https://freesound.org/people/Anya_Media/sounds/523389/)
 
 ## Casting voices and shore ambience
 
 The casting and shore clips in `apps/frontend/public/game/assets/audio/ambience/` use public Freesound previews released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The two voices are filtered mono MP3s with short fades. The shore clip is a mono PCM WAV loop.
 
-- `magic-cast.mp3` uses the passage from 2.97 to 3.93 seconds with two quiet echo taps. [Whisper.wav by PlumForestPodcast](https://freesound.org/people/PlumForestPodcast/sounds/517868/)
+- `magic-cast.mp3` uses the passage from 2.97 to 3.93 seconds with two quiet echo taps. The game loops it during portal and chains casts. [Whisper.wav by PlumForestPodcast](https://freesound.org/people/PlumForestPodcast/sounds/517868/)
+- `spark-flight.mp3` uses the passage from 0.22 to 0.42 seconds, with raised gain and short fades to fit the Spark flight. [089_bzz_t3.wav by freesound](https://freesound.org/people/freesound/sounds/50277/)
 - `prayer-whisper.mp3` uses the quieter passage from 31.04 to 33.46 seconds with the high frequencies softened. [gibberish mumbling and whispering.aif by frosthardr](https://freesound.org/people/frosthardr/sounds/346638/)
 - `water-shore.wav` uses the passage from 23.7 to 33.1 seconds. A 1.4-second overlap produces the eight-second loop. [200906 Water waves lapping, lake, gentle, close, PEC 9am.flac by TRP](https://freesound.org/people/TRP/sounds/568819/)
 

@@ -1,6 +1,7 @@
 const uiSoundIds = [
     'uiOpen',
     'uiClose',
+    'uiBookClose',
     'uiSelect',
     'uiSlotSelect',
     'uiClick',
@@ -46,6 +47,7 @@ export interface MusicAssetDefinition extends SoundAssetDefinition {
 const sfxRoot = '/game/assets/audio/sfx'
 const musicRoot = '/game/assets/audio/music'
 const interfaceRoot = '/game/assets/audio/kenney-interface'
+const rpgAudioRoot = '/game/assets/audio/kenney-rpg-audio'
 const uiAudioRoot = '/game/assets/audio/kenney-ui-audio'
 
 export const soundCatalog: Record<GameSoundId, SoundAssetDefinition> = {
@@ -67,8 +69,9 @@ export const soundCatalog: Record<GameSoundId, SoundAssetDefinition> = {
     stepWood2: { src: '/game/assets/audio/kenney-impact/footstep_wood_002.ogg', volume: 0.2 },
     pickup: sfx('pickup-drop.wav', 0.24),
     stash: sfx('chest-open.wav', 0.24),
-    uiOpen: { src: '/game/assets/audio/kenney-rpg-audio/bookPlace1.ogg', volume: 0.12 },
+    uiOpen: { src: `${rpgAudioRoot}/bookPlace1.ogg`, volume: 0.12 },
     uiClose: { src: `${interfaceRoot}/close_001.ogg`, volume: 0.18 },
+    uiBookClose: { src: `${rpgAudioRoot}/bookClose.ogg`, volume: 0.1 },
     uiSelect: { src: `${interfaceRoot}/select_001.ogg`, volume: 0.12 },
     uiSlotSelect: { src: `${uiAudioRoot}/rollover2.ogg`, volume: 0.12 },
     uiClick: { src: `${interfaceRoot}/click_001.ogg`, volume: 0.16 },

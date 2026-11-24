@@ -7,6 +7,7 @@ import { MagicViews } from './magicViews'
 import { PrayerAreaViews } from './prayerAreaViews'
 import { createGameCanvas, createGameEngine } from './runtimeCharacterTargets'
 import { SceneActors } from './sceneActors'
+import { selectionIntersectsViewport } from './selectionViewport'
 import type { RenderedTiledMap } from './tiledMap'
 import { WorldAmbience } from './worldAmbience'
 import { WorldAmbienceSounds } from './worldAmbienceSounds'
@@ -38,12 +39,6 @@ export function createRuntimePresentation(
             sounds
         )
         run.addCleanup(() => audio.stop())
-        const updateAudio = () => {
-            casts.update()
-            audio.updateMusic()
-        }
-        engine.on('postupdate', updateAudio)
-        run.addCleanup(() => engine.off('postupdate', updateAudio))
         audio.setMap(map, locationId)
         const sceneActors = new SceneActors(
             engine,
@@ -56,6 +51,23 @@ export function createRuntimePresentation(
             new PrayerAreaViews(engine, resources.prayerAreaImages)
         )
         run.addCleanup(() => sceneActors.dispose())
+        const isBattleEnemyVisible = (id: string): boolean => {
+            const position = sceneActors.characterPosition(id)
+            return (
+                position !== undefined &&
+                sceneActors.isCharacterVisible(id) &&
+                selectionIntersectsViewport(
+                    { kind: 'character', position },
+                    engine.currentScene.camera.viewport
+                )
+            )
+        }
+        const updateAudio = ({ elapsed }: { elapsed: number }) => {
+            casts.update()
+            audio.updateMusic(elapsed, isBattleEnemyVisible)
+        }
+        engine.on('postupdate', updateAudio)
+        run.addCleanup(() => engine.off('postupdate', updateAudio))
         sceneActors.addMap(map)
         return { run, canvas, engine, audio, sceneActors, loader: resources.loader }
     } catch (error) {

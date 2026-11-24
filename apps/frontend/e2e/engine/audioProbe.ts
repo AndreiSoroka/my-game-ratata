@@ -16,12 +16,14 @@ export async function verifyAudio(context: AudioContext) {
     const sample = resources.sounds.get('stepGrass0')
     if (!sample) throw new Error('Footstep sample is missing')
     const menuOpen = resources.sounds.get('uiOpen')
+    const bookClose = resources.sounds.get('uiBookClose')
     const slotSelect = resources.sounds.get('uiSlotSelect')
     const equipment = resources.sounds.get('equip')
-    if (!menuOpen || !slotSelect || !equipment) throw new Error('Interface sample is missing')
+    if (!menuOpen || !bookClose || !slotSelect || !equipment)
+        throw new Error('Interface sample is missing')
     const music = resources.music.adventureBegins
     const loader = new DefaultLoader({
-        loadables: [sample, menuOpen, slotSelect, equipment, music],
+        loadables: [sample, menuOpen, bookClose, slotSelect, equipment, music],
     })
     let audioBeforeLoad: AudioContextState | undefined
     loader.on('beforeload', () => {
@@ -40,6 +42,7 @@ export async function verifyAudio(context: AudioContext) {
             catalogVolume: soundCatalog.stepGrass0.volume,
             musicVolume: music.output.gain.value,
             menuOpen: checkPlayback(menuOpen, () => gameAudio.playSound('uiOpen')),
+            bookClose: checkPlayback(bookClose, () => gameAudio.playSound('uiBookClose')),
             slotSelect: checkPlayback(slotSelect, () => gameAudio.playSound('uiSlotSelect')),
             equipment: checkPlayback(equipment, () =>
                 gameAudio.playEventSound({ kind: 'item_equip' })
@@ -141,10 +144,13 @@ function checkMusic(audio: GameAudio, music: Sound) {
 
         setAudioMuted(true)
         setAudioMuted(true)
-        const muted = music.instanceCount()
+        const muted = music.playingCount()
         setAudioMuted(false)
         setAudioMuted(false)
-        const unmuted = { same: first === music.instances[0], count: music.playingCount() }
+        const unmuted = {
+            same: first === music.instances.find((track) => track.isPlaying),
+            count: music.playingCount(),
+        }
         return { firstCount, hidden, resumed, muted, unmuted }
     } finally {
         Reflect.deleteProperty(document, 'hidden')

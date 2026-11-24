@@ -142,7 +142,12 @@ it('cues the transition from the menu to the character window and actual tab cha
         await character.get('#character-development-tab').trigger('click')
         await pressEscape()
         expect(character.element.isConnected).toBe(false)
-        expect(runtime.play.mock.calls).toEqual([['uiOpen'], ['uiOpen'], ['uiSelect'], ['uiClose']])
+        expect(runtime.play.mock.calls).toEqual([
+            ['uiOpen'],
+            ['uiOpen'],
+            ['uiSelect'],
+            ['uiBookClose'],
+        ])
     } finally {
         wrapper.unmount()
     }

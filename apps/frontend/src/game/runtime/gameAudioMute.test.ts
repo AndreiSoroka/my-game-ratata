@@ -3,7 +3,7 @@ import {
     type WorldLocation,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import type { Sound } from 'excalibur'
+import type { Sound, SoundTrack } from 'excalibur'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import { musicCatalog, soundCatalog } from '../assets/soundCatalog'
@@ -37,8 +37,10 @@ function clip(volume: number) {
         get isPaused() {
             return state === 'paused'
         },
+        get isStopped() {
+            return state === 'stopped'
+        },
         play: vi.fn<() => Promise<boolean>>(start),
-        resume: vi.fn<() => Promise<boolean>>(start),
         pause: vi.fn<() => void>(() => {
             state = 'paused'
         }),
@@ -48,8 +50,21 @@ function clip(volume: number) {
     }
 }
 
+function musicClip() {
+    const track = clip(1)
+    return {
+        volume: musicCatalog.adventureBegins.volume,
+        track,
+        start: vi.fn<Sound['start']>((options) => {
+            track.volume = options?.volume ?? 1
+            void track.play()
+            return track as unknown as SoundTrack
+        }),
+    }
+}
+
 it('replaces the melee swing for a magic attack while keeping the normal attack sound', () => {
-    const music = clip(musicCatalog.adventureBegins.volume)
+    const music = musicClip()
     const melee = clip(soundCatalog.attack.volume)
     const audio = new GameAudio(
         new Map([['attack', melee as unknown as Sound]]),
@@ -84,7 +99,7 @@ it.each(['/?test=1', '/?mute=1'])(
     (url) => {
         window.localStorage.setItem('ratata:audio-muted', 'false')
         window.history.replaceState({}, '', url)
-        const music = clip(musicCatalog.adventureBegins.volume),
+        const music = musicClip(),
             effect = clip(0.22)
         const player = new GameAudio(
             new Map([
@@ -114,7 +129,7 @@ it.each(['/?test=1', '/?mute=1'])(
             player.observeWorld(snapshot(38), 'hero')
             setAudioMuted(false)
             expect(isAudioMuted()).toBe(true)
-            expect(music.play).not.toHaveBeenCalled()
+            expect(music.start).not.toHaveBeenCalled()
             expect(effect.play).not.toHaveBeenCalled()
             expect(footsteps.play).not.toHaveBeenCalled()
             expect(window.localStorage.getItem('ratata:audio-muted')).toBe('false')
@@ -127,7 +142,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
     setAudioMuted(false)
     const now = vi.spyOn(performance, 'now').mockReturnValue(0)
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-    const music = clip(musicCatalog.adventureBegins.volume),
+    const music = musicClip(),
         effect = clip(soundCatalog.uiOpen.volume)
     const player = new GameAudio(
         new Map([['uiOpen', effect as unknown as Sound]]),
@@ -152,7 +167,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
         footsteps.stop.mockClear()
         setAudioMuted(true)
         setAudioMuted(true)
-        expect(music.stop).toHaveBeenCalledOnce()
+        expect(music.track.stop).toHaveBeenCalledOnce()
         expect(effect.stop).toHaveBeenCalledOnce()
         expect(footsteps.stop).toHaveBeenCalledOnce()
         player.playSound('uiOpen')
@@ -161,7 +176,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
         expect(effect.play).toHaveBeenCalledOnce()
         expect(footsteps.play).toHaveBeenCalledOnce()
         setAudioMuted(false)
-        expect(music.play).toHaveBeenCalledTimes(2)
+        expect(music.start).toHaveBeenCalledTimes(2)
         expect(music.volume).toBe(musicCatalog.adventureBegins.volume)
         expect(effect.volume).toBe(soundCatalog.uiOpen.volume)
         player.observeWorld(snapshot(68), 'hero')
@@ -174,7 +189,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
         player.stop()
         setAudioMuted(true)
         setAudioMuted(false)
-        expect(music.play).toHaveBeenCalledTimes(2)
+        expect(music.start).toHaveBeenCalledTimes(2)
     } finally {
         player.stop()
     }
@@ -182,7 +197,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
 it('resumes a paused music track once and waits for visibility when unmuted while hidden', () => {
     setAudioMuted(false)
     const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-    const music = clip(musicCatalog.adventureBegins.volume)
+    const music = musicClip()
     const player = new GameAudio(new Map(), music as unknown as Sound)
     const changeVisibility = (value: boolean) => {
         hidden.mockReturnValue(value)
@@ -193,47 +208,47 @@ it('resumes a paused music track once and waits for visibility when unmuted whil
         player.playMusic()
         setAudioMuted(false)
         player.playMusic()
-        expect(music.play).toHaveBeenCalledOnce()
+        expect(music.start).toHaveBeenCalledOnce()
         changeVisibility(true)
         changeVisibility(true)
-        expect(music.pause).toHaveBeenCalledOnce()
+        expect(music.track.pause).toHaveBeenCalledOnce()
         setAudioMuted(false)
         player.playMusic()
-        expect(music.resume).not.toHaveBeenCalled()
-        expect(music.play).toHaveBeenCalledOnce()
+        expect(music.track.play).toHaveBeenCalledOnce()
+        expect(music.start).toHaveBeenCalledOnce()
 
         changeVisibility(false)
         setAudioMuted(false)
         changeVisibility(false)
-        expect(music.resume).toHaveBeenCalledOnce()
-        expect(music.play).toHaveBeenCalledOnce()
+        expect(music.track.play).toHaveBeenCalledTimes(2)
+        expect(music.start).toHaveBeenCalledOnce()
 
         changeVisibility(true)
         setAudioMuted(true)
         setAudioMuted(false)
-        expect(music.stop).toHaveBeenCalledOnce()
-        expect(music.play).toHaveBeenCalledOnce()
+        expect(music.track.stop).toHaveBeenCalledOnce()
+        expect(music.start).toHaveBeenCalledOnce()
         changeVisibility(false)
-        expect(music.play).toHaveBeenCalledTimes(2)
-        expect(music.resume).toHaveBeenCalledOnce()
+        expect(music.start).toHaveBeenCalledTimes(2)
+        expect(music.track.play).toHaveBeenCalledTimes(3)
 
         player.stop()
         player.stop()
         player.playMusic()
         changeVisibility(false)
-        expect(music.stop).toHaveBeenCalledTimes(2)
-        expect(music.play).toHaveBeenCalledTimes(2)
+        expect(music.track.stop).toHaveBeenCalledTimes(2)
+        expect(music.start).toHaveBeenCalledTimes(2)
     } finally {
         player.stop()
     }
 })
 it('forces silence from the automated browser build flag before music playback', () => {
     vi.stubEnv('VITE_GAME_AUDIO_MUTED', '1')
-    const music = clip(musicCatalog.adventureBegins.volume)
+    const music = musicClip()
     const player = new GameAudio(new Map(), music as unknown as Sound)
     try {
         player.playMusic()
-        expect(music.play).not.toHaveBeenCalled()
+        expect(music.start).not.toHaveBeenCalled()
         expect(isAudioMuted()).toBe(true)
     } finally {
         player.stop()
@@ -255,7 +270,7 @@ it('plays live NPC speech by default and honors voice and master mute controls',
             public constructor(public readonly text: string) {}
         }
     )
-    const music = clip(musicCatalog.adventureBegins.volume)
+    const music = musicClip()
     const player = new GameAudio(new Map(), music as unknown as Sound)
     player.setMap({
         footsteps: { width: 1, height: 1, tileWidth: 16, tileHeight: 16, surfaces: [] },

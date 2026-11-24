@@ -98,7 +98,10 @@ it('plays a visible mid-cast priest once and updates the voice gain until the wo
     const test = setup()
     const rite = prayer(epoch, epoch + 1200)
     test.observe(epoch + 500, [caster('me', 0), caster('priest', 32, rite)])
-    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('prayerWhisper', { volume: 1 })
+    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('prayerWhisper', {
+        volume: 1,
+        loop: false,
+    })
 
     test.observe(epoch + 600, [caster('me', 0), caster('priest', 80, rite)])
     expect(test.tracks[0]?.volume).toBe(0.25)
@@ -108,6 +111,33 @@ it('plays a visible mid-cast priest once and updates the voice gain until the wo
     expect(test.tracks[0]?.isStopped).toBe(true)
     expect(test.sounds.play).toHaveBeenCalledTimes(1)
 })
+
+it.each(['chains', 'city_portal'] as const)(
+    'keeps %s looping once per actor until its deadline, even without a new snapshot',
+    (abilityId) => {
+        const test = setup()
+        const actors = [
+            caster('me', 0),
+            caster('mage', 16, channel(abilityId, epoch, epoch + 3000)),
+        ]
+        test.observe(epoch + 100, actors)
+        expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('magicCast', {
+            volume: 1,
+            loop: true,
+        })
+
+        test.advance(1200)
+        test.observe(epoch + 1320, actors)
+        test.advance(1679)
+        expect(test.tracks[0]?.isStopped).toBe(false)
+        expect(test.sounds.play).toHaveBeenCalledTimes(1)
+
+        test.advance(1)
+        expect(test.tracks[0]?.isStopped).toBe(true)
+        test.observe(epoch + 1321, actors)
+        expect(test.sounds.play).toHaveBeenCalledTimes(1)
+    }
+)
 
 it('blocks a stale channel after its interrupt and permits a later cast by the same actor', () => {
     const test = setup()
@@ -175,7 +205,10 @@ it('does not infer a future cast from a malformed early snapshot, then honors th
     expect(test.sounds.play).not.toHaveBeenCalled()
 
     test.observe(epoch + 1200, [mage])
-    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('magicCast', { volume: 1 })
+    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('magicCast', {
+        volume: 1,
+        loop: true,
+    })
 })
 
 it('reserves a local voice, keeps playing voices and admits the nearest remote channels', () => {
@@ -187,8 +220,8 @@ it('reserves a local voice, keeps playing voices and admits the nearest remote c
     const near = caster('near', 16, readyCast)
     test.observe(epoch + 100, [far, middle, near, me])
     expect(test.sounds.play.mock.calls).toEqual([
-        ['magicCast', { volume: 1 }],
-        ['magicCast', { volume: 0.25 }],
+        ['magicCast', { volume: 1, loop: true }],
+        ['magicCast', { volume: 0.25, loop: true }],
     ])
 
     test.audio.receive(
@@ -207,26 +240,48 @@ it('reserves a local voice, keeps playing voices and admits the nearest remote c
     expect(test.tracks.every((track) => !track.isStopped)).toBe(true)
 })
 
-it('stops audio on lost visibility, death and clear and keeps consumed cast receipts', () => {
+it('restarts only the active magic loop when visibility returns and after a clear', () => {
     const test = setup()
     const me = caster('me', 0)
     const mage = caster('mage', 16, channel('city_portal', epoch, epoch + 2200))
     const priest = caster('priest', 32, prayer(epoch, epoch + 2200))
-    test.observe(epoch + 10, [me, mage, priest])
-    test.observe(epoch + 11, [me, mage, priest], (id) => id !== 'mage')
+    const actors = [me, mage, priest]
+    test.observe(epoch + 10, actors)
+    test.observe(epoch + 11, actors, (id) => id !== 'mage')
     expect(test.tracks[0]?.isStopped).toBe(true)
-    test.audio.receive({ kind: 'death', targetId: 'priest' }, epoch + 12)
-    expect(test.tracks[1]?.isStopped).toBe(true)
+    test.observe(epoch + 12, actors)
+    expect(test.tracks[2]?.isStopped).toBe(false)
 
     test.audio.clear()
-    test.observe(epoch + 13, [me, mage])
-    expect(test.tracks).toHaveLength(2)
-    test.audio.reset()
-    test.observe(epoch + 13, [me, mage])
-    expect(test.tracks).toHaveLength(3)
+    expect(test.tracks.every((track) => track.isStopped)).toBe(true)
+    test.observe(epoch + 13, actors)
+    expect(test.sounds.play.mock.calls.map(([sound]) => sound)).toEqual([
+        'magicCast',
+        'prayerWhisper',
+        'magicCast',
+        'magicCast',
+    ])
+    test.audio.receive({ kind: 'death', targetId: 'mage' }, epoch + 14)
+    expect(test.tracks[3]?.isStopped).toBe(true)
+    test.observe(epoch + 14, actors)
+    expect(test.tracks).toHaveLength(4)
 })
 
-it.each(['spark', 'fireball', 'greater_fireball'] as const)(
+it('restarts a still-active magic loop after the audio device resumes', () => {
+    const test = setup()
+    test.observe(epoch + 100, [caster('me', 0, channel('chains', epoch, epoch + 2200))])
+    test.setRunning(false)
+    test.advance(100)
+    expect(test.tracks[0]?.isStopped).toBe(true)
+
+    test.setRunning(true)
+    test.advance(100)
+    test.advance(100)
+    expect(test.tracks[1]?.isStopped).toBe(false)
+    expect(test.tracks).toHaveLength(2)
+})
+
+it.each(['fireball', 'greater_fireball'] as const)(
     'plays %s only at the accepted start and deduplicates it by action ID',
     (abilityId) => {
         const test = setup()
@@ -248,6 +303,32 @@ it.each(['spark', 'fireball', 'greater_fireball'] as const)(
         expect(test.sounds.play).toHaveBeenCalledTimes(1)
     }
 )
+
+it('plays only the flight buzz for a confirmed Spark and deduplicates its launch', () => {
+    const test = setup()
+    test.observe(epoch, [caster('me', 0), caster('mage', 80)])
+    const spark = {
+        kind: 'attack',
+        abilityId: 'spark',
+        delivery: 'magic',
+        actionId: 'spark:1',
+        actorId: 'mage',
+    } as const
+    const projectile = { origin: { x: 80, y: 0 }, endpoint: { x: 0, y: 0 } }
+    expect(isMagicCastAttack(spark)).toBe(true)
+    test.audio.receive({ ...spark, phase: 'started' }, epoch + 1)
+    test.audio.receive({ ...spark, phase: 'interrupted' }, epoch + 2)
+    test.audio.receive({ ...spark, phase: 'completed' }, epoch + 3)
+    expect(test.sounds.play).not.toHaveBeenCalled()
+
+    test.audio.receive(spark, epoch + 4)
+    test.tracks[0]?.stop()
+    test.audio.receive({ ...spark, phase: 'completed', projectile }, epoch + 5)
+    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('sparkFlight', { volume: 0.25 })
+
+    test.audio.receive({ ...spark, actionId: 'spark:2', phase: 'completed', projectile }, epoch + 6)
+    expect(test.sounds.play).toHaveBeenNthCalledWith(2, 'sparkFlight', { volume: 0.25 })
+})
 
 it('plays instant devotion but leaves ordinary completed prayers, barriers removed by dispel and misses silent', () => {
     const test = setup()
@@ -302,8 +383,12 @@ it('ignores cross-map, invisible and out-of-range sources, and never replays an 
     expect(test.tracks).toHaveLength(0)
 })
 
-it('prefetches both optional cue assets', () => {
+it('prefetches cast and projectile cues', () => {
     const test = setup()
     test.audio.prepare()
-    expect(test.sounds.request.mock.calls).toEqual([['magicCast'], ['prayerWhisper']])
+    expect(test.sounds.request.mock.calls).toEqual([
+        ['magicCast'],
+        ['prayerWhisper'],
+        ['sparkFlight'],
+    ])
 })

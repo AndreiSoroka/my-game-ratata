@@ -4,12 +4,13 @@ import { musicCatalog } from '../assets/soundCatalog'
 
 const root = '/game/assets/audio/ambience'
 const assets = {
-    portal: { src: `${root}/portal-hum.wav`, volume: 0.1 },
+    portal: { src: `${root}/portal-hum.wav`, volume: 0.15 },
     bird1: { src: `${root}/forest-bird-1.mp3`, volume: 0.15 },
     bird2: { src: `${root}/forest-bird-2.mp3`, volume: 0.15 },
-    wind: { src: `${root}/forest-wind.mp3`, volume: 0.22 },
+    wind: { src: `${root}/forest-wind.mp3`, volume: 0.13 },
     water: { src: `${root}/water-shore.wav`, volume: 0.14 },
     magicCast: { src: `${root}/magic-cast.mp3`, volume: 0.24 },
+    sparkFlight: { src: `${root}/spark-flight.mp3`, volume: 0.24 },
     prayerWhisper: { src: `${root}/prayer-whisper.mp3`, volume: 0.16 },
     humanDeath: { src: `${root}/human-death.mp3`, volume: 0.22 },
     forestBattle: musicCatalog.forestBattle,

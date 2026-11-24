@@ -77,6 +77,24 @@ export async function stepUntil<T>(result: Promise<T>, clock: TestClock): Promis
     return observed
 }
 
+export async function waitForEngine(run: TestEngine, condition: () => boolean): Promise<void> {
+    let frame = 0
+    try {
+        await stepUntil(
+            new Promise<void>((resolve) => {
+                function check(): void {
+                    if (condition()) resolve()
+                    else frame = requestAnimationFrame(check)
+                }
+                check()
+            }),
+            run.clock
+        )
+    } finally {
+        cancelAnimationFrame(frame)
+    }
+}
+
 export async function startEngine(run: TestEngine, loader?: DefaultLoader): Promise<void> {
     const ready = await stepUntil(beginStart(run, loader), run.clock)
     if (!ready || !run.engine.isReady) throw new Error('Engine did not finish starting')

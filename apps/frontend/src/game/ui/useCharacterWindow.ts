@@ -31,7 +31,7 @@ export function useCharacterWindow(options: {
         const game = options.game()
         game?.releaseUiControls()
         characterOpen.value = false
-        if (wasOpen) game?.playUiSound('uiClose')
+        if (wasOpen) game?.playUiSound('uiBookClose')
         void nextTick(() =>
             (
                 document.querySelector<HTMLElement>('[role="alertdialog"] [tabindex="-1"]') ??

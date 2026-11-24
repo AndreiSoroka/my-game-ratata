@@ -30,7 +30,7 @@
 
 - Author: Kenney
 - License: CC0 1.0
-- All original effects under `kenney-rpg-audio/`. Menus and game windows use `bookPlace1.ogg` when opening.
+- All original effects under `kenney-rpg-audio/`. Menus and game windows use `bookPlace1.ogg` when opening. The character window uses `bookClose.ogg` when closing.
 - [Source](https://kenney.nl/assets/rpg-audio)
 
 ## Kenney UI Audio
@@ -46,3 +46,8 @@
 - License: CC0 1.0
 - Used file: `kenney-jingles/jingles_PIZZI04.ogg`.
 - [Source](https://kenney.nl/assets/music-jingles)
+
+## Spark flight
+
+- License: CC0 1.0
+- Used file: `ambience/spark-flight.mp3`, a short excerpt with fades. [089_bzz_t3.wav](https://freesound.org/people/freesound/sounds/50277/)

@@ -1,8 +1,10 @@
 import type { CharacterSnapshot, GameEventPayload, WorldSnapshot } from '@my-game-ratata/contracts'
 
+import { relation } from '../ui/combatTargeting'
 import { removedActor } from './castAudioEvents'
 
-const battleIdleMs = 5000
+const battleHoldMs = 8000
+const visibilityMaxAgeMs = 1000
 const combatEvents = new Set<GameEventPayload['kind']>([
     'attack',
     'damage',
@@ -13,10 +15,13 @@ const combatEvents = new Set<GameEventPayload['kind']>([
 
 interface BattleObservation {
     characters: readonly CharacterSnapshot[]
+    hostileIds: readonly string[]
     locationId: string
     listenerId: string
     forest: boolean
     listenerAlive: boolean
+    serverTime: number
+    receivedAt: number
 }
 
 interface Contact {
@@ -24,23 +29,40 @@ interface Contact {
     ended?: true
 }
 
-/** Tracks recent, server-confirmed combat involving the listener on the applied map. */
+/** Holds a forest encounter across brief gaps in combat and changes in local terrain. */
 export class BattleMusicState {
     private observation: BattleObservation | undefined
     private readonly opponents = new Map<string | null, Contact>()
     private latestServerTime = -Infinity
     private clockOffset = -Infinity
     private listenerEndedAt = -Infinity
+    private holdUntil = -Infinity
 
     public constructor(private readonly now: () => number = () => performance.now()) {}
 
-    public get active(): boolean {
-        if (!this.observation?.forest || !this.observation.listenerAlive) return false
-        const serverTime = this.now() + this.clockOffset
-        for (const contact of this.opponents.values()) {
-            if (!contact.ended && serverTime < contact.at + battleIdleMs) return true
+    public update(isVisible?: (id: string) => boolean, hasBattleTrack = false): boolean {
+        const observation = this.observation
+        const now = this.now()
+        const serverTime = now + this.clockOffset
+        if (!observation?.listenerAlive || !this.canContinue(serverTime, hasBattleTrack)) {
+            this.holdUntil = -Infinity
+            return false
         }
-        return false
+        if (isVisible && this.hasVisibleEnemy(observation, now, isVisible)) {
+            this.extendHold(observation.serverTime)
+        }
+        return serverTime < this.holdUntil
+    }
+
+    private hasVisibleEnemy(
+        observation: BattleObservation,
+        now: number,
+        isVisible: (id: string) => boolean
+    ): boolean {
+        return (
+            now - observation.receivedAt <= visibilityMaxAgeMs &&
+            observation.hostileIds.some((id) => !this.opponents.get(id)?.ended && isVisible(id))
+        )
     }
 
     public observe(snapshot: WorldSnapshot, listenerId: string, forest: boolean): void {
@@ -53,17 +75,22 @@ export class BattleMusicState {
         if (!location) return
 
         const listener = snapshot.characters.find((character) => character.id === listenerId)
-        const listenerAlive = available(listener)
+        const listenerAvailable = available(listener)
+        const listenerAlive = listenerAvailable && serverTime > this.listenerEndedAt
+        if (!listenerAvailable) this.listenerEndedAt = serverTime
         if (!listenerAlive) {
-            this.listenerEndedAt = serverTime
             this.opponents.clear()
+            this.holdUntil = -Infinity
         }
         this.observation = {
             characters: snapshot.characters,
+            hostileIds: hostileIds(snapshot.characters, listenerAlive ? listener : undefined),
             locationId: location.id,
             listenerId,
             forest,
-            listenerAlive: listenerAlive && serverTime > this.listenerEndedAt,
+            listenerAlive,
+            serverTime,
+            receivedAt: this.now(),
         }
         this.observeOpponents(snapshot.characters, serverTime)
     }
@@ -78,7 +105,7 @@ export class BattleMusicState {
         }
     }
 
-    public receive(event: GameEventPayload, serverTime: number): void {
+    public receive(event: GameEventPayload, serverTime: number, hasBattleTrack = false): void {
         const observation = this.observation
         if (
             !observation?.listenerAlive ||
@@ -94,11 +121,27 @@ export class BattleMusicState {
         }
 
         const opponent = opponentIn(event, observation.listenerId)
-        if (opponent === undefined || this.opponents.get(opponent)?.ended) return
-        const known = observation.characters.find((character) => character.id === opponent)
-        if (known && !available(known)) return
+        if (
+            opponent === undefined ||
+            !this.acceptsCombat(observation, opponent, serverTime, hasBattleTrack)
+        )
+            return
         this.advanceClock(serverTime)
         this.opponents.set(opponent, { at: serverTime })
+        this.extendHold(serverTime)
+    }
+
+    private acceptsCombat(
+        observation: BattleObservation,
+        opponent: string | null,
+        serverTime: number,
+        hasBattleTrack: boolean
+    ): boolean {
+        if (this.opponents.get(opponent)?.ended) return false
+        const known = observation.characters.find((character) => character.id === opponent)
+        if (known && !available(known)) return false
+        const estimatedTime = Math.max(serverTime, this.now() + this.clockOffset)
+        return observation.forest || this.canContinue(estimatedTime, hasBattleTrack)
     }
 
     private removeOpponent(
@@ -109,6 +152,7 @@ export class BattleMusicState {
         if (removed === observation.listenerId) {
             this.advanceClock(serverTime)
             this.opponents.clear()
+            this.holdUntil = -Infinity
             this.listenerEndedAt = serverTime
             observation.listenerAlive = false
             return
@@ -128,6 +172,15 @@ export class BattleMusicState {
         this.latestServerTime = -Infinity
         this.clockOffset = -Infinity
         this.listenerEndedAt = -Infinity
+        this.holdUntil = -Infinity
+    }
+
+    private canContinue(serverTime: number, hasBattleTrack: boolean): boolean {
+        return serverTime < this.holdUntil || (this.holdUntil !== -Infinity && hasBattleTrack)
+    }
+
+    private extendHold(serverTime: number): void {
+        this.holdUntil = Math.max(this.holdUntil, serverTime + battleHoldMs)
     }
 
     private isCurrentTime(serverTime: number): boolean {
@@ -139,9 +192,19 @@ export class BattleMusicState {
         this.latestServerTime = serverTime
         this.clockOffset = Math.max(this.clockOffset, serverTime - now)
         for (const [opponent, contact] of this.opponents) {
-            if (now + this.clockOffset >= contact.at + battleIdleMs) this.opponents.delete(opponent)
+            if (now + this.clockOffset >= contact.at + battleHoldMs) this.opponents.delete(opponent)
         }
     }
+}
+
+function hostileIds(
+    characters: readonly CharacterSnapshot[],
+    listener: CharacterSnapshot | undefined
+): string[] {
+    if (!listener) return []
+    return characters.flatMap((character) =>
+        available(character) && relation(character, listener) === 'hostile' ? [character.id] : []
+    )
 }
 
 function available(character: CharacterSnapshot | undefined): boolean {

@@ -17,7 +17,8 @@ import {
     characterFixture,
     worldFixture,
 } from '../../src/game/testing/characterFixture'
-import { mountEngine, startEngine, stepUntil, type TestEngine } from './engineSupport'
+import { checkWind } from './ambienceWindProbe'
+import { mountEngine, startEngine, stepUntil, waitForEngine } from './engineSupport'
 
 const listenerId = 'listener'
 const locationId = worldLocationId(1, 1)
@@ -32,7 +33,7 @@ export async function verifyAmbience(context: AudioContext) {
         await stepUntil(probe.portalDecoded.promise, probe.run.clock)
         setAudioMuted(true)
         probe.releasePortal.resolve()
-        await waitFor(probe.run, () => probe.sounds.size === 4)
+        await waitForEngine(probe.run, () => probe.sounds.size === 4)
         const startedWhileMuted = probe.gains.size
         setAudioMuted(false)
         probe.advance()
@@ -40,11 +41,13 @@ export async function verifyAmbience(context: AudioContext) {
 
         const portal = await checkPortal(probe)
         const forest = await checkForest(probe)
+        const wind = await checkWind(probe)
         return {
             startedWhileMuted,
             startedWithoutFreshSnapshot,
             portal,
             forest,
+            wind,
             decoded: [...probe.sounds.keys()].sort(),
         }
     } finally {
@@ -78,12 +81,13 @@ export async function verifyGestureAmbience(context: AudioContext, unlock: Eleme
         probe.observe({ x: 176 })
         const before = { state: context.state, tracks: probe.gains.size }
         unlock.setAttribute('data-waiting-for-gesture', 'true')
-        await waitFor(probe.run, () => probe.gains.size > 0)
+        await waitForEngine(probe.run, () => probe.gains.size > 0)
         probe.advance()
+        const [track] = probe.gains.keys()
         return {
             before,
             after: { state: context.state, tracks: probe.gains.size },
-            volume: [...probe.gains.keys()][0]?.volume,
+            volume: (track?.volume ?? 0) * (probe.sounds.get(portalFile)?.volume ?? 0),
         }
     } finally {
         unlock.removeAttribute('data-waiting-for-gesture')
@@ -99,9 +103,10 @@ function createProbe(context: AudioContext) {
     const gains = new Map<SoundTrack, AudioParam>()
     let now = 0
     let loadRequests = 0
+    let cueRandom = 0
     const ambience = new WorldAmbience(run.engine, {
         now: () => now,
-        random: () => 0,
+        random: () => cueRandom,
         audioContext: () => context,
         loadSound: async (src, signal) => {
             loadRequests++
@@ -156,6 +161,9 @@ function createProbe(context: AudioContext) {
             audio.startWorldAmbience()
         },
         advance,
+        setCueRandom(value: number) {
+            cueRandom = value
+        },
         observe(options?: SnapshotOptions) {
             audio.observeWorld(snapshot(now, options), listenerId, () => true)
             advance()
@@ -163,21 +171,21 @@ function createProbe(context: AudioContext) {
     }
 }
 
-type Probe = ReturnType<typeof createProbe>
+export type AmbienceProbe = ReturnType<typeof createProbe>
 
-async function checkPortal(probe: Probe) {
+async function checkPortal(probe: AmbienceProbe) {
     const sound = probe.sounds.get(portalFile)
     if (!sound?.data) throw new Error('Portal clip did not decode')
     probe.observe()
     const first = sound.instances[0]
     const gain = first && probe.gains.get(first)
     if (!first || !gain) throw new Error('Portal loop did not start')
-    await waitFor(probe.run, () => gain.value > 0.9)
-    const near = gain.value
+    await waitForEngine(probe.run, () => gain.value > 0.9)
+    const near = gain.value * sound.volume
 
     probe.observe({ x: 176 })
-    await waitFor(probe.run, () => gain.value < 0.16)
-    const far = gain.value
+    await waitForEngine(probe.run, () => gain.value < 0.085)
+    const far = gain.value * sound.volume
     probe.observe({ x: 176, secondPortal: true })
     const oneLoopForTwoPortals = sound.playingCount() === 1 && sound.instances[0] === first
     const closestVolume = first.volume
@@ -200,7 +208,7 @@ async function checkPortal(probe: Probe) {
     }
 }
 
-async function checkForest(probe: Probe) {
+async function checkForest(probe: AmbienceProbe) {
     const startsBeforeForest = probe.gains.size
     const cues = () => Array.from(probe.gains.keys()).slice(startsBeforeForest)
     probe.observe({ wooded: true, portal: false })
@@ -224,24 +232,6 @@ async function checkForest(probe: Probe) {
         beforeCooldown,
         afterCooldown,
         stoppedOnLeavingForest: cues().every((track) => track.isStopped),
-    }
-}
-
-async function waitFor(run: TestEngine, condition: () => boolean): Promise<void> {
-    let frame = 0
-    try {
-        await stepUntil(
-            new Promise<void>((resolve) => {
-                function check(): void {
-                    if (condition()) resolve()
-                    else frame = requestAnimationFrame(check)
-                }
-                check()
-            }),
-            run.clock
-        )
-    } finally {
-        cancelAnimationFrame(frame)
     }
 }
 

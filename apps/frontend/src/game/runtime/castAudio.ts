@@ -1,5 +1,6 @@
 import {
     type AbilityId,
+    type CharacterAbilitiesSnapshot,
     type CharacterSnapshot,
     type GameEventPayload,
     isPrayerAction,
@@ -15,7 +16,9 @@ import type { WorldAmbienceSounds } from './worldAmbienceSounds'
 export { isMagicCastAttack } from './castAudioEvents'
 
 type TileSize = Pick<FootstepMap, 'tileWidth' | 'tileHeight'>
-type Channel = { abilityId: AbilityId; startedAt: number; completesAt: number }
+type Channel = NonNullable<
+    CharacterAbilitiesSnapshot['casting'] | CharacterAbilitiesSnapshot['magicChannel']
+>
 
 interface CastSource {
     gain: number
@@ -26,7 +29,6 @@ interface CastSource {
 interface CastView {
     sources: Map<string, CastSource>
     localPlayerId: string
-    receivedAt: number
     serverTime: number
 }
 
@@ -54,6 +56,7 @@ export class CastAudio {
     private view: CastView | undefined
     private locationId: string | undefined
     private lastSnapshotTime = -Infinity
+    private clockOffset = -Infinity
 
     public constructor(
         private readonly sounds: Pick<WorldAmbienceSounds, 'request' | 'play'>,
@@ -67,6 +70,7 @@ export class CastAudio {
     public prepare(): void {
         this.sounds.request('magicCast')
         this.sounds.request('prayerWhisper')
+        this.sounds.request('sparkFlight')
     }
 
     public observeWorld(
@@ -84,10 +88,10 @@ export class CastAudio {
             this.clear()
             return
         }
+        this.clockOffset = Math.max(this.clockOffset, snapshot.serverTime - this.now())
         this.view = {
             sources: readSources(snapshot, listener, tileSize, isVisible),
             localPlayerId,
-            receivedAt: this.now(),
             serverTime: snapshot.serverTime,
         }
         for (const [key, expiresAt] of this.heard) {
@@ -130,7 +134,7 @@ export class CastAudio {
             return
         }
         // Snapshot timestamps and terminal events share the server's gameplay clock in milliseconds.
-        const serverTime = view.serverTime + (this.now() - view.receivedAt)
+        const serverTime = this.now() + this.clockOffset
         this.reconcileVoices(view, serverTime)
         for (const [actorId, source] of view.sources) {
             this.playChannel(view, actorId, source, serverTime)
@@ -149,6 +153,7 @@ export class CastAudio {
         this.heard.clear()
         this.ended.clear()
         this.lastSnapshotTime = -Infinity
+        this.clockOffset = -Infinity
     }
 
     private playInstant(
@@ -180,16 +185,17 @@ export class CastAudio {
         if (!channel || channel.completesAt - serverTime < minimumChannelMs) return
         if (this.channelEnded(view, actorId, channel, serverTime) || !this.hasSlot(view, actorId))
             return
-        const receipt = JSON.stringify(['channel', actorId, channel.abilityId, channel.startedAt])
-        if (this.heard.has(receipt)) return
-        const track = this.sounds.play(
-            isPrayerAction(channel.abilityId) ? 'prayerWhisper' : 'magicCast',
-            {
-                volume: source.gain,
-            }
-        )
+        const loop = !isPrayerAction(channel.abilityId)
+        const receipt = loop
+            ? undefined
+            : JSON.stringify(['channel', actorId, channel.abilityId, channel.startedAt])
+        if (receipt !== undefined && this.heard.has(receipt)) return
+        const track = this.sounds.play(loop ? 'magicCast' : 'prayerWhisper', {
+            volume: source.gain,
+            loop,
+        })
         if (!track) return
-        remember(this.heard, receipt, channel.completesAt)
+        if (receipt !== undefined) remember(this.heard, receipt, channel.completesAt)
         this.voices.set(actorId, { track, channel })
     }
 

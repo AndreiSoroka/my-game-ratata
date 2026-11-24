@@ -103,9 +103,11 @@ export class GameAudio {
         this.music.start()
     }
 
-    public updateMusic(): void {
-        this.music.setBattle(this.battleMusic.active)
-        this.music.update()
+    public updateMusic(elapsed: number, isBattleEnemyVisible?: (id: string) => boolean): void {
+        this.music.setBattle(
+            this.battleMusic.update(isBattleEnemyVisible, this.music.hasBattleTrack)
+        )
+        this.music.update(elapsed)
     }
 
     public startWorldAmbience(): void {
@@ -204,7 +206,7 @@ export class GameAudio {
 
     private clearWorldSounds(keepDeathVoice = false): void {
         this.battleMusic.clear()
-        this.music.setBattle(false)
+        this.music.resetBattle()
         this.footsteps.reset()
         this.footstepAudio.stop()
         this.ambience?.clear()
@@ -242,7 +244,7 @@ export class GameAudio {
     }
 
     private receiveWorldCue(event: GameEventPayload, serverTime: number): void {
-        this.battleMusic.receive(event, serverTime)
+        this.battleMusic.receive(event, serverTime, this.music.hasBattleTrack)
         if (!this.characterAudio) return
         const { casts, deaths } = this.characterAudio
         if (document.hidden || isAudioMuted()) {

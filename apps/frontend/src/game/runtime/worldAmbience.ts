@@ -26,6 +26,23 @@ interface PortalVoice {
     stopAt?: number
 }
 
+const portalFullVolumeRadius = 3
+const portalBoostRadius = 6
+const portalFadeRadius = 12
+
+function portalGain(distance: number): number {
+    const attenuation = Math.min(
+        1,
+        (portalFadeRadius - distance) / (portalFadeRadius - portalFullVolumeRadius)
+    )
+    const proximity = Math.min(
+        1,
+        Math.max(0, (portalBoostRadius - distance) / (portalBoostRadius - portalFullVolumeRadius))
+    )
+    // At six tiles and beyond, the higher asset gain is offset by the track gain.
+    return attenuation ** 2 * ((2 + proximity) / 3)
+}
+
 /** Client-only sounds derived from the local player's current view. */
 export class WorldAmbience {
     private readonly sounds: WorldAmbienceSounds
@@ -89,7 +106,8 @@ export class WorldAmbience {
             return
         }
 
-        this.serverClockOffset = snapshot.serverTime - this.now()
+        const now = this.now()
+        this.serverClockOffset = snapshot.serverTime - now
         this.portals = (snapshot.portals ?? []).flatMap((portal) => {
             if (
                 portal.locationId !== map.locationId ||
@@ -100,7 +118,7 @@ export class WorldAmbience {
             const distance = distanceInTiles(listener.position, portal.position, map)
             return [{ id: portal.id, expiresAt: portal.expiresAt, distance }]
         })
-        this.terrain.observe(snapshot, listener.position, map)
+        this.terrain.observe(snapshot, listener.position, map, now)
     }
 
     /** Invalidate observations and voices while keeping the applied map available for resume. */
@@ -157,7 +175,7 @@ export class WorldAmbience {
 
         this.portalVoice.id = nearest.id
         this.portalVoice.stopAt = undefined
-        setAmbienceGain(this.portalVoice.track, Math.min(1, (12 - nearest.distance) / 9) ** 2)
+        setAmbienceGain(this.portalVoice.track, portalGain(nearest.distance))
     }
 
     private reconcilePortals(serverTime: number): AudiblePortal | undefined {
@@ -166,7 +184,7 @@ export class WorldAmbience {
         for (const portal of this.portals) {
             if (portal.expiresAt <= serverTime) continue
             if (portal.id === this.portalVoice?.id) currentIsValid = true
-            if (portal.distance < (nearest?.distance ?? 12)) nearest = portal
+            if (portal.distance < (nearest?.distance ?? portalFadeRadius)) nearest = portal
         }
         if (!currentIsValid || this.portalVoice?.track.isStopped) this.stopPortal()
         return nearest
