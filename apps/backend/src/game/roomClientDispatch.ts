@@ -19,18 +19,29 @@ import {
     sendError,
 } from './roomMessaging'
 import { setSocketViewport } from './roomViewport'
+import {
+    beginManualStopEpisode,
+    hasMovementAxis,
+    hasPendingManualStop,
+    invalidateManualStop,
+    replayStopCorrection,
+    requestManualStop,
+} from './stopCorrection'
 
 function dispatchRawRoomMessage(
     ws: RoomSocket,
     raw: unknown,
-    dispatch: (message: ClientMessage) => void
+    dispatch: (
+        message: ClientMessage,
+        invalidStopCorrectionId: number | undefined
+    ) => void
 ): void {
     const result = parseSocketMessage(raw)
     if (result.message === undefined) {
         sendError(ws, 'invalid_message', result.error ?? 'Invalid message')
         return
     }
-    dispatch(result.message)
+    dispatch(result.message, result.invalidStopCorrectionId)
 }
 
 interface DispatchContext extends ClientContext {
@@ -49,8 +60,13 @@ export function createRoomMessageHandler(
     onDispatched: () => void
 ) {
     return (ws: RoomSocket, raw: unknown): void =>
-        dispatchRawRoomMessage(ws, raw, (message) => {
-            dispatchRoomClientMessage(context(), ws, message)
+        dispatchRawRoomMessage(ws, raw, (message, invalidStopCorrectionId) => {
+            dispatchRoomClientMessage(
+                context(),
+                ws,
+                message,
+                invalidStopCorrectionId
+            )
             onDispatched()
         })
 }
@@ -59,6 +75,7 @@ function dispatchRoomClientMessage(
     context: DispatchContext,
     ws: RoomSocket,
     message: ClientMessage,
+    invalidStopCorrectionId: number | undefined,
     now = context.room.gameplayNow()
 ): void {
     if (message.type === 'join') {
@@ -83,6 +100,38 @@ function dispatchRoomClientMessage(
     if (message.type === 'set_locale') {
         context.room.speechTranslations.setLocale(ws, message.locale)
         return
+    }
+    if (message.type === 'move_input') {
+        dispatchMovementInput(
+            context,
+            ws,
+            player,
+            message,
+            invalidStopCorrectionId,
+            now
+        )
+        return
+    }
+    dispatchCharacterCommand(context, ws, player, message, now)
+}
+
+function dispatchCharacterCommand(
+    context: DispatchContext,
+    ws: RoomSocket,
+    player: GameCharacter,
+    message: ClientMessage,
+    now: number
+): void {
+    if (
+        ![
+            'chat',
+            'speech_activity',
+            'plant_tree_preview',
+            'cancel_control',
+            'movement_mode',
+        ].includes(message.type)
+    ) {
+        invalidateManualStop(player)
     }
     if (message.type === 'abandon_life') {
         context.abandon(player)
@@ -122,7 +171,45 @@ function handleSnapshotControl(
     }
     if (message.type === 'snapshot_resync') {
         requestSnapshotResync(ws, now)
+        invalidateManualStop(player)
         return true
     }
     return false
+}
+
+function dispatchMovementInput(
+    context: ClientContext,
+    socket: RoomSocket,
+    actor: GameCharacter,
+    message: Extract<ClientMessage, { type: 'move_input' }>,
+    invalidId: number | undefined,
+    now: number
+): void {
+    if (hasMovementAxis(message.axis)) {
+        if (hasPendingManualStop(actor)) {
+            invalidateManualStop(actor)
+        }
+        handleCharacterMessage(context, actor, message, now)
+        if (
+            hasMovementAxis(actor.getMoveInput()) &&
+            !context.room.social.exchanges.isPaused(actor.id)
+        ) {
+            beginManualStopEpisode(socket, actor)
+        }
+        return
+    }
+    const id = message.stopCorrection?.id ?? invalidId
+    if (id !== undefined && replayStopCorrection(socket, actor, id)) {
+        return
+    }
+    const wasMoving = hasMovementAxis(actor.getMoveInput())
+    handleCharacterMessage(context, actor, message, now)
+    requestManualStop(
+        socket,
+        actor,
+        wasMoving,
+        message.stopCorrection,
+        invalidId,
+        now
+    )
 }

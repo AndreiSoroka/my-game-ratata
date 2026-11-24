@@ -16,6 +16,7 @@ import {
 import {
     clearSnapshotStream,
     keyframeInterval,
+    nextSnapshotStreamId,
     requireFullSnapshot,
     sameSnapshotScope,
     type SnapshotScope,
@@ -28,6 +29,10 @@ export interface SnapshotSendOptions {
     clockResumeRevision?: number
     stepMs?: number
     deltas?: boolean
+    onSent?: (
+        reference: { streamId: number; seq: number },
+        serverTime: number
+    ) => void
 }
 
 export function sendWorldInit(
@@ -41,12 +46,13 @@ export function sendWorldInit(
         ...options,
         playerId: message.playerId,
     })
-    const streamId = stream.streamId + 1
+    const streamId = nextSnapshotStreamId()
     const payload = encodeWorldInit(message, normalized, streamId)
     if (!sendState(socket, payload, false)) {
         return false
     }
     commitFrame(stream, normalized.snapshot, scope, streamId, 0, true)
+    options.onSent?.({ streamId, seq: 0 }, normalized.snapshot.serverTime)
     return true
 }
 
@@ -66,7 +72,7 @@ export function sendSnapshot(
     const scope = snapshotScope(normalized.snapshot, options)
     prepareFullReason(stream, scope, normalized.snapshot.serverTime)
     const reset = stream.pendingFull === 'reset'
-    const streamId = reset ? stream.streamId + 1 : stream.streamId
+    const streamId = reset ? nextSnapshotStreamId() : stream.streamId
     const seq = reset ? 0 : stream.seq + 1
     const full = encodeFullSnapshot(normalized, streamId, seq)
     const payload = chooseFrame(
@@ -88,6 +94,7 @@ export function sendSnapshot(
         seq,
         payload === full
     )
+    options.onSent?.({ streamId, seq }, normalized.snapshot.serverTime)
 }
 
 function snapshotScope(

@@ -107,7 +107,7 @@ it('delivers decoded snapshots and preserves the ordering of reliable events', (
         serverTime: next.serverTime,
         event: { kind: 'notice', text: 'Resolved' },
     })
-    expect(f.onSnapshot).toHaveBeenCalledExactlyOnceWith(next)
+    expect(f.onSnapshot).toHaveBeenCalledExactlyOnceWith(next, { streamId: 1, seq: 1 })
     expect(f.order).toEqual(['reset', 'init', 'snapshot', 'event'])
     expect(f.resyncs()).toHaveLength(0)
     f.runtime.close()

@@ -6,6 +6,11 @@ import type { JoinContext } from './roomIdentity'
 import { type RoomSocket, sendSnapshot, sendWorldInit } from './roomMessaging'
 import type { SimulationContext } from './roomSimulation'
 import { socketViewport } from './roomViewport'
+import {
+    recordStopCorrectionAnchor,
+    resetStopCorrectionStream,
+} from './stopCorrection'
+import { ownerStopCorrection } from './stopCorrectionJournal'
 import { projectViewport } from './viewportProjection'
 
 export function publishRoomSnapshots(
@@ -16,23 +21,43 @@ export function publishRoomSnapshots(
         if (id === undefined) {
             continue
         }
-        const locationId = context.characters.get(id)?.locationId
+        const actor = context.characters.get(id)
+        const locationId = actor?.locationId
         const viewport = socketViewport(ws, id, locationId)
         sendSnapshot(
             ws,
-            () =>
-                projectMovementPresentation(
+            () => {
+                const snapshot = projectMovementPresentation(
                     projectViewport(
                         context.snapshot(context.now, locationId, id),
                         viewport,
                         id
                     ),
                     motionDeadlines
-                ),
+                )
+                const receipt =
+                    actor === undefined
+                        ? undefined
+                        : ownerStopCorrection(ws, actor)
+                return receipt === undefined
+                    ? snapshot
+                    : { ...snapshot, stopCorrection: receipt }
+            },
             {
                 playerId: id,
                 stepMs: context.deltaMs,
                 clockResumeRevision: context.room.clockResumeRevision(),
+                ...(actor === undefined
+                    ? {}
+                    : {
+                          onSent: (reference, at) =>
+                              recordStopCorrectionAnchor(
+                                  ws,
+                                  actor,
+                                  reference,
+                                  at
+                              ),
+                      }),
             }
         )
     }
@@ -46,6 +71,7 @@ export function sendInitialRoomState(
     socket: RoomSocket,
     character: GameCharacter
 ): boolean {
+    resetStopCorrectionStream(socket, character)
     return sendWorldInit(
         socket,
         {
@@ -56,6 +82,10 @@ export function sendInitialRoomState(
             tickMs: context.tickMs,
             type: 'world_init',
         },
-        { clockResumeRevision: context.clockResumeRevision?.() ?? 0 }
+        {
+            clockResumeRevision: context.clockResumeRevision?.() ?? 0,
+            onSent: (reference, at) =>
+                recordStopCorrectionAnchor(socket, character, reference, at),
+        }
     )
 }

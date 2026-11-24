@@ -62,6 +62,20 @@ export class MagicCombat {
         return this.windingUp.has(actor)
     }
 
+    public hasUnresolvedCombat(locationId: string, now: number): boolean {
+        for (const projectile of this.projectiles.values()) {
+            if (projectile.locationId === locationId) {
+                return true
+            }
+        }
+        for (const caster of this.channelsIn(locationId)) {
+            if (activeMagicChannel(caster, now)?.abilityId === 'chains') {
+                return true
+            }
+        }
+        return false
+    }
+
     private assignEffectId(instance: GameCharacter | FireProjectile): void {
         this.effectIds.set(instance, `magic-${String(++this.effectSequence)}`)
     }

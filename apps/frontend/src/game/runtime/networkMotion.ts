@@ -1,12 +1,16 @@
-import type {
-    CharacterSnapshot,
-    GameEventPayload,
-    Vector2,
-    WorldSnapshot,
+import {
+    type CharacterSnapshot,
+    type GameEventPayload,
+    STOP_CORRECTION_BLEND_MS,
+    STOP_CORRECTION_MAX_AGE_MS,
+    type StopCorrectionRequest,
+    type Vector2,
+    type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
 import { MotionClock } from './motionClock'
 import { clipMotion, motionLineClear, type MotionMap } from './motionCollision'
+import type { SnapshotReference } from './runtimeSnapshotStream'
 
 interface Track {
     snapshot: CharacterSnapshot
@@ -18,7 +22,13 @@ interface Track {
     correctionAt: number
     correctionMs: number
     snapNext: boolean
+    reference: SnapshotReference | undefined
 }
+
+type ManualStop = { actorId: string; from: Vector2 } & (
+    | { phase: 'waiting'; requestId: number; deadline: number }
+    | { phase: 'blending'; target: Vector2; startedAt: number }
+)
 
 const continuationMs = 200
 const correctionMs = 100
@@ -29,25 +39,66 @@ export class NetworkMotion {
     private readonly tracks = new Map<string, Track>()
     private held = false
     private map: MotionMap | undefined
+    private stop: ManualStop | undefined
 
     public setMap(map: MotionMap): void {
         this.map = map
         this.reset()
     }
 
-    public observe(snapshot: WorldSnapshot, localTime: number): void {
-        if (!this.clock.observe(snapshot.serverTime, snapshot.tick, localTime)) return
+    public observe(
+        snapshot: WorldSnapshot,
+        localTime: number,
+        playerId?: string,
+        reference?: SnapshotReference
+    ): void {
+        if (!this.clock.observe(snapshot.serverTime, snapshot.tick, localTime) && !this.held) return
         const now = this.clock.now(localTime)
         const active = new Set(snapshot.characters.map((character) => character.id))
+        if (this.stop && (this.stop.actorId !== playerId || !active.has(this.stop.actorId)))
+            this.cancelStop()
         for (const id of this.tracks.keys()) if (!active.has(id)) this.tracks.delete(id)
-        for (const character of snapshot.characters) this.accept(character, snapshot, now)
+        for (const character of snapshot.characters)
+            this.accept(character, snapshot, now, localTime, reference)
         this.held = false
     }
 
     public frame(localTime: number): void {
         if (this.held) return
         const now = this.clock.now(localTime)
-        for (const track of this.tracks.values()) if (!track.snapNext) this.render(track, now)
+        for (const track of this.tracks.values()) {
+            if (!track.snapNext && !this.renderStop(track, localTime)) this.render(track, now)
+        }
+    }
+
+    public beginStop(
+        actorId: string,
+        requestId: number,
+        localTime: number
+    ): StopCorrectionRequest | undefined {
+        const track = this.tracks.get(actorId)
+        if (
+            !track?.reference ||
+            this.held ||
+            track.snapNext ||
+            motionBlocked(track.snapshot) ||
+            track.snapshot.movement?.dashing ||
+            track.snapshot.combat?.action?.abilityId === 'lunge'
+        )
+            return undefined
+        const from = { ...track.position }
+        this.stop = {
+            actorId,
+            from,
+            phase: 'waiting',
+            requestId,
+            deadline: localTime + STOP_CORRECTION_MAX_AGE_MS,
+        }
+        return { id: requestId, ...track.reference, position: { ...from } }
+    }
+
+    public cancelStop(): void {
+        this.stop = undefined
     }
 
     public position(id: string): Vector2 | undefined {
@@ -58,7 +109,8 @@ export class NetworkMotion {
         const track = this.tracks.get(id)
         if (!track) return undefined
         const snapshot = track.snapshot
-        const expired = this.held || this.clock.now(localTime) >= track.until
+        const expired =
+            this.held || this.stop?.actorId === id || this.clock.now(localTime) >= track.until
         return expired && snapshot.animation.action === 'walk'
             ? { ...snapshot, animation: { ...snapshot.animation, action: 'idle' } }
             : snapshot
@@ -73,50 +125,72 @@ export class NetworkMotion {
             return
         const track = this.tracks.get(event.actorId ?? '')
         if (!track || samePosition(track.snapshot.position, event.position)) return
+        if (this.stop?.actorId === event.actorId) this.cancelStop()
         track.snapNext = true
         track.until = track.time
     }
 
     public hold(): void {
+        this.cancelStop()
         this.held = true
     }
 
     public reset(): void {
         this.tracks.clear()
         this.clock.reset()
+        this.cancelStop()
         this.held = false
     }
 
-    private accept(character: CharacterSnapshot, frame: WorldSnapshot, now: number): void {
+    private accept(
+        character: CharacterSnapshot,
+        frame: WorldSnapshot,
+        now: number,
+        localTime: number,
+        reference: SnapshotReference | undefined
+    ): void {
         const previous = this.tracks.get(character.id)
-        const velocity = motionVelocity(character, frame.stepMs)
-        const until = Math.max(
-            frame.serverTime,
-            Math.min(
-                frame.serverTime + continuationMs,
-                character.movement?.continuationUntil ?? Infinity
-            )
-        )
-        const track: Track = {
-            snapshot: character,
-            velocity,
-            position: { ...character.position },
-            time: frame.serverTime,
-            until: validStep(frame.stepMs) && !motionBlocked(character) ? until : frame.serverTime,
-            correction: { x: 0, y: 0 },
-            correctionAt: now,
-            correctionMs: 0,
-            snapNext: false,
+        const step = validStep(frame.stepMs) && !motionBlocked(character) ? frame.stepMs : 0
+        const track = createTrack(character, frame.serverTime, step, now, reference)
+        const snap = !previous || this.held || step === 0 || discontinuous(previous, character)
+        if (snap) {
+            if (this.stop?.actorId === character.id) this.cancelStop()
+        } else if (!this.renderStop(track, localTime, frame.stopCorrection?.id)) {
+            this.correct(track, previous, now)
         }
-        const snap =
-            !previous ||
-            this.held ||
-            previous.snapNext ||
-            previous.snapshot.alive !== character.alive ||
-            motionBlocked(character) ||
-            !validStep(frame.stepMs)
-        if (!snap) this.correct(track, previous, now)
         this.tracks.set(character.id, track)
+    }
+
+    private renderStop(track: Track, localTime: number, receiptId?: number): boolean {
+        const stop = this.stop
+        if (!stop || track.snapshot.id !== stop.actorId) return false
+        if (stop.phase === 'waiting' && localTime < stop.deadline) {
+            if (receiptId === stop.requestId)
+                this.stop = {
+                    actorId: stop.actorId,
+                    from: stop.from,
+                    phase: 'blending',
+                    target: track.snapshot.position,
+                    startedAt: localTime,
+                }
+            track.position = stop.from
+            return true
+        }
+        if (stop.phase === 'blending' && samePosition(track.snapshot.position, stop.target)) {
+            const progress = (localTime - stop.startedAt) / STOP_CORRECTION_BLEND_MS
+            if (progress < 1) {
+                track.position = {
+                    x: stop.from.x + (stop.target.x - stop.from.x) * progress,
+                    y: stop.from.y + (stop.target.y - stop.from.y) * progress,
+                }
+                return true
+            }
+        }
+        this.cancelStop()
+        track.position = { ...track.snapshot.position }
+        track.until = track.time
+        track.correctionMs = 0
+        return true
     }
 
     private correct(track: Track, previous: Track, now: number): void {
@@ -185,9 +259,37 @@ export class NetworkMotion {
     }
 }
 
-function motionVelocity(character: CharacterSnapshot, stepMs: number | undefined): Vector2 {
-    if (!validStep(stepMs) || motionBlocked(character)) return { x: 0, y: 0 }
-    return { x: character.velocity.x / stepMs, y: character.velocity.y / stepMs }
+function createTrack(
+    snapshot: CharacterSnapshot,
+    time: number,
+    step: number,
+    now: number,
+    reference: SnapshotReference | undefined
+): Track {
+    const deadline = snapshot.movement?.continuationUntil ?? Infinity
+    return {
+        snapshot,
+        velocity: step
+            ? { x: snapshot.velocity.x / step, y: snapshot.velocity.y / step }
+            : { x: 0, y: 0 },
+        position: { ...snapshot.position },
+        time,
+        until: step ? Math.max(time, Math.min(time + continuationMs, deadline)) : time,
+        correction: { x: 0, y: 0 },
+        correctionAt: now,
+        correctionMs: 0,
+        snapNext: false,
+        reference,
+    }
+}
+
+function discontinuous(previous: Track, character: CharacterSnapshot): boolean {
+    return (
+        previous.snapNext ||
+        previous.snapshot.alive !== character.alive ||
+        previous.snapshot.movement?.positionDiscontinuity !==
+            character.movement?.positionDiscontinuity
+    )
 }
 
 function validStep(stepMs: number | undefined): stepMs is number {

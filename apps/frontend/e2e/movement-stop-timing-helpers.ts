@@ -1,156 +1,229 @@
-import type {
-    CharacterSnapshot,
-    ClientMessage,
-    ServerMessage,
-    Vector2,
+import {
+    type CharacterSnapshot,
+    type ClientMessage,
+    type ServerMessage,
+    STOP_CORRECTION_BLEND_MS,
+    STOP_CORRECTION_MAX_AGE_MS,
+    type StopCorrectionReceipt,
+    type StopCorrectionRequest,
+    type Vector2,
+    type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import type { Page } from '@playwright/test'
 
 import { RuntimeSnapshotStream } from '../src/game/runtime/runtimeSnapshotStream'
 
 export interface StopWireFrame {
+    streamId: number
+    seq: number
     tick: number
     serverTime: number
-    stepMs: number
-    afterRelease: boolean
+    receivedAt: number
     position: Vector2
     velocity: Vector2
-    continuationUntil?: number
+    stopCorrection?: StopCorrectionReceipt
+}
+
+interface StopWireRequest extends StopCorrectionRequest {
+    axis: Vector2
+    emittedAt: number
 }
 
 export function movementKey(axis: Vector2): string {
-    if (axis.x !== 0) return axis.x > 0 ? 'KeyD' : 'KeyA'
+    if (axis.x !== 0) {
+        return axis.x > 0 ? 'KeyD' : 'KeyA'
+    }
     return axis.y > 0 ? 'KeyS' : 'KeyW'
 }
 
-export async function captureStopWire(page: Page) {
+/** Add stop round-trip latency while preserving authoritative snapshot order. */
+export async function captureStopWire(
+    page: Page,
+    { releaseDelayMs, receiptDelayMs }: { releaseDelayMs: number; receiptDelayMs: number }
+) {
     const snapshots = new RuntimeSnapshotStream(true)
     const frames: StopWireFrame[] = []
-    const commands: ClientMessage[] = []
+    const requests: StopWireRequest[] = []
+    const queued: (() => void)[] = []
     let playerId: string | undefined
-    let held = false
-    let afterRelease = false
+    let waitingFor: number | undefined
     await page.routeWebSocket(/\/ws$/, (client) => {
         const server = client.connectToServer()
         client.onMessage((raw) => {
             const message = JSON.parse(raw.toString()) as ClientMessage
-            commands.push(message)
-            if (message.type === 'move_input') {
-                if (message.axis.x !== 0 || message.axis.y !== 0) {
-                    held = true
-                    afterRelease = false
-                } else if (held) {
-                    afterRelease = true
-                    held = false
-                }
+            if (message.type === 'move_input' && message.stopCorrection) {
+                requests.push({
+                    ...message.stopCorrection,
+                    axis: message.axis,
+                    emittedAt: performance.now(),
+                })
+                waitingFor = message.stopCorrection.id
+                setTimeout(() => server.send(raw), releaseDelayMs)
+                return
             }
             server.send(raw)
         })
         server.onMessage((raw) => {
             const message = JSON.parse(raw.toString()) as ServerMessage
-            if (message.type === 'world_init') playerId = message.playerId
-            const receipt =
-                message.type === 'world_init'
-                    ? snapshots.initialize(message)
-                    : message.type === 'snapshot' || message.type === 'snapshot_delta'
-                      ? snapshots.receive(message)
-                      : undefined
-            if (receipt?.kind === 'applied') {
-                const { snapshot } = receipt
-                const actor = snapshot.characters.find((character) => character.id === playerId)
-                if (actor) frames.push(wireFrame(actor, snapshot, afterRelease))
-            } else if (receipt && receipt.kind !== 'ignored')
-                throw new Error('Invalid authoritative motion stream')
-            client.send(raw)
+            if (message.type === 'world_init') {
+                playerId = message.playerId
+            }
+            const frame = receiveStopFrame(snapshots, message, playerId)
+            if (frame) {
+                frames.push(frame)
+            }
+            if (waitingFor !== undefined && frame?.stopCorrection?.id === waitingFor) {
+                waitingFor = undefined
+                setTimeout(() => {
+                    for (const send of queued.splice(0)) {
+                        send()
+                    }
+                }, receiptDelayMs)
+                queued.push(() => client.send(raw))
+                return
+            }
+            if (queued.length > 0) {
+                queued.push(() => client.send(raw))
+            } else {
+                client.send(raw)
+            }
         })
     })
-    return { frames, commands }
+    return { frames, requests }
+}
+
+function receiveStopFrame(
+    stream: RuntimeSnapshotStream,
+    message: ServerMessage,
+    playerId?: string
+): StopWireFrame | undefined {
+    if (!('seq' in message)) {
+        return undefined
+    }
+    const receipt =
+        message.type === 'world_init' ? stream.initialize(message) : stream.receive(message)
+    if (receipt.kind === 'resync') {
+        throw new Error('Invalid authoritative motion stream')
+    }
+    if (receipt.kind === 'applied') {
+        const actor = receipt.snapshot.characters.find((character) => character.id === playerId)
+        if (actor) {
+            return wireFrame(actor, receipt.snapshot, message)
+        }
+    }
+    return undefined
 }
 
 function wireFrame(
     actor: CharacterSnapshot,
-    snapshot: { tick: number; serverTime: number; stepMs?: number },
-    afterRelease: boolean
+    snapshot: WorldSnapshot,
+    { streamId, seq }: Pick<StopCorrectionRequest, 'streamId' | 'seq'>
 ): StopWireFrame {
     return {
+        streamId,
+        seq,
         tick: snapshot.tick,
         serverTime: snapshot.serverTime,
-        stepMs: snapshot.stepMs ?? 0,
-        afterRelease,
+        receivedAt: performance.now(),
         position: { ...actor.position },
         velocity: { ...actor.velocity },
-        continuationUntil: actor.movement?.continuationUntil,
+        stopCorrection: snapshot.stopCorrection,
     }
 }
 
 export interface StopRenderFrame {
     at: number
     tick: number
-    serverTime: number
     position: Vector2
-    velocity: Vector2
     rendered: Vector2
-    pagePosition: Vector2
-    continuationUntil?: number
+    stopCorrection?: StopCorrectionReceipt
 }
 
-export function captureStopRendering(page: Page) {
-    return page.evaluate(async (): Promise<StopRenderFrame[]> => {
+export function captureStopRendering(page: Page, key: string) {
+    return page.evaluate(async (code): Promise<StopRenderFrame[]> => {
         const frames: StopRenderFrame[] = []
-        const started = performance.now()
-        while (performance.now() - started < 650) {
+        const started = await new Promise<number>((resolve) => {
+            const capture = (event: KeyboardEvent) => {
+                if (event.code !== code) {
+                    return
+                }
+                window.removeEventListener('keyup', capture, true)
+                const releasedAt = performance.now()
+                frames.push(readFrame(0))
+                resolve(releasedAt)
+            }
+            window.addEventListener('keyup', capture, true)
+        })
+        while (performance.now() - started < 1_300) {
             await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-            const state = window.__ratataTest!.getState()
-            const debug = window.__ratataGameDebug!
-            const actor = state.player!
-            const rendered = debug.renderedCharacters!().find(
-                (character) => character.id === actor.id
-            )!.position
-            frames.push({
-                at: performance.now() - started,
-                tick: state.snapshot!.tick,
-                serverTime: state.snapshot!.serverTime,
-                position: { ...actor.position },
-                velocity: { ...actor.velocity },
-                rendered,
-                pagePosition: debug.worldToPage(rendered)!,
-                continuationUntil: actor.movement?.continuationUntil,
-            })
+            frames.push(readFrame(performance.now() - started))
         }
         return frames
-    })
+
+        function readFrame(at: number): StopRenderFrame {
+            const state = window.__ratataTest!.getState()
+            const actor = state.player!
+            const rendered = window.__ratataGameDebug!.renderedCharacters!().find(
+                (character) => character.id === actor.id
+            )!.position
+            return {
+                at,
+                tick: state.snapshot!.tick,
+                position: { ...actor.position },
+                rendered: { ...rendered },
+                stopCorrection: state.snapshot!.stopCorrection,
+            }
+        }
+    }, key)
 }
 
-export function backwardMotionMetrics(frames: StopRenderFrame[], axis: Vector2) {
-    let backwardWorldPixels = 0,
-        maxBackwardWorldPixels = 0
-    for (let index = 1; index < frames.length; index += 1) {
-        const previous = frames[index - 1]!.rendered,
-            next = frames[index]!.rendered
-        const backward = Math.max(
-            0,
-            (previous.x - next.x) * axis.x + (previous.y - next.y) * axis.y
-        )
-        backwardWorldPixels += backward
-        maxBackwardWorldPixels = Math.max(maxBackwardWorldPixels, backward)
-    }
-    return {
-        backwardWorldPixels,
-        maxBackwardWorldPixels,
-        maximumAuthorityGap: Math.max(
-            ...frames.map((frame) =>
-                Math.hypot(frame.position.x - frame.rendered.x, frame.position.y - frame.rendered.y)
-            )
-        ),
-    }
+export function distance(a: Vector2, b: Vector2): number {
+    return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
-export function isEndedPartialStep(
-    frame: Pick<StopWireFrame, 'velocity' | 'serverTime' | 'continuationUntil'>
-): boolean {
-    return (
-        Math.hypot(frame.velocity.x, frame.velocity.y) > 0 &&
-        frame.continuationUntil !== undefined &&
-        frame.continuationUntil <= frame.serverTime
+export function readStopResult(
+    frames: StopRenderFrame[],
+    sent: StopWireFrame[],
+    request: StopCorrectionRequest,
+    tolerance: number
+) {
+    const endIndex = sent.findIndex((frame) => frame.stopCorrection?.id === request.id)
+    const acknowledged = frames.find((frame) => frame.stopCorrection?.id === request.id)
+    if (endIndex < 1 || !acknowledged) {
+        throw new Error('No matching stop receipt in the snapshot stream and rendered frames')
+    }
+    const endpoint = sent[endIndex]!
+    const previous = sent[endIndex - 1]!
+    const acknowledgementMs = acknowledged.at
+    const heldUntil = Math.min(acknowledgementMs, STOP_CORRECTION_MAX_AGE_MS)
+    const settled = frames.find(
+        (frame) =>
+            frame.at >= acknowledgementMs && distance(frame.rendered, endpoint.position) < tolerance
     )
+    const fallback = frames.find(
+        (frame) => frame.at >= STOP_CORRECTION_MAX_AGE_MS && frame.at < acknowledgementMs
+    )
+    const convergenceDeadline = frames.find(
+        (frame) => frame.at >= acknowledgementMs + STOP_CORRECTION_BLEND_MS
+    )
+    // Velocity reports ordinary movement before the separate stop correction.
+    const appliedCorrectionPx = distance(endpoint.position, {
+        x: previous.position.x + endpoint.velocity.x,
+        y: previous.position.y + endpoint.velocity.y,
+    })
+    return {
+        endpoint,
+        previousTick: previous.tick,
+        acknowledgementMs,
+        appliedCorrectionPx,
+        settledMs: settled?.at,
+        convergenceMs: settled && settled.at - acknowledgementMs,
+        frozenGapPx: distance(request.position, endpoint.position),
+        held: frames.filter((frame) => frame.at > 0 && frame.at < heldUntil),
+        fallbackError: fallback ? distance(fallback.rendered, fallback.position) : 0,
+        convergenceError: convergenceDeadline
+            ? distance(convergenceDeadline.rendered, endpoint.position)
+            : Infinity,
+        stationaryFrames: sent.slice(endIndex + 1),
+    }
 }

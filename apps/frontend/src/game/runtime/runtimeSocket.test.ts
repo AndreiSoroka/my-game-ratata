@@ -214,7 +214,10 @@ it('does not deliver snapshots or animation events before the authoritative worl
         snapshot,
         map,
     })
-    expect(onWorldInit).toHaveBeenCalledExactlyOnceWith('hero', snapshot, map)
+    expect(onWorldInit).toHaveBeenCalledExactlyOnceWith('hero', snapshot, map, {
+        streamId: 1,
+        seq: 0,
+    })
     receive({ type: 'snapshot', streamId: 1, seq: 1, snapshot })
     expect(onSnapshot).toHaveBeenCalledOnce()
 })

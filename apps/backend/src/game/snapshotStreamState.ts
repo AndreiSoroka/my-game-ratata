@@ -1,3 +1,5 @@
+import { randomInt } from 'node:crypto'
+
 import type { WorldSnapshot } from '@my-game-ratata/contracts'
 
 import type { RoomSocket } from './roomMessaging'
@@ -25,6 +27,7 @@ export interface SnapshotStream {
 }
 
 const streams = new WeakMap<RoomSocket, SnapshotStream>()
+let lastStreamId = randomInt(2 ** 40)
 const fullPriority: Record<FullSnapshotReason, number> = {
     reset: 4,
     resync: 3,
@@ -54,6 +57,11 @@ export function snapshotStream(socket: RoomSocket): SnapshotStream {
 
 export function clearSnapshotStream(socket: RoomSocket): void {
     streams.delete(socket)
+}
+
+/** An anchor from a previous connection cannot name a newly opened stream. */
+export function nextSnapshotStreamId(): number {
+    return ++lastStreamId
 }
 
 export function requestSnapshotResync(socket: RoomSocket, now: number): void {
@@ -95,7 +103,7 @@ export function sameSnapshotScope(
 }
 
 export function keyframeInterval(streamId: number, offset: number): number {
-    return 30_000 + ((((streamId * 2654435761) >>> 0) + offset) % 5001)
+    return 30_000 + (((Math.imul(streamId, 2654435761) >>> 0) + offset) % 5001)
 }
 
 function socketPhase(socket: RoomSocket): number {

@@ -54,7 +54,9 @@ import type { CharacterTheftSnapshot, TheftClientMessage } from './theft'
 export * from './theft'
 import type {
     CharacterMovementSnapshot,
+    MoveInputClientMessage,
     MovementClientMessage,
+    MoveToClientMessage,
 } from './movement'
 export type * from './events'
 export * from './movement'
@@ -258,17 +260,6 @@ export interface MapSummary {
     width: number
     worldHeight: number
     worldWidth: number
-}
-
-export interface MoveInputClientMessage {
-    axis: Vector2
-    type: 'move_input'
-}
-
-export interface MoveToClientMessage {
-    append?: boolean
-    target: Vector2
-    type: 'move_to'
 }
 
 export interface AttackClientMessage {

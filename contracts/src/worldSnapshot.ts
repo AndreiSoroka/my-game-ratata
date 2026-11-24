@@ -8,6 +8,7 @@ import type {
     WorldItemSnapshot,
 } from './index'
 import type { MagicEffectSnapshot, PortalEndpointSnapshot } from './magic'
+import type { StopCorrectionReceipt } from './movement'
 import type { PartySnapshot } from './party'
 import type { AutomationSnapshot } from './scenarios'
 import type { SocialSnapshot } from './social'
@@ -29,6 +30,8 @@ export type FootstepSourceSnapshot = Pick<
 export interface WorldSnapshot {
     /** Resolved simulation interval in milliseconds; zero disables motion continuation. */
     stepMs?: number
+    /** Owner-only result. The same snapshot contains the resolved character position. */
+    stopCorrection?: StopCorrectionReceipt
     /** Expanded server interest bounds. Missing spatial entries outside these are omitted, not removed. */
     viewBounds?: ViewportBounds
     footstepSources?: FootstepSourceSnapshot[]

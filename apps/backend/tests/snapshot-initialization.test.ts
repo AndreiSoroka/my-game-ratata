@@ -71,19 +71,29 @@ describe('initial world state acceptance', () => {
     it('reinitializes successful rejoin but preserves the stream on an invalid join', () => {
         const f = joiningFixture()
         f.join()
-        expect(snapshotStream(f.socket)).toMatchObject({ streamId: 1, seq: 0 })
+        const { streamId: original } = snapshotStream(f.socket)
+        expect(f.frames[0]).toMatchObject({
+            type: 'world_init',
+            streamId: original,
+            seq: 0,
+        })
         f.join(true)
         expect(f.last()).toMatchObject({ type: 'error', code: 'name_taken' })
-        expect(snapshotStream(f.socket)).toMatchObject({ streamId: 1, seq: 0 })
+        expect(snapshotStream(f.socket)).toMatchObject({
+            streamId: original,
+            seq: 0,
+        })
         f.join()
-        expect(snapshotStream(f.socket)).toMatchObject({ streamId: 2, seq: 0 })
+        const { streamId: rejoined } = snapshotStream(f.socket)
+        expect(rejoined).toBeGreaterThan(original)
+        expect(snapshotStream(f.socket).seq).toBe(0)
         sendSnapshot(f.socket, () => f.snapshot(2), {
             playerId: f.actor.id,
             stepMs: 50,
         })
         expect(f.last()).toMatchObject({
             type: 'snapshot_delta',
-            streamId: 2,
+            streamId: rejoined,
             baseSeq: 0,
             seq: 1,
         })

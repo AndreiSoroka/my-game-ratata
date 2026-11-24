@@ -7,6 +7,9 @@ import type {
     SoulSnapshot,
 } from '@my-game-ratata/contracts'
 
+import type { GameCharacter } from './character'
+import { invalidateManualStop } from './stopCorrection'
+
 export interface SoulProfile extends SoulSnapshot {
     personality: string
 }
@@ -54,9 +57,12 @@ function defaultSoul(options: SoulOptions): SoulProfile {
 }
 
 export function setCharacterControlSource(
-    character: { soul: CharacterSoul },
+    character: GameCharacter,
     source: ControlSource
 ): void {
+    if (character.soul.controlSource !== source) {
+        invalidateManualStop(character)
+    }
     character.soul.controlSource = source
     character.soul.kind = source === 'script' ? 'echo' : 'spark'
 }

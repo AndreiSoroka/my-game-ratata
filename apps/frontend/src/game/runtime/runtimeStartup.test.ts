@@ -4,6 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 
 import { RatataGame } from './ratataGame'
 import type { RatataGameOptions } from './runtimeOptions'
+import type { SnapshotReference } from './runtimeSnapshotStream'
 import type { RenderedTiledMap } from './tiledMap'
 
 const calls = vi.hoisted(() => ({
@@ -14,8 +15,13 @@ const calls = vi.hoisted(() => ({
     connect: vi.fn<() => void>(),
     socketHandlers: undefined as
         | {
-              onWorldInit: (id: string, snapshot: WorldSnapshot, map: MapSummary) => void
-              onSnapshot: (snapshot: WorldSnapshot) => void
+              onWorldInit: (
+                  id: string,
+                  snapshot: WorldSnapshot,
+                  map: MapSummary,
+                  reference: SnapshotReference
+              ) => void
+              onSnapshot: (snapshot: WorldSnapshot, reference: SnapshotReference) => void
           }
         | undefined,
     music: vi.fn<() => void>(),
@@ -23,10 +29,13 @@ const calls = vi.hoisted(() => ({
     inputs: vi.fn<() => void>(),
     removeInputs: vi.fn<() => void>(),
     send: vi.fn<(command: ClientMessage) => void>(),
+    beginStop: vi.fn<(requestId: number) => void>(),
+    cancelStop: vi.fn<() => void>(),
     frames: new Set<() => void>(),
     handlers: undefined as
         | {
               keyDown: (event: KeyboardEvent) => void
+              keyUp: (event: KeyboardEvent) => void
               release: () => void
               pointer: (event: PointerEvent) => void
           }
@@ -65,6 +74,11 @@ vi.mock('./runtimePresentation', () => ({
                 addMap: vi.fn<(...args: unknown[]) => void>(),
                 setInteractionTarget: vi.fn<(...args: unknown[]) => void>(),
                 clearDamage: vi.fn<(...args: unknown[]) => void>(),
+                beginStop: (requestId: number) => {
+                    calls.beginStop(requestId)
+                    return { id: requestId, streamId: 1, seq: 0, position: { x: 83, y: 80 } }
+                },
+                cancelStop: calls.cancelStop,
             },
         }
     },
@@ -156,6 +170,36 @@ it('sends fresh movement when the same direction is pressed after a UI input rel
             [{ type: 'move_input', axis: { x: 1, y: 0 } }],
         ])
         expect(calls.send).toHaveBeenCalledWith({ type: 'release_input' })
+    } finally {
+        game.stop()
+    }
+})
+it('sends one visible stop request after the final held direction and cancels it on new movement', async () => {
+    const { game } = setup()
+    await startWorld(game)
+    try {
+        const handlers = calls.handlers!
+        handlers.keyDown(new KeyboardEvent('keydown', { code: 'KeyD' }))
+        handlers.keyDown(new KeyboardEvent('keydown', { code: 'KeyD', repeat: true }))
+        handlers.keyDown(new KeyboardEvent('keydown', { code: 'KeyW' }))
+        handlers.keyUp(new KeyboardEvent('keyup', { code: 'KeyW' }))
+        expect(calls.beginStop).not.toHaveBeenCalled()
+        expect(
+            calls.send.mock.calls.filter(([command]) => command.type === 'cancel_control')
+        ).toHaveLength(2)
+        handlers.keyUp(new KeyboardEvent('keyup', { code: 'KeyD' }))
+        handlers.keyUp(new KeyboardEvent('keyup', { code: 'KeyD' }))
+        const requestId = calls.beginStop.mock.lastCall?.[0]
+        expect(calls.beginStop).toHaveBeenCalledExactlyOnceWith(requestId)
+        expect(Number.isSafeInteger(requestId)).toBe(true)
+        expect(calls.send).toHaveBeenLastCalledWith({
+            type: 'move_input',
+            axis: { x: 0, y: 0 },
+            stopCorrection: { id: requestId, streamId: 1, seq: 0, position: { x: 83, y: 80 } },
+        })
+        calls.cancelStop.mockClear()
+        handlers.keyDown(new KeyboardEvent('keydown', { code: 'KeyA' }))
+        expect(calls.cancelStop).toHaveBeenCalledOnce()
     } finally {
         game.stop()
     }
@@ -368,7 +412,7 @@ function initialize(epoch = 'a'): void {
         characters: [],
         location: { id: map.id, map },
     } as unknown as WorldSnapshot
-    calls.socketHandlers?.onWorldInit('hero', snapshot, map)
+    calls.socketHandlers?.onWorldInit('hero', snapshot, map, { streamId: 1, seq: 0 })
 }
 async function startWorld(game: RatataGame): Promise<void> {
     await game.start()

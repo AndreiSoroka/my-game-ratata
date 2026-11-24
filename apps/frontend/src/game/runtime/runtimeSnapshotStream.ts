@@ -3,13 +3,21 @@ import {
     freezeSnapshot,
     normalizeSnapshot,
     type ServerMessage,
+    type StopCorrectionRequest,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
 type InitialFrame = Extract<ServerMessage, { type: 'world_init' }>
 type StateFrame = Extract<ServerMessage, { type: 'snapshot' | 'snapshot_delta' }>
+export type SnapshotReference = Pick<StopCorrectionRequest, 'streamId' | 'seq'>
 export type SnapshotReceipt =
-    | { kind: 'applied'; snapshot: WorldSnapshot; reset: boolean; full: boolean }
+    | {
+          kind: 'applied'
+          snapshot: WorldSnapshot
+          reference: SnapshotReference
+          reset: boolean
+          full: boolean
+      }
     | { kind: 'ignored' }
     | { kind: 'resync' }
 
@@ -96,7 +104,7 @@ export class RuntimeSnapshotStream {
     }
 
     private commit(
-        message: { streamId: number; seq: number },
+        message: SnapshotReference,
         snapshot: WorldSnapshot,
         reset: boolean,
         full: boolean
@@ -105,7 +113,13 @@ export class RuntimeSnapshotStream {
         this.streamId = message.streamId
         this.seq = message.seq
         this.invalid = false
-        return { kind: 'applied', snapshot: this.baseline, reset, full }
+        return {
+            kind: 'applied',
+            snapshot: this.baseline,
+            reference: { streamId: message.streamId, seq: message.seq },
+            reset,
+            full,
+        }
     }
 }
 

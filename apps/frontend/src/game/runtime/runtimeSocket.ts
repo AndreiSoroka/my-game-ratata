@@ -15,7 +15,11 @@ import { watch, type WatchHandle } from 'vue'
 import { resolveBackendHttpUrl, resolveBackendWebSocketUrl } from '@/shared/api'
 import { tGame } from '@/shared/lib/i18n'
 
-import { RuntimeSnapshotStream, type SnapshotReceipt } from './runtimeSnapshotStream'
+import {
+    RuntimeSnapshotStream,
+    type SnapshotReceipt,
+    type SnapshotReference,
+} from './runtimeSnapshotStream'
 
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
@@ -23,12 +27,17 @@ interface RuntimeSocketHandlers {
     onEvent: (event: GameEventPayload) => void
     onSpeechTranslation?: (translation: SpeechTranslationServerMessage) => void
     getLocale?: () => GameLocale
-    onSnapshot: (snapshot: WorldSnapshot) => void
+    onSnapshot: (snapshot: WorldSnapshot, reference: SnapshotReference) => void
     onStreamReset?: () => void
     onSnapshotInvalidated?: () => void
     onPlantingPreview?: (preview: PlantTreePreview) => void
     onStatus: (message: string) => void
-    onWorldInit: (playerId: string, snapshot: WorldSnapshot, map: MapSummary) => void
+    onWorldInit: (
+        playerId: string,
+        snapshot: WorldSnapshot,
+        map: MapSummary,
+        reference: SnapshotReference
+    ) => void
 }
 
 export class RuntimeSocket {
@@ -155,7 +164,7 @@ export class RuntimeSocket {
         }
         if (receipt.full) this.clearResync()
         if (receipt.reset) this.handlers.onStreamReset?.()
-        this.handlers.onSnapshot(receipt.snapshot)
+        this.handlers.onSnapshot(receipt.snapshot, receipt.reference)
     }
 
     private requestResync(): void {
@@ -191,7 +200,12 @@ export class RuntimeSocket {
         this.handlers.onStreamReset?.()
         this.initialized = true
         this.updateLocale()
-        this.handlers.onWorldInit(message.playerId, receipt.snapshot, message.map)
+        this.handlers.onWorldInit(
+            message.playerId,
+            receipt.snapshot,
+            message.map,
+            receipt.reference
+        )
     }
 }
 

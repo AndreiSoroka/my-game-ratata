@@ -11,6 +11,7 @@ import { isChestCommandType, parseChestCommand } from './chestCommands'
 import { parseCombatReference } from './combatTargetParsing'
 import { parseExtraCommand } from './extraCommands'
 import { parseAbandonLife, parseJoin, parseLocale } from './identityMessages'
+import { parseStopCorrection } from './movementInputCommand'
 import { parsePortalBoundary } from './portalCommand'
 import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
 import { parseViewportCommand } from './viewportCommand'
@@ -20,6 +21,7 @@ import { parsePickupCommand } from './worldPickup'
 export interface ParseResult {
     error?: string
     message?: ClientMessage
+    invalidStopCorrectionId?: number
 }
 
 export function readSocketMessage(raw: unknown): string | undefined {
@@ -156,7 +158,15 @@ function parseMoveInput(record: Record<string, unknown>): ParseResult {
         return { error: 'move_input.axis must be a vector' }
     }
 
-    return { message: { axis, type: 'move_input' } }
+    const message = { axis, type: 'move_input' as const }
+    if (axis.x !== 0 || axis.y !== 0) {
+        return { message }
+    }
+    return parseStopCorrection(
+        message,
+        asRecord(record['stopCorrection']),
+        parseVector
+    )
 }
 
 function parseMoveTo(record: Record<string, unknown>): ParseResult {

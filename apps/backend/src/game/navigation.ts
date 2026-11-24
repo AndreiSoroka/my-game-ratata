@@ -178,7 +178,11 @@ export class NavigationService {
         )
     }
 
-    public moveWithCollision(position: Vector2, delta: Vector2): Vector2 {
+    public moveWithCollision(
+        position: Vector2,
+        delta: Vector2,
+        onStep?: (from: Vector2, to: Vector2) => void
+    ): Vector2 {
         const stepSize = Math.min(this.grid.tileWidth, this.grid.tileHeight) / 4
         const steps = Math.max(
             1,
@@ -187,7 +191,11 @@ export class NavigationService {
         const step = { x: delta.x / steps, y: delta.y / steps }
         let result = { ...position }
         for (let index = 0; index < steps; index += 1) {
-            result = this.moveStep(result, step)
+            const next = this.moveStep(result, step)
+            if (next.x !== result.x || next.y !== result.y) {
+                onStep?.(result, next)
+            }
+            result = next
         }
         return result
     }

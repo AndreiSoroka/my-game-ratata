@@ -10,6 +10,7 @@ import { canWalkDuringPrayer } from './combatMovement'
 import { magicBlocksMovement } from './magicState'
 import { mobFleeTravelIntent } from './mobFlee'
 import { rememberPursuitExit } from './pursuitTravel'
+import { type RoomSocket, send } from './roomMessaging'
 import type { WorldLocations } from './worldLocations'
 
 export function characterMovementIntent(
@@ -89,4 +90,23 @@ export function travelRoomCharacter(
         }
     }
     return notice
+}
+
+export function sendTravelNotice(
+    character: GameCharacter,
+    notice: string,
+    {
+        connections,
+        now,
+    }: { connections: ReadonlyMap<RoomSocket, string | undefined>; now: number }
+): void {
+    for (const [ws, id] of connections) {
+        if (id === character.id) {
+            send(ws, {
+                type: 'event',
+                serverTime: now,
+                event: { kind: 'notice', actorId: id, text: notice },
+            })
+        }
+    }
 }

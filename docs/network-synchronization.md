@@ -1,6 +1,6 @@
 # Network synchronization
 
-Client and server use protocol **0.14.0** and must be updated together. Reload old
+Client and server use protocol **0.15.0** and must be updated together. Reload old
 clients after restarting the server. The transport remains WebSocket over HTTP
 or HTTPS, with negotiated per-message compression; HTTP/3 is not required.
 
@@ -39,7 +39,8 @@ sequence number or a new stream. Queue pressure is checked before constructing
 an observer snapshot. Reliable action events retain their existing transport.
 
 A change of character identity, map, world epoch or resumed simulation clock
-starts a new stream with a full frame at sequence zero. Full frames are also
+starts a new stream with a full frame at sequence zero. Stream IDs are distinct
+across connections and resets within a server process. Full frames are also
 sent for recovery and every 30–35 seconds, staggered across connections. A full
 frame replaces a delta when its encoding is smaller. Required full frames remain
 pending until accepted.
@@ -55,7 +56,7 @@ permissions and viewport. This command works while a joined character is dead
 or an exchange is open. Disconnect and socket replacement clear retry timers.
 
 Set `GAME_SNAPSHOT_DELTAS=0` before starting the backend to send only full frames
-within protocol 0.14.0. Compression and viewport filtering remain enabled. The
+within protocol 0.15.0. Compression and viewport filtering remain enabled. The
 flag does not restore compatibility with an older client.
 
 ## Server movement input timing
@@ -63,8 +64,7 @@ flag does not restore compatibility with an older client.
 Manual direction changes use trusted server receipt time inside each simulation
 step. Press, release and reversal commands split that step into ordered movement
 segments; a key held for 30 ms contributes 30 ms of movement. Untimed controller
-intentions retain their existing whole-step behavior. The wire protocol stays
-0.14.0 and does not accept client-reported stop coordinates or clocks.
+intentions retain their existing whole-step behavior.
 
 Each segment uses the shared collision and movement restrictions. The server
 sums actual traveled distance, retains net displacement as `velocity`, and
@@ -78,9 +78,33 @@ step window is integrated, including its 250 ms stall limit. Equal commands and
 equal-time changes are coalesced. Overflow beyond 128 changes discards movement
 credit for that window and retains the latest input for the next step.
 
-This removes server-side tick quantization loss. The client can still overshoot
-before an authoritative stop arrives; network-delay correction and local input
-prediction are separate work.
+## Manual stop correction
+
+A zero-axis `move_input` can carry a `stopCorrection` request with a unique
+`id`, the `streamId` and `seq` of a received snapshot, and the displayed
+`position` in map pixels. The server validates the request against its eight
+most recent sent snapshots and the same character, life, location and manual
+movement episode. The request has a 300 ms lifetime measured by the server.
+Invalid requests still release movement. One stop can apply one correction.
+The connection retains its 128 most recent results for retries.
+
+The server resolves movement and combat before applying a correction and then
+updates interaction areas and publishes the snapshot. It validates the remaining
+forward movement budget, the recently traveled path for a return, and collisions.
+Both directions spend the full distance from a reserve capped at 4 map pixels.
+A new identity starts with a full reserve. The reserve gains unused allowance
+for actual simulation windows of manual movement, using the existing 250 ms step
+cap, and follows the character through reconnects, travel and resurrection.
+Active combat in the same location can disable correction, including an
+unfinished attack, a projectile or a combat area.
+
+The owner snapshot carries the request ID and `accepted`, `clamped` or
+`rejected` as `stopCorrection`. The ordinary character position gives the
+resolved point. On release the client stops continuation immediately, holds the
+displayed position for up to 300 ms, then reaches the confirmed position in
+100 ms. Repeated stationary frames share that deadline. New movement or a
+synchronization, map or life transition cancels the wait. Death and forced
+displacements apply immediately.
 
 ## Cosmetic movement
 

@@ -3,6 +3,7 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 import type { GameCharacter } from './character'
 import { movementInputLocked } from './combatMovement'
 import { normalize, zeroVector } from './math'
+import { invalidateManualStop } from './stopCorrection'
 
 export interface TimedMovementSegment {
     axis: Vector2
@@ -40,7 +41,7 @@ export function resolveMovementInput(
     receivedAt?: number
 ): Vector2 {
     if (movementInputLocked(actor)) {
-        clearMovementInputHistory(actor)
+        interruptManualMovement(actor)
         return zeroVector()
     }
     const next = normalize(axis)
@@ -59,7 +60,7 @@ export function recordMovementInput(
     receivedAt?: number
 ): void {
     if (receivedAt === undefined || !Number.isFinite(receivedAt)) {
-        clearMovementInputHistory(actor)
+        interruptManualMovement(actor)
         return
     }
     let history = histories.get(actor)
@@ -77,6 +78,11 @@ export function recordMovementInput(
 
 export function clearMovementInputHistory(actor: GameCharacter): void {
     histories.delete(actor)
+}
+
+export function interruptManualMovement(actor: GameCharacter): void {
+    clearMovementInputHistory(actor)
+    invalidateManualStop(actor)
 }
 
 /** Drain once, clipping receipts to the movement time allocated by the room loop. */

@@ -16,9 +16,14 @@ import { trackRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { GameRoom } from './room'
 import { resourceOccupants } from './roomEconomy'
 import type { RoomLife } from './roomLife'
-import { type RoomSocket, send } from './roomMessaging'
+import type { RoomSocket } from './roomMessaging'
 import { publishRoomSnapshots } from './roomSnapshotPublication'
-import { characterMovementIntent, travelRoomCharacter } from './roomTravel'
+import { prepareRoomStopCorrections } from './roomStopCorrections'
+import {
+    characterMovementIntent,
+    sendTravelNotice,
+    travelRoomCharacter,
+} from './roomTravel'
 import { advanceSavvaTerritory, SAVVA_ID } from './savvaTerritory'
 import { practiceStealthMovement } from './stealthPractice'
 import type { TheftService } from './theft'
@@ -55,6 +60,7 @@ export interface SimulationContext {
 
 export function advanceRoomSimulation(context: SimulationContext): void {
     const { characters, room, now, onEvents } = context
+    const stops = prepareRoomStopCorrections(context)
     room.social.update(now, characters.values())
     room.refreshPrayerAuraEnvironment()
     context.world.portals.expire(now)
@@ -89,6 +95,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         }
     }
     advanceControllers(context, reacting, conversations)
+    stops?.observeCombat()
     const roadRecovery = trackRoadPrayerRecovery(characters.values(), onEvents)
     const motionDeadlines = new Map<string, number>()
     for (const character of characters.values()) {
@@ -122,6 +129,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
     }
     context.onEvents(room.advanceMagicProjectiles(now))
     context.life.advance(now, (actor, at) => room.abilityContextFor(actor, at))
+    stops?.apply()
     room.refreshPrayerAuraEnvironment()
     context.world.updateChestViews(characters, now)
     context.onEvents(context.parties.update(characters.values(), now))
@@ -245,22 +253,6 @@ function advanceWorldCharacter(
     )
     if (notice !== undefined) {
         sendTravelNotice(character, notice, context)
-    }
-}
-
-function sendTravelNotice(
-    character: GameCharacter,
-    notice: string,
-    context: SimulationContext
-): void {
-    for (const [ws, id] of context.connections) {
-        if (id === character.id) {
-            send(ws, {
-                type: 'event',
-                serverTime: context.now,
-                event: { kind: 'notice', actorId: id, text: notice },
-            })
-        }
     }
 }
 

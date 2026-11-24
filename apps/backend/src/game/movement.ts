@@ -29,8 +29,10 @@ import {
 } from './movementInputHistory'
 import { type MovementNoise, movementNoise } from './movementNoise'
 import type { NavigationService } from './navigation'
+import { markPositionDiscontinuity } from './positionDiscontinuity'
 import { prayerAuraEffects } from './prayerAuras'
 import { confirmResourceSpend } from './resourcePractice'
+import { invalidateManualStop } from './stopCorrection'
 
 export interface MovementContext {
     character: GameCharacter
@@ -67,6 +69,7 @@ export function advanceCharacter(
     }
     if (character.combat.defensiveStance) {
         clearMovementInputHistory(character)
+        invalidateManualStop(character)
         character.velocity = zeroVector()
         character.movement.dashUntil = 0
         applyMovementRegen(context, false, false)
@@ -81,6 +84,7 @@ export function advanceCharacter(
     }
     if (combatBlocksMovement(character, now, feared)) {
         clearMovementInputHistory(character)
+        invalidateManualStop(character)
         character.velocity = zeroVector()
         character.movement.dashUntil = 0
         applyMovementRegen(context, false, true)
@@ -100,12 +104,14 @@ function haltMovement(context: MovementContext): boolean {
     const { character, now } = context
     if (cannotMove(character, now)) {
         clearMovementInputHistory(character)
+        invalidateManualStop(character)
         character.velocity = zeroVector()
         cancelMovementMode(character)
         return true
     }
     if (haltMagicMovement(character, now, context.onEvents)) {
         clearMovementInputHistory(character)
+        invalidateManualStop(character)
         applyMovementRegen(context, false, !character.combat.defensiveStance)
         return true
     }
@@ -160,6 +166,7 @@ function moveCharacter(
         delete character.movement.dashResourceSpend
     }
     const moving = traveled > 0
+    reportForcedMovement(character, resolved.forced || dashMs > 0, moving, now)
     const walking = isOrdinaryWalk(character, moving, dashMs, resolved.forced)
     markArrowWalking(character, walking)
     wearWalkingEquipment(character, traveled, walking)
@@ -203,6 +210,21 @@ function moveCharacter(
     context.onEvents?.(events)
     if (now >= character.movement.dashUntil) {
         character.movement.dashUntil = 0
+    }
+}
+
+function reportForcedMovement(
+    character: GameCharacter,
+    forced: boolean,
+    moving: boolean,
+    now: number
+): void {
+    if (forced || character.movement.dashUntil > now) {
+        if (moving) {
+            markPositionDiscontinuity(character)
+        } else {
+            invalidateManualStop(character)
+        }
     }
 }
 

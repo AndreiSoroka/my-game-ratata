@@ -38,7 +38,7 @@ describe('accepted snapshot baselines', () => {
             return
         }
         expect(delta).toMatchObject({
-            streamId: 1,
+            streamId: init.streamId,
             baseSeq: 0,
             seq: 1,
             stepMs: 50,
@@ -72,13 +72,12 @@ describe('native snapshot transport', () => {
             const f = streamFixture()
             f.send.mockReturnValue(status)
             sendSnapshot(f.socket, () => f.snapshot(), scope)
-            expect(snapshotStream(f.socket)).toMatchObject({
-                streamId: 1,
-                seq: 0,
-            })
+            const { streamId, seq } = snapshotStream(f.socket)
+            expect(streamId).toBeGreaterThan(0)
+            expect(seq).toBe(0)
             sendSnapshot(f.socket, () => f.snapshot(2), scope)
             expect(snapshotStream(f.socket)).toMatchObject({
-                streamId: 1,
+                streamId,
                 seq: 1,
             })
         }
@@ -104,11 +103,12 @@ describe('native snapshot transport', () => {
     it('sends tiny time headers and preserves shared stationary trees after reconstruction', () => {
         const f = streamFixture()
         sendSnapshot(f.socket, () => f.snapshot(), scope)
+        const { streamId } = snapshotStream(f.socket)
         const previous = receivedSnapshot(f.frames)
         sendSnapshot(f.socket, () => f.snapshot(2), scope)
         expect(f.last()).toEqual({
             type: 'snapshot_delta',
-            streamId: 1,
+            streamId,
             baseSeq: 0,
             seq: 1,
             tick: 2,
@@ -159,7 +159,7 @@ describe('native snapshot transport', () => {
     })
 
     it.each([0, -2])(
-        'does not initialize or allocate a stream on status %i',
+        'does not initialize a dropped stream on status %i',
         (status) => {
             const f = streamFixture()
             f.send.mockReturnValue(status)
@@ -175,10 +175,8 @@ describe('native snapshot transport', () => {
             expect(sendWorldInit(f.socket, initialMessage(f.snapshot(2)))).toBe(
                 true
             )
-            expect(snapshotStream(f.socket)).toMatchObject({
-                streamId: 1,
-                seq: 0,
-            })
+            expect(snapshotStream(f.socket).streamId).toBeGreaterThan(0)
+            expect(snapshotStream(f.socket).seq).toBe(0)
         }
     )
 })

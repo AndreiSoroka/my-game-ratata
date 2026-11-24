@@ -17,6 +17,7 @@ import { magicBlocksMovement } from './magicState'
 import { cancelMovementMode } from './movementActions'
 import { loadNavigationService, NavigationService } from './navigation'
 import { npcModelRole } from './npcRoster'
+import { markPositionDiscontinuity } from './positionDiscontinuity'
 import { returnFromPursuit } from './pursuitState'
 import {
     canPursuitTravel,
@@ -211,6 +212,7 @@ export class WorldLocations {
         now: number
     ): string {
         this.closeChestViews(character.id)
+        markPositionDiscontinuity(character)
         character.position = { ...position }
         character.locationId = next.description.id
         character.clearPath()

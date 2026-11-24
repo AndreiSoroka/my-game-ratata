@@ -13,6 +13,7 @@ import { magicManaRegenSuppressed } from './magicState'
 import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { createMovementState } from './movementActions'
+import { markPositionDiscontinuity } from './positionDiscontinuity'
 import { clearPursuit } from './pursuitState'
 import {
     clearResourcePractice,
@@ -63,6 +64,7 @@ export function restoreCharacter(
     resurrection?: ResurrectionResources
 ): void {
     const previousHp = character.hp
+    markPositionDiscontinuity(character)
     const untrainableDamage = Math.min(
         character.abilities.untrainableHpDamage,
         Math.max(0, character.maxHp - previousHp)

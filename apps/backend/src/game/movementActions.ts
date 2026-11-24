@@ -14,6 +14,7 @@ import { effectiveDashCost, effectiveDashDuration } from './effectiveParameters'
 import { magicBlocksMovement } from './magicState'
 import { normalize } from './math'
 import { clearMovementInputHistory } from './movementInputHistory'
+import { positionDiscontinuity } from './positionDiscontinuity'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
     recordResourceSpend,
@@ -99,8 +100,12 @@ export function snapshotMovement(
     character: GameCharacter,
     now: number
 ): CharacterMovementSnapshot {
+    const discontinuity = positionDiscontinuity(character)
     return {
         mode: character.movement.mode,
+        ...(discontinuity === undefined
+            ? {}
+            : { positionDiscontinuity: discontinuity }),
         dashing: character.alive && character.movement.dashUntil > now,
         dashCooldownMsLeft: Math.max(
             0,

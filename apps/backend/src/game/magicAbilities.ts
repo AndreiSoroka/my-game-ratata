@@ -28,6 +28,7 @@ import {
     startMagicChannel,
 } from './magicState'
 import { distance, facingDirection } from './math'
+import { markPositionDiscontinuity } from './positionDiscontinuity'
 
 export type UtilitySpell = 'chains' | 'city_portal' | 'blink' | 'dispel_magic'
 
@@ -184,6 +185,7 @@ function castBlink(
     }
     pay(actor, 'blink', cost, now)
     actor.position = destination
+    markPositionDiscontinuity(actor)
     actor.clearPath()
     actor.setMoveInput({ x: 0, y: 0 })
     actor.movement.dashUntil = 0

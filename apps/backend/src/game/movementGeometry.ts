@@ -12,6 +12,13 @@ import { prayerAuraEffects } from './prayerAuras'
 import { resolvePrayerMovement } from './prayerFearMovement'
 import { boundedPursuitStep } from './pursuitMovement'
 import {
+    hasMovementAxis,
+    invalidateManualStop,
+    recordManualStopStep,
+    tracksManualStop,
+} from './stopCorrection'
+import type { StopCorrectionLeg } from './stopCorrectionGeometry'
+import {
     expireTimedWalkingBoost,
     timedWalkingBudget,
 } from './timedMovementBudget'
@@ -49,13 +56,14 @@ export function resolveMovementGeometry(
         clipping: undefined,
         continuationUntil: undefined,
     }
+    const manual = step.manual ?? continuingManualInput(context)
     if (
-        step.manual !== undefined &&
+        manual !== undefined &&
         !result.forced &&
         dashMs === 0 &&
         dashUntil <= now
     ) {
-        resolveManualLegs(context, step.manual, effects.slowMultiplier, result)
+        resolveManualLegs(context, manual, effects.slowMultiplier, result)
         return result
     }
     clearMovementInputHistory(character)
@@ -89,6 +97,26 @@ export function resolveMovementGeometry(
     return result
 }
 
+function continuingManualInput({
+    character,
+    now,
+    deltaMs,
+}: MovementContext): TimedMovementInput | undefined {
+    const axis = character.getMoveInput()
+    return tracksManualStop(character) && hasMovementAxis(axis)
+        ? {
+              finalAxis: axis,
+              segments: [
+                  {
+                      axis,
+                      startedAt: now - Math.min(250, deltaMs),
+                      endsAt: now,
+                  },
+              ],
+          }
+        : undefined
+}
+
 function resolveManualLegs(
     context: MovementContext,
     manual: TimedMovementInput,
@@ -98,6 +126,12 @@ function resolveManualLegs(
     const { character, now, navigation } = context
     const boost = character.combat.arrowStep
     const speed = (movementSpeed(character) * slow) / 1000
+    const trace = tracksManualStop(character)
+        ? ([] as StopCorrectionLeg[])
+        : undefined
+    let permitted = 0
+    let lastAxis = zeroVector()
+    let lastRemaining = 0
     for (const segment of manual.segments) {
         if (segment.axis.x === 0 && segment.axis.y === 0) {
             continue
@@ -107,10 +141,17 @@ function resolveManualLegs(
             break
         }
         const amount = speed * timedWalkingBudget(character, segment, boost)
-        const next = navigation.moveWithCollision(character.position, {
-            x: segment.axis.x * amount,
-            y: segment.axis.y * amount,
-        })
+        let actual = 0
+        const next = navigation.moveWithCollision(
+            character.position,
+            { x: segment.axis.x * amount, y: segment.axis.y * amount },
+            trace === undefined
+                ? undefined
+                : (from, to) => {
+                      trace.push({ from, to, at: segment.endsAt })
+                      actual += distance(from, to)
+                  }
+        )
         const desired = resolvePrayerMovement(
             character,
             next,
@@ -119,6 +160,15 @@ function resolveManualLegs(
             now
         )
         resolveLeg(context, desired, result)
+        if (trace !== undefined) {
+            // A constraint applied after tile collision invalidates this trace.
+            if (distance(character.position, next) > 1e-8) {
+                invalidateManualStop(character)
+            }
+            permitted += amount
+            lastRemaining = Math.max(0, amount - actual)
+            lastAxis = segment.axis
+        }
         if (result.halted) {
             break
         }
@@ -126,8 +176,19 @@ function resolveManualLegs(
     expireTimedWalkingBoost(character, now, boost)
     if (result.halted) {
         clearMovementInputHistory(character)
+        invalidateManualStop(character)
         result.continuationUntil = now
     } else {
+        if (trace !== undefined) {
+            recordManualStopStep(
+                character,
+                trace,
+                permitted,
+                lastAxis,
+                lastRemaining,
+                now
+            )
+        }
         result.continuationUntil = manual.stoppedAt
     }
 }

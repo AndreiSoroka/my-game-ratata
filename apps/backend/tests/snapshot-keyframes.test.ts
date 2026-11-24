@@ -12,6 +12,7 @@ describe('mandatory keyframes', () => {
         (change) => {
             const f = streamFixture()
             sendSnapshot(f.socket, () => f.snapshot(), scope)
+            const original = snapshotStream(f.socket).streamId
             const snapshot = f.snapshot(2)
             const options = { ...scope, clockResumeRevision: 0 }
             if (change === 'identity') {
@@ -31,21 +32,23 @@ describe('mandatory keyframes', () => {
             f.send.mockReturnValueOnce(0)
             sendSnapshot(f.socket, () => snapshot, options)
             expect(snapshotStream(f.socket)).toMatchObject({
-                streamId: 1,
+                streamId: original,
                 seq: 0,
                 pendingFull: 'reset',
             })
             sendSnapshot(f.socket, () => ({ ...snapshot, tick: 3 }), options)
+            const reset = snapshotStream(f.socket).streamId
+            expect(reset).toBeGreaterThan(original)
             expect(f.last()).toMatchObject({
                 type: 'snapshot',
-                streamId: 2,
+                streamId: reset,
                 seq: 0,
                 snapshot: { tick: 3 },
             })
             sendSnapshot(f.socket, () => ({ ...snapshot, tick: 4 }), options)
             expect(f.last()).toMatchObject({
                 type: 'snapshot_delta',
-                streamId: 2,
+                streamId: reset,
                 baseSeq: 0,
                 seq: 1,
             })
@@ -55,7 +58,7 @@ describe('mandatory keyframes', () => {
     it('retries a dropped periodic full even if the next delta would be small', () => {
         const f = streamFixture()
         sendSnapshot(f.socket, () => f.snapshot(), scope)
-        const due = snapshotStream(f.socket).keyframeAt
+        const { keyframeAt: due, streamId } = snapshotStream(f.socket)
         expect(due).toBeGreaterThanOrEqual(30_050)
         expect(due).toBeLessThanOrEqual(35_050)
         f.send.mockReturnValueOnce(0)
@@ -72,7 +75,7 @@ describe('mandatory keyframes', () => {
         )
         expect(f.last()).toMatchObject({
             type: 'snapshot',
-            streamId: 1,
+            streamId,
             seq: 1,
             snapshot: { tick: 3 },
         })
@@ -82,6 +85,7 @@ describe('mandatory keyframes', () => {
     it('retries a size fallback full even after later state shrinks', () => {
         const f = streamFixture()
         sendSnapshot(f.socket, () => f.snapshot(), scope)
+        const { streamId } = snapshotStream(f.socket)
         f.send.mockReturnValueOnce(0)
         sendSnapshot(
             f.socket,
@@ -99,7 +103,7 @@ describe('mandatory keyframes', () => {
         sendSnapshot(f.socket, () => f.snapshot(3), scope)
         expect(f.last()).toMatchObject({
             type: 'snapshot',
-            streamId: 1,
+            streamId,
             seq: 1,
         })
     })
@@ -148,10 +152,11 @@ describe('resync and rollback controls', () => {
         vi.stubEnv('GAME_SNAPSHOT_DELTAS', '0')
         try {
             sendSnapshot(f.socket, () => f.snapshot(), scope)
+            const { streamId } = snapshotStream(f.socket)
             sendSnapshot(f.socket, () => f.snapshot(2), scope)
             expect(f.last()).toMatchObject({
                 type: 'snapshot',
-                streamId: 1,
+                streamId,
                 seq: 1,
             })
         } finally {

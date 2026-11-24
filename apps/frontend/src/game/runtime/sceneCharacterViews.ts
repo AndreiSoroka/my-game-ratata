@@ -1,6 +1,7 @@
 import type {
     CharacterSnapshot,
     GameEventPayload,
+    StopCorrectionRequest,
     Vector2,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -17,6 +18,7 @@ import {
 import { DamageFeedback } from './damageFeedback'
 import type { MapVisibility } from './mapVisibility'
 import { NetworkMotion } from './networkMotion'
+import type { SnapshotReference } from './runtimeSnapshotStream'
 
 /** Owns character views and a single pre-camera presentation update for this scene. */
 export class SceneCharacterViews {
@@ -50,9 +52,10 @@ export class SceneCharacterViews {
     public sync(
         snapshot: WorldSnapshot,
         playerId: string | undefined,
-        visible: (character: CharacterSnapshot) => boolean
+        visible: (character: CharacterSnapshot) => boolean,
+        reference?: SnapshotReference
     ): void {
-        if (!document.hidden) this.motion.observe(snapshot, performance.now())
+        if (!document.hidden) this.motion.observe(snapshot, performance.now(), playerId, reference)
         this.removeMissing(snapshot.characters)
         for (const character of snapshot.characters) {
             syncCharacterBundle(
@@ -104,6 +107,16 @@ export class SceneCharacterViews {
         this.motion.hold()
     }
 
+    public beginStop(id: string, requestId: number): StopCorrectionRequest | undefined {
+        const request = this.motion.beginStop(id, requestId, performance.now())
+        if (request) this.refreshGraphic(id)
+        return request
+    }
+
+    public cancelStop(): void {
+        this.motion.cancelStop()
+    }
+
     public clearDamage(): void {
         this.damage.clear()
         this.motion.reset()
@@ -138,7 +151,9 @@ export class SceneCharacterViews {
 
     private refreshGraphic(id: string): void {
         const bundle = this.bundles.get(id)
-        if (bundle?.snapshot) this.updateGraphic(bundle, bundle.snapshot, performance.now())
+        const time = performance.now()
+        const snapshot = this.motion.presentation(id, time) ?? bundle?.snapshot
+        if (bundle && snapshot) this.updateGraphic(bundle, snapshot, time)
     }
 
     private updateGraphic(

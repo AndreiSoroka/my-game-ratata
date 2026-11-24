@@ -39,7 +39,7 @@ export function handleRuntimeKeyDown(event: KeyboardEvent, actions: RuntimeKeyCo
         })
     )
         return
-    if (movementKeys.has(event.code)) {
+    if (movementKeys.has(event.code) && !event.repeat) {
         actions.send({ type: 'cancel_control' })
         actions.move(event.code)
     }

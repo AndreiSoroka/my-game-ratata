@@ -27,6 +27,7 @@ import {
 import type { PrayerAreaViews } from './prayerAreaViews'
 import type { PrayerPreviewHighlight } from './prayerPreviewPresentation'
 import { RouteWaypointViews } from './routeWaypointViews'
+import type { SnapshotReference } from './runtimeSnapshotStream'
 import { SceneCharacterViews } from './sceneCharacterViews'
 import { SceneMapView } from './sceneMapActor'
 import { SignReadingViews } from './signReadingViews'
@@ -167,7 +168,11 @@ export class SceneActors {
         this.buildingViews.setBuildings(map.buildings)
     }
 
-    public update(snapshot: WorldSnapshot, localPlayerId: string | undefined): void {
+    public update(
+        snapshot: WorldSnapshot,
+        localPlayerId: string | undefined,
+        reference?: SnapshotReference
+    ): void {
         if (this.localPlayerId !== localPlayerId) this.interactionTarget.clear()
         this.localPlayerId = localPlayerId
         this.updateResourceViews(snapshot)
@@ -187,7 +192,8 @@ export class SceneActors {
             snapshot,
             localPlayerId,
             (character) =>
-                character.id === localPlayerId || this.isPositionVisible(character.position)
+                character.id === localPlayerId || this.isPositionVisible(character.position),
+            reference
         )
 
         const visibleCharacters = snapshot.characters.filter((character) =>
@@ -234,6 +240,9 @@ export class SceneActors {
     public readonly renderedCharacters = () => this.characters.rendered()
     public readonly resetMotion = () => this.characters.resetMotion()
     public readonly holdMotion = () => this.characters.holdMotion()
+    public readonly beginStop = (requestId: number) =>
+        this.localPlayerId ? this.characters.beginStop(this.localPlayerId, requestId) : undefined
+    public readonly cancelStop = () => this.characters.cancelStop()
 
     private updateResourceViews(snapshot: WorldSnapshot): void {
         this.gravePositions = new Map(

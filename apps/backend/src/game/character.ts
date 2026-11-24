@@ -46,7 +46,7 @@ import { createMartyrState } from './martyr'
 import { resolveFacing, zeroVector } from './math'
 import { createMovementState } from './movementActions'
 import {
-    clearMovementInputHistory,
+    interruptManualMovement,
     resolveMovementInput,
 } from './movementInputHistory'
 import type { NpcIdentityKey } from './npcIdentityCatalog'
@@ -192,7 +192,7 @@ export class GameCharacter {
     }
 
     public setPath(path: Vector2[]): void {
-        clearMovementInputHistory(this)
+        interruptManualMovement(this)
         if (movementInputLocked(this)) {
             return
         }
