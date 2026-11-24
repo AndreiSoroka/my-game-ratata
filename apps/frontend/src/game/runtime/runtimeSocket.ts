@@ -25,7 +25,7 @@ import {
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
     onError: (message: string) => void
-    onEvent: (event: GameEventPayload) => void
+    onEvent: (event: GameEventPayload, serverTime: number) => void
     onSpeechTranslation?: (translation: SpeechTranslationServerMessage) => void
     getLocale?: () => GameLocale
     onSnapshot: (snapshot: WorldSnapshot, reference: SnapshotReference) => void
@@ -150,7 +150,7 @@ export class RuntimeSocket {
             case 'plant_tree_preview':
                 return this.handlers.onPlantingPreview?.(message)
             case 'event':
-                return this.handlers.onEvent(message.event)
+                return this.handlers.onEvent(message.event, message.serverTime)
             case 'speech_translation':
                 return this.deliverTranslation(message)
             case 'motion_pong':

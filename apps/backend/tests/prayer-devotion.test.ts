@@ -6,7 +6,10 @@ import {
     parseAbilityCommand,
 } from '../src/game/abilityCommands'
 import { supportPrayerDecision } from '../src/game/clericPolicy'
-import { observeCharacterCombat } from '../src/game/combatObservation'
+import {
+    observeCharacterCombat,
+    observeCombatEvent,
+} from '../src/game/combatObservation'
 import { pray } from '../src/game/prayer'
 import { previewPrayer } from '../src/game/prayerContext'
 import { completePrayer } from '../src/game/prayerEffects'
@@ -67,6 +70,7 @@ it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
                 actorId: actor.id,
                 abilityId: 'pray',
                 phase: 'completed',
+                castMode: 'devotion',
             },
         ])
         expect(populated.characters.map((target) => target.hp)).toEqual(health)
@@ -88,6 +92,34 @@ it.each(['hearth', 'road', 'lantern', 'grave'] as const)(
         expect(populated.characters.map((target) => target.hp)).toEqual(health)
     }
 )
+
+it('redacts the devotional cue when the caster is hidden', () => {
+    const actor = abilityHero()
+    const [event] = handleAbilityCommand(
+        actor,
+        devotion,
+        abilityContext([actor])
+    )
+    if (event === undefined) {
+        throw new Error('Expected a devotional cast event')
+    }
+    const view = {
+        getCharacter: (id: string) => (id === actor.id ? actor : undefined),
+        navigation: undefined,
+        now: 1000,
+    }
+    expect(
+        observeCombatEvent(event, { ...view, observer: actor })
+    ).toHaveProperty('castMode', 'devotion')
+    actor.movement.mode = 'sneaking'
+    const hidden = observeCombatEvent(event, {
+        ...view,
+        observer: undefined,
+        now: 2000,
+    })
+    expect(hidden).not.toHaveProperty('actorId')
+    expect(hidden).not.toHaveProperty('castMode')
+})
 
 it('marks an unsuitable selected ally unavailable without healing or burning neighbors', () => {
     const actor = abilityHero()

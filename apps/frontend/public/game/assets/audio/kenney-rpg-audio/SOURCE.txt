@@ -1,0 +1,4 @@
+Kenney RPG Audio 1.0
+https://kenney.nl/assets/rpg-audio
+CC0 1.0. Downloaded 2026-11-24. All 51 individual effects in the official archive, unchanged.
+Archive SHA-256: 6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b

@@ -4,12 +4,14 @@ import {
     type TrainingMapData,
 } from '@my-game-ratata/contracts'
 
+import { type AmbientTerrain, readAmbientTerrain } from './mapAmbientTerrain'
 import { type MapBuilding, readMapBuildings } from './mapBuildings'
 import { type MapDepthProp, readDepthProps } from './mapDepthProps'
 import type { TiledLandmark } from './mapLandmarks'
 import { type FootstepMap, readFootstepMap } from './mapSurfaces'
 import { type MapVisibility, readMapVisibility } from './mapVisibility'
 import { drawConnectedTerrain } from './terrainAutotile'
+import { fetchJson, type LoadedTileset, loadTileset, type TiledTilesetRef } from './tiledMapAssets'
 
 interface TiledLayer {
     data?: number[]
@@ -23,11 +25,6 @@ interface TiledLayer {
     width: number
 }
 
-interface TiledTilesetRef {
-    firstgid: number
-    source: string
-}
-
 interface TiledMap {
     height: number
     layers: TiledLayer[]
@@ -37,20 +34,8 @@ interface TiledMap {
     width: number
 }
 
-interface TiledTileset {
-    columns: number
-    image: string
-    tileheight: number
-    tilewidth: number
-}
-
-interface LoadedTileset {
-    firstgid: number
-    image: HTMLImageElement
-    tileset: TiledTileset
-}
-
 export interface RenderedTiledMap {
+    ambientTerrain?: AmbientTerrain
     training: TrainingMapData
     bitmap: HTMLCanvasElement
     buildings: MapBuilding[]
@@ -88,6 +73,7 @@ export async function loadRenderedTiledMap(
         map.tilesets.map((tileset) => loadTileset(normalizedBase, tileset))
     )
     const bitmap = renderMap(map, tilesets)
+    const waterTileset = tilesets.find(({ tileset }) => tileset.name === 'water')
     const buildings = map.layers.some((layer) => layer.name === 'Building covers')
         ? readMapBuildings(
               map.layers.find((layer) => layer.name === 'Buildings')?.objects ?? [],
@@ -96,6 +82,13 @@ export async function loadRenderedTiledMap(
         : []
 
     return {
+        ambientTerrain: readAmbientTerrain(
+            map,
+            waterTileset && {
+                firstgid: waterTileset.firstgid,
+                tilecount: waterTileset.tileset.tilecount,
+            }
+        ),
         training: readTrainingMapData(
             map,
             mapName === 'map1.json' ? CENTER_LOCATION_ID : mapName.replace(/\.json$/, '')
@@ -173,42 +166,6 @@ function pineBitmap(map: TiledMap, tilesets: LoadedTileset[]): HTMLCanvasElement
     canvas.height = 32
     renderDepthProp(canvas, [town + 4, town + 16], 1, map, tilesets)
     return canvas
-}
-
-async function loadTileset(baseUrl: string, reference: TiledTilesetRef): Promise<LoadedTileset> {
-    const sourceUrl = new URL(`${baseUrl}${reference.source}`, window.location.origin)
-    const tileset = await fetchJson<TiledTileset>(sourceUrl)
-    const imageUrl = new URL(tileset.image, sourceUrl)
-    const image = await loadImage(imageUrl.toString())
-
-    return {
-        firstgid: reference.firstgid,
-        image,
-        tileset,
-    }
-}
-
-async function fetchJson<T>(url: URL): Promise<T> {
-    const response = await fetch(url)
-
-    if (!response.ok) {
-        throw new Error(`Failed to load ${url.pathname}`)
-    }
-
-    return (await response.json()) as T
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-        const image = new Image()
-        image.addEventListener('load', () => {
-            resolve(image)
-        })
-        image.addEventListener('error', () => {
-            reject(new Error(`Failed to load ${src}`))
-        })
-        image.src = src
-    })
 }
 
 function renderMap(

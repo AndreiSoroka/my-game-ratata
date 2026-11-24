@@ -95,7 +95,7 @@ export class RatataGame {
         this.socket = new RuntimeSocket({
             isStopped: () => this.stopped,
             onError: options.onError,
-            onEvent: (event) => this.handleServerEvent(event),
+            onEvent: (event, serverTime) => this.handleServerEvent(event, serverTime),
             onSpeechTranslation: options.onSpeechTranslation,
             getLocale: () => gameLocale.value,
             onSnapshot: (snapshot, reference) => this.applySnapshot(snapshot, reference),
@@ -261,7 +261,7 @@ export class RatataGame {
     private invalidateAudioSnapshot(motion?: 'resetMotion' | 'holdMotion'): void {
         if (motion) this.view?.sceneActors[motion]()
         this.audioSnapshotValid = false
-        this.view?.audio.invalidateWorld()
+        this.view?.audio.invalidateWorld(motion === undefined)
     }
 
     public readonly retryMap = (): void => this.maps.retry()
@@ -323,10 +323,10 @@ export class RatataGame {
         this.socket.send(command)
     }
 
-    private handleServerEvent(event: GameEventPayload): void {
-        if (isLocalDeath(event, this.localPlayerId)) this.invalidateAudioSnapshot()
+    private handleServerEvent(event: GameEventPayload, serverTime: number): void {
         this.options.onEvent?.(event)
-        this.view?.audio?.playEventSound(event)
+        this.view?.audio.playEventSound(event, this.isMapReady ? serverTime : undefined)
+        if (isLocalDeath(event, this.localPlayerId)) this.invalidateAudioSnapshot()
         if (this.isMapReady) this.view?.sceneActors?.showDamage(event)
         runtimeEventFeedback(event, this.localPlayerId, this.options, this.releaseInputs)
     }

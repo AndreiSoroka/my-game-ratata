@@ -9,13 +9,19 @@ import type { Sound } from 'excalibur'
 
 import type { GameSoundId } from '../assets/soundCatalog'
 import { isAudioMuted, subscribeAudioMute } from './audioPreference'
+import { BattleMusicState } from './battleMusicState'
+import { type CastAudio, isMagicCastAttack } from './castAudio'
 import { FootstepAudio } from './footstepAudio'
 import { FootstepPlanner } from './footsteps'
+import { GameMusic } from './gameMusic'
+import type { HumanDeathAudio } from './humanDeathAudio'
+import type { AmbientTerrain } from './mapAmbientTerrain'
 import type { MapBuilding } from './mapBuildings'
 import { type FootstepMap, surfaceAt } from './mapSurfaces'
 import { NpcVoice, type NpcVoiceContext } from './npcVoice'
 import { isNpcVoiceEnabled, subscribeNpcVoiceEnabled } from './npcVoicePreference'
 import type { WorldAmbience } from './worldAmbience'
+import type { WorldAmbienceSounds } from './worldAmbienceSounds'
 
 const eventSounds = new Map<GameEventPayload['kind'], GameSoundId>([
     ['attack', 'attack'],
@@ -36,12 +42,18 @@ function playsAttackSound(event: GameEventPayload): boolean {
     )
 }
 
+interface CharacterAudio {
+    casts: CastAudio
+    deaths: HumanDeathAudio
+}
+
 export class GameAudio {
     private readonly footsteps = new FootstepPlanner()
     private readonly footstepAudio: FootstepAudio
     private surfaceMap: FootstepMap | undefined
     private worldSuspended = false
-    private readonly music: Sound
+    private readonly music: GameMusic
+    private readonly battleMusic = new BattleMusicState()
     private readonly sounds: Map<GameSoundId, Sound>
     private readonly unsubscribeAudio: () => void
     private readonly unsubscribeNpcVoice: () => void
@@ -58,22 +70,27 @@ export class GameAudio {
             !isAudioMuted() &&
             isNpcVoiceEnabled(),
     }))
-    private musicRequested = false
+    private worldAudioStarted = false
     private stopped = false
 
     public constructor(
         sounds: Map<GameSoundId, Sound>,
         music: Sound,
-        private readonly ambience?: WorldAmbience
+        private readonly ambience?: WorldAmbience,
+        private readonly characterAudio?: CharacterAudio,
+        battleBank?: Pick<WorldAmbienceSounds, 'request' | 'isReady' | 'play'>
     ) {
         this.sounds = sounds
-        this.music = music
+        this.music = new GameMusic(music, battleBank)
         this.footstepAudio = new FootstepAudio(sounds)
         let wasMuted = isAudioMuted()
         this.unsubscribeAudio = subscribeAudioMute((muted) => {
-            if (muted && !wasMuted) this.stopVoices()
+            if (muted && !wasMuted) {
+                this.music.stop()
+                this.stopVoices()
+            }
             wasMuted = muted
-            if (!muted) void this.syncMusic()
+            if (!muted) this.resumeAudiblePlayback()
         })
         this.unsubscribeNpcVoice = subscribeNpcVoiceEnabled((enabled) => {
             if (!enabled) this.npcVoice.clear()
@@ -83,33 +100,43 @@ export class GameAudio {
 
     public playMusic(): void {
         if (this.stopped) return
-        this.musicRequested = true
-        void this.syncMusic()
+        this.music.start()
+    }
+
+    public updateMusic(): void {
+        this.music.setBattle(this.battleMusic.active)
+        this.music.update()
     }
 
     public startWorldAmbience(): void {
-        if (!this.stopped) this.ambience?.start()
+        if (this.stopped || this.worldAudioStarted) return
+        this.worldAudioStarted = true
+        this.ambience?.start()
+        this.prepareCharacterAudio()
     }
 
-    private async syncMusic(): Promise<void> {
-        if (!this.musicRequested || document.hidden || isAudioMuted() || this.music.isPlaying)
+    private prepareCharacterAudio(): void {
+        if (!this.worldAudioStarted || !this.characterAudio || document.hidden || isAudioMuted())
             return
-        try {
-            if (this.music.isPaused) await this.music.resume()
-            else await this.music.play()
-        } catch {
-            // Playback can be retried the next time the user enables audio or returns to the tab.
-        }
+        this.characterAudio.casts.prepare()
+        this.characterAudio.deaths.prepare()
+    }
+
+    private resumeAudiblePlayback(): void {
+        this.prepareCharacterAudio()
+        this.music.resume()
     }
 
     public stop(): void {
         if (this.stopped) return
         this.stopped = true
-        this.musicRequested = false
         this.unsubscribeAudio()
         this.unsubscribeNpcVoice()
+        this.music.dispose()
         this.stopVoices()
         this.ambience?.dispose()
+        this.characterAudio?.casts.reset()
+        this.characterAudio?.deaths.reset()
         this.npcVoice.dispose()
         this.voiceWorld = { snapshot: undefined, playerId: undefined }
         this.surfaceMap = undefined
@@ -117,25 +144,34 @@ export class GameAudio {
     }
 
     private stopVoices(): void {
-        this.stopFootsteps()
-        this.ambience?.clear()
-        this.music.stop()
+        this.clearWorldSounds()
         for (const sound of this.sounds.values()) sound.stop()
         this.npcVoice.clear()
     }
 
     public setMap(
-        { footsteps, buildings }: { footsteps: FootstepMap; buildings?: MapBuilding[] },
+        {
+            footsteps,
+            buildings,
+            ambientTerrain,
+        }: {
+            footsteps: FootstepMap
+            buildings?: MapBuilding[]
+            ambientTerrain?: AmbientTerrain
+        },
         locationId?: string
     ): void {
         if (this.stopped) return
         this.invalidateWorld()
+        this.characterAudio?.casts.reset()
+        this.characterAudio?.deaths.reset()
         this.surfaceMap = footsteps
         if (locationId !== undefined) {
             this.ambience?.setMap(locationId, {
                 buildings: buildings ?? [],
                 tileWidth: footsteps.tileWidth,
                 tileHeight: footsteps.tileHeight,
+                ambientTerrain,
             })
         }
         this.resumeWorld()
@@ -150,27 +186,31 @@ export class GameAudio {
         this.worldSuspended = false
     }
 
-    public invalidateWorld(): void {
-        this.stopFootsteps()
-        this.ambience?.clear()
+    public invalidateWorld(keepDeathVoice = false): void {
+        this.clearWorldSounds(keepDeathVoice)
         this.npcVoice.clear()
         this.voiceWorld = { snapshot: undefined, playerId: undefined }
     }
 
     private readonly onVisibilityChange = (): void => {
         if (document.hidden) {
-            this.stopFootsteps()
-            this.ambience?.clear()
+            this.music.pause()
+            this.clearWorldSounds()
             this.npcVoice.clear()
-            if (this.music.isPlaying) this.music.pause()
         } else {
-            void this.syncMusic()
+            this.resumeAudiblePlayback()
         }
     }
 
-    private stopFootsteps(): void {
+    private clearWorldSounds(keepDeathVoice = false): void {
+        this.battleMusic.clear()
+        this.music.setBattle(false)
         this.footsteps.reset()
         this.footstepAudio.stop()
+        this.ambience?.clear()
+        this.characterAudio?.casts.clear()
+        if (keepDeathVoice) this.characterAudio?.deaths.clearObservation()
+        else this.characterAudio?.deaths.clear()
     }
 
     public playSound(id: GameSoundId): void {
@@ -188,21 +228,36 @@ export class GameAudio {
         }
     }
 
-    public playEventSound(event: GameEventPayload): void {
+    public playEventSound(event: GameEventPayload, serverTime?: number): void {
         if (this.stopped) return
         if (event.kind === 'chat') {
             this.npcVoice.receive(event)
             return
         }
-        if (event.kind === 'attack' && !playsAttackSound(event)) return
+        if (serverTime !== undefined) this.receiveWorldCue(event, serverTime)
+        if (isMagicCastAttack(event) || (event.kind === 'attack' && !playsAttackSound(event)))
+            return
         const sound = eventSounds.get(event.kind)
         if (sound) this.playSound(sound)
+    }
+
+    private receiveWorldCue(event: GameEventPayload, serverTime: number): void {
+        this.battleMusic.receive(event, serverTime)
+        if (!this.characterAudio) return
+        const { casts, deaths } = this.characterAudio
+        if (document.hidden || isAudioMuted()) {
+            casts.clear()
+            deaths.clear()
+        }
+        casts.receive(event, serverTime)
+        deaths.receive(event, serverTime)
     }
 
     public observeWorld(
         snapshot: WorldSnapshot,
         localPlayerId: string | undefined,
-        isPositionVisible?: (position: Vector2) => boolean
+        isPositionVisible?: (position: Vector2) => boolean,
+        isCharacterVisible?: (actorId: string) => boolean
     ): void {
         if (this.stopped || this.worldSuspended) return
         this.voiceWorld = { snapshot, playerId: localPlayerId }
@@ -211,12 +266,22 @@ export class GameAudio {
         if (map === undefined || document.hidden || isAudioMuted()) return
         const listener = snapshot.characters.find((actor) => actor.id === localPlayerId)
         if (!listener?.alive) {
-            this.stopFootsteps()
-            this.ambience?.clear()
+            this.clearWorldSounds(listener !== undefined)
             return
         }
         if (isPositionVisible) this.ambience?.observeWorld(snapshot, listener.id, isPositionVisible)
+        this.observeBattle(snapshot, listener.id)
+        if (isCharacterVisible && this.characterAudio) {
+            this.characterAudio.casts.observeWorld(snapshot, listener.id, map, isCharacterVisible)
+            this.characterAudio.deaths.observeWorld(snapshot, listener.id, map, isCharacterVisible)
+        }
         this.observeFootsteps(snapshot, listener.id, map)
+    }
+
+    private observeBattle(snapshot: WorldSnapshot, localPlayerId: string): void {
+        const forest = this.ambience?.inWoodland ?? false
+        if (forest) this.music.prepareBattle()
+        this.battleMusic.observe(snapshot, localPlayerId, forest)
     }
 
     private observeFootsteps(

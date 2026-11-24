@@ -15,8 +15,14 @@ export async function verifyAudio(context: AudioContext) {
     const other = createCharacterResources()
     const sample = resources.sounds.get('stepGrass0')
     if (!sample) throw new Error('Footstep sample is missing')
+    const menuOpen = resources.sounds.get('uiOpen')
+    const slotSelect = resources.sounds.get('uiSlotSelect')
+    const equipment = resources.sounds.get('equip')
+    if (!menuOpen || !slotSelect || !equipment) throw new Error('Interface sample is missing')
     const music = resources.music.adventureBegins
-    const loader = new DefaultLoader({ loadables: [sample, music] })
+    const loader = new DefaultLoader({
+        loadables: [sample, menuOpen, slotSelect, equipment, music],
+    })
     let audioBeforeLoad: AudioContextState | undefined
     loader.on('beforeload', () => {
         audioBeforeLoad = context.state
@@ -32,12 +38,29 @@ export async function verifyAudio(context: AudioContext) {
                 sample !== other.sounds.get('stepGrass0') && music !== other.music.adventureBegins,
             sampleVolume: sample.output.gain.value,
             catalogVolume: soundCatalog.stepGrass0.volume,
+            musicVolume: music.output.gain.value,
+            menuOpen: checkPlayback(menuOpen, () => gameAudio.playSound('uiOpen')),
+            slotSelect: checkPlayback(slotSelect, () => gameAudio.playSound('uiSlotSelect')),
+            equipment: checkPlayback(equipment, () =>
+                gameAudio.playEventSound({ kind: 'item_equip' })
+            ),
             footsteps: await checkFootsteps(sample),
             music: checkMusic(gameAudio, music),
         }
     } finally {
         await run.owner.cancel()
     }
+}
+
+function checkPlayback(sample: Sound, play: () => void) {
+    play()
+    const result = {
+        path: sample.path,
+        duration: sample.data.duration,
+        tracks: sample.playingCount(),
+    }
+    sample.stop()
+    return result
 }
 
 async function checkFootsteps(sample: Sound) {

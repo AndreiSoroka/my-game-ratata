@@ -20,8 +20,12 @@ it('resumes audio with current visibility when returning to the installed map be
         expect(calls.audioWorld).toHaveBeenLastCalledWith(
             expect.objectContaining({ location: expect.objectContaining({ id: 'map-2-2' }) }),
             'hero',
-            calls.positionVisible
+            calls.positionVisible,
+            expect.any(Function)
         )
+        const visible = calls.audioWorld.mock.lastCall?.[3] as (id: string) => boolean
+        expect(visible('hero')).toBe(true)
+        expect(visible('hidden')).toBe(false)
         pending.resolve({ buildings: [] } as unknown as RenderedTiledMap)
         await pending.promise
         await Promise.resolve()
@@ -46,8 +50,8 @@ it.each(['stream gap', 'death', 'permadeath'] as const)(
             initialize('a', 'map-2-1')
             const socket = calls.socketHandlers!
             if (cause === 'stream gap') socket.onSnapshotInvalidated?.()
-            else if (cause === 'death') socket.onEvent({ kind: 'death', targetId: 'hero' })
-            else socket.onEvent({ kind: 'permadeath', actorId: 'hero' })
+            else if (cause === 'death') socket.onEvent({ kind: 'death', targetId: 'hero' }, 100_020)
+            else socket.onEvent({ kind: 'permadeath', actorId: 'hero' }, 100_020)
             expect(calls.audioInvalidated).toHaveBeenCalledOnce()
 
             pending.resolve({ buildings: [], tileWidth: 16 } as unknown as RenderedTiledMap)
@@ -58,10 +62,30 @@ it.each(['stream gap', 'death', 'permadeath'] as const)(
             expect(calls.audioWorld).toHaveBeenCalledExactlyOnceWith(
                 expect.objectContaining({ location: expect.objectContaining({ id: 'map-2-1' }) }),
                 'hero',
-                calls.positionVisible
+                calls.positionVisible,
+                expect.any(Function)
             )
         } finally {
             game.stop()
         }
     }
 )
+
+it('forwards cast time for audio only when the current map is ready', async () => {
+    const { game } = setup()
+    await startWorld(game)
+    await vi.waitFor(() => expect(calls.audioWorld).toHaveBeenCalled())
+    const pending = new Future<RenderedTiledMap>()
+    calls.load.mockReturnValueOnce(pending.promise)
+    const event = { kind: 'cast', abilityId: 'blink', phase: 'completed', actorId: 'hero' } as const
+    try {
+        calls.socketHandlers!.onEvent(event, 100_050)
+        expect(calls.audioEvent).toHaveBeenLastCalledWith(event, 100_050)
+        initialize('a', 'map-2-1')
+        calls.socketHandlers!.onEvent(event, 100_100)
+        expect(calls.audioEvent).toHaveBeenLastCalledWith(event, undefined)
+    } finally {
+        game.stop()
+        pending.resolve({} as RenderedTiledMap)
+    }
+})

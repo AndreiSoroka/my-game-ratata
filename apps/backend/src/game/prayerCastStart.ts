@@ -215,7 +215,15 @@ export function decorativePrayer(
     actor.abilities.lastPrayerAbilityId = abilityId
     actor.lockAction(now, 400)
     actor.setAnimation('idle', now, 400)
-    return [{ kind: 'cast', actorId: actor.id, abilityId, phase: 'completed' }]
+    return [
+        {
+            kind: 'cast',
+            actorId: actor.id,
+            abilityId,
+            phase: 'completed',
+            castMode: 'devotion',
+        },
+    ]
 }
 
 export function prayerTarget(intent: PrayerIntent) {

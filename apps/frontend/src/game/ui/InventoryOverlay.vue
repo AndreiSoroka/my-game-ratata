@@ -13,11 +13,12 @@ import {
     type ItemInstanceSnapshot,
     type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
+import { gameUiSoundKey } from './gameUiSound'
 import InventoryEquipment from './InventoryEquipment.vue'
 import InventoryItemDetails from './InventoryItemDetails.vue'
 import { inventoryKey } from './inventoryKeyboard'
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 
 const panel = ref<HTMLElement>()
 const focusSurface = useInventoryFocus(panel, () => emit('close'))
+const playUiSound = inject(gameUiSoundKey)
 const selectedItemId = ref<string>()
 const focusedItemId = ref<string>()
 const assignedSlot = ref<number>()
@@ -105,7 +107,7 @@ function onKey(event: KeyboardEvent): void {
         assignHotbar(Number(digit[1]) - 1, item)
         return
     }
-    inventoryKey(event, panel.value, () => emit('close'))
+    inventoryKey(event, panel.value, () => emit('close'), playSlotSound)
 }
 
 watch(
@@ -142,10 +144,16 @@ function selectItem(item: ItemInstanceSnapshot | undefined): void {
     }
 
     selectedItemId.value = selectedItemId.value === item.instanceId ? undefined : item.instanceId
-    if (selectedItemId.value)
+    if (selectedItemId.value) {
+        playSlotSound()
         void nextTick(() =>
             panel.value?.querySelector<HTMLButtonElement>('.inventory-actions button')?.focus()
         )
+    }
+}
+
+function playSlotSound(): void {
+    playUiSound?.('uiSlotSelect')
 }
 
 function itemName(item: ItemInstanceSnapshot): string {

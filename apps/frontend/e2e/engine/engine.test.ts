@@ -35,6 +35,9 @@ test('plays isolated real tracks and restores one music track when visible', asy
         audioBeforeLoad: 'running',
         forcedMute: false,
         independentSounds: true,
+        menuOpen: { path: '/game/assets/audio/kenney-rpg-audio/bookPlace1.ogg', tracks: 1 },
+        slotSelect: { path: '/game/assets/audio/kenney-ui-audio/rollover2.ogg', tracks: 1 },
+        equipment: { path: '/game/assets/audio/kenney-ui-audio/switch11.ogg', tracks: 1 },
         footsteps: {
             voices: 8,
             completed: Array.from({ length: 8 }, () => true),
@@ -51,6 +54,8 @@ test('plays isolated real tracks and restores one music track when visible', asy
         },
     })
     expect(result.sampleVolume).toBeCloseTo(result.catalogVolume)
+    expect(result.musicVolume).toBeCloseTo(0.108)
+    expect(result.menuOpen.duration).toBeCloseTo(0.28, 1)
     const [near, far] = result.footsteps.settings
     expect(near).toEqual([0.8, 0.96])
     expect(far?.[0]).toBeCloseTo(0.3)
@@ -94,6 +99,41 @@ test('keeps forced silent sessions from loading or playing eligible world ambien
         requests: 0,
         tracks: 0,
     })
+    await expect(page.evaluate(() => window.engineHarness.castAndWaterAudio())).resolves.toEqual({
+        requests: 0,
+        sounds: 0,
+    })
+})
+
+test('decodes cast, prayer and death voices and the shoreline loop', async ({ page }) => {
+    const result = await page.evaluate(() => window.engineHarness.castAndWaterAudio())
+    expect(result).toMatchObject({
+        requests: 4,
+        playing: [1, 1, 1],
+        waterLoop: true,
+        stoppedOnMute: true,
+        stalePrayerStopped: true,
+        deathVoiceSurvivesInvalidation: true,
+        durations: [
+            expect.closeTo(1.09, 1),
+            expect.closeTo(2.42, 1),
+            expect.closeTo(8, 2),
+            expect.closeTo(0.82, 1),
+        ],
+    })
+})
+
+test('loops the real forest battle soundtrack and resumes default music when the opponent dies', async ({
+    page,
+}) => {
+    const result = await page.evaluate(() => window.engineHarness.battleMusic())
+    expect(result).toMatchObject({
+        beforeFight: 1,
+        whileLoading: 1,
+        duringFight: { pausedDefault: true, defaultPlaying: 0, battlePlaying: 1, loop: true },
+        afterFight: { battleStopped: true, resumedDefault: true, defaultPlaying: 1 },
+    })
+    expect(result.duration).toBeCloseTo(177.76, 0)
 })
 
 test('resumes a suspended audio context from a trusted gesture and plays the latest portal', async ({

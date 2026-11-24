@@ -67,7 +67,9 @@ export function observeRuntimeAudio(
     snapshot: WorldSnapshot,
     playerId: string | undefined
 ): void {
-    view?.audio.observeWorld(snapshot, playerId, view.sceneActors.isPositionVisible)
+    view?.audio.observeWorld(snapshot, playerId, view.sceneActors.isPositionVisible, (id) =>
+        view.sceneActors.isCharacterVisible(id)
+    )
 }
 
 export function updateRuntimeScene(

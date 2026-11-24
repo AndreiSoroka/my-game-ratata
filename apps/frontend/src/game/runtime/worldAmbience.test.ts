@@ -18,6 +18,7 @@ const map = { tileWidth: 16, tileHeight: 16, buildings: [] }
 const portalFile = 'portal-hum.wav'
 const birdFile = 'forest-bird-1.mp3'
 const windFile = 'forest-wind.mp3'
+const waterFile = 'water-shore.wav'
 const owners: WorldAmbience[] = []
 
 function portal(id: string, x: number, options: Partial<PortalEndpointSnapshot> = {}) {
@@ -204,6 +205,96 @@ it('keeps the forest delay at the treeline and stops a cue on entering a buildin
     expect(clip.voices[0]?.isStopped).toBe(true)
     await test.step(40_000)
     expect(clip.start).toHaveBeenCalledOnce()
+})
+
+it('plays one shore loop, attenuates from the water edge, and stops indoors', async () => {
+    const test = setup()
+    test.ambience.setMap(locationId, {
+        ...map,
+        buildings: [
+            {
+                id: 'hut',
+                name: 'Hut',
+                x: 64,
+                y: 0,
+                width: 16,
+                height: 16,
+                entry: { x: 64, y: 0 },
+                cover: document.createElement('canvas'),
+            },
+        ],
+        ambientTerrain: {
+            width: 10,
+            height: 1,
+            water: Uint8Array.from([0, 0, 1, 0, 0, 0, 0, 0, 0, 0]),
+            fortifications: [],
+        },
+    })
+    function move(x: number): void {
+        const world = snapshot()
+        world.characters[0]!.position.x = x
+        test.observe(world)
+    }
+
+    move(16)
+    await test.step()
+    const clip = test.sounds.get(waterFile)!
+    expect(clip.start).toHaveBeenCalledExactlyOnceWith({ loop: true, volume: 0 })
+    expect(clip.voices[0]?.volume).toBe(1)
+    move(80)
+    await test.step()
+    expect(clip.voices[0]?.volume).toBe((3 / 4) ** 2)
+    move(128)
+    await test.step()
+    expect(clip.voices[0]?.volume).toBe(0)
+    await test.step(399)
+    expect(clip.voices[0]?.isStopped).toBe(false)
+    await test.step(1)
+    expect(clip.voices[0]?.isStopped).toBe(true)
+
+    move(16)
+    await test.step()
+    expect(clip.start).toHaveBeenCalledTimes(2)
+    move(64)
+    expect(clip.voices[1]?.isStopped).toBe(true)
+    await test.step(500)
+    expect(clip.start).toHaveBeenCalledTimes(2)
+})
+
+it('schedules half-gain wall gusts and hands their slot to forest cues on exit', async () => {
+    const test = setup()
+    test.ambience.setMap(locationId, {
+        ...map,
+        ambientTerrain: {
+            width: 16,
+            height: 16,
+            water: new Uint8Array(),
+            fortifications: [{ x: 16, y: 80, width: 192, height: 16 }],
+        },
+    })
+    const nearWall = snapshot()
+    nearWall.characters[0]!.position = { x: 96, y: 64 }
+    test.observe(nearWall)
+    await test.step()
+    const wind = test.sounds.get(windFile)!
+    await test.step(7999)
+    expect(wind.start).not.toHaveBeenCalled()
+    await test.step(1)
+    expect(wind.start).toHaveBeenCalledExactlyOnceWith({ volume: 0.5 })
+    wind.voices[0]?.stop()
+    await test.step()
+    await test.step(24999)
+    expect(wind.start).toHaveBeenCalledOnce()
+    await test.step(1)
+    expect(wind.start).toHaveBeenCalledTimes(2)
+
+    test.observe(snapshot([], [tree(0), tree(80), tree(160)]))
+    expect(wind.voices[1]?.isStopped).toBe(true)
+    await test.step()
+    const bird = test.sounds.get(birdFile)!
+    await test.step(5000)
+    expect(bird.start).toHaveBeenCalledOnce()
+    expect(wind.voices.every((track) => track.isStopped)).toBe(true)
 })
 
 it('isolates a rejected clip and never starts a clip that decodes after its owner is gone', async () => {

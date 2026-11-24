@@ -127,8 +127,10 @@ it('ignores late messages from a retired client runtime after starting another l
         snapshot: worldFixture([]),
     })
     onWorldInit.mockClear()
-    receive({ type: 'event', event: { kind: 'notice', actorId: 'old', text: 'Before retirement' } })
+    const event = { kind: 'notice', actorId: 'old', text: 'Before retirement' }
+    receive({ type: 'event', event, serverTime: 100_020 })
     expect(onEvent).toHaveBeenCalledOnce()
+    expect(onEvent).toHaveBeenCalledWith(event, 100_020)
     stopped = true
     receive({ type: 'event', event: { kind: 'permadeath', actorId: 'old' } })
     receive({ type: 'snapshot', snapshot: { characters: [] } })

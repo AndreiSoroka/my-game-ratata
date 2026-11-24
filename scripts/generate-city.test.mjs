@@ -7,6 +7,7 @@ import {
     CENTER_LOCATION_ID,
     WORLD_LOCATION_DEFINITIONS,
 } from '../contracts/src/world.ts'
+import { planFortifications } from './city-fortifications.mjs'
 import { CITY_BUILDINGS } from './city-layout.mjs'
 import { generateCity, generateWorldMap } from './generate-map.mjs'
 import { soilGid, pavingGid } from './generate-ground.mjs'
@@ -442,6 +443,29 @@ test('every checked fallback renders the same constraints and styles are chosen 
     assert.throws(() => generateCity(''), /requires a seed/)
     assert.throws(() => generateCity(Number.NaN), /requires a seed/)
 })
+test('fortification sound bounds cover exactly the painted wall cells and leave gate openings free', () => {
+    const map = generateCity('fortification-sound-footprints', 'grid')
+    const objects = layer(map, 'Fortifications').objects
+    const walls = objects.filter((object) => object.type === 'wall')
+    assert.equal(walls.length, 8)
+    assert.ok(walls.every((wall) => wall.width === 16 || wall.height === 16))
+    assert.equal(new Set(objects.map(({ id }) => id)).size, objects.length)
+    const wallCells = new Set(
+        walls.flatMap((wall) => cells(tileRect(wall)).map(String))
+    )
+    const plannedCells = new Set(
+        planFortifications().walls.map(([x, y]) => String([x, y]))
+    )
+    assert.deepEqual(wallCells, plannedCells)
+    for (const gate of objects.filter((object) => object.type === 'gate')) {
+        assert.ok(
+            cells(JSON.parse(value(gate, 'opening'))).every(
+                (cell) => !wallCells.has(String(cell))
+            )
+        )
+    }
+})
+
 test('all other 24 region maps remain byte-equivalent to their authored definitions', () => {
     for (const definition of WORLD_LOCATION_DEFINITIONS.filter(
         (entry) => entry.id !== CENTER_LOCATION_ID

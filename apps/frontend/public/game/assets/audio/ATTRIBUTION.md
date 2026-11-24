@@ -14,12 +14,31 @@
 - License used in this project: CC-BY 3.0
 - Used file: `music/adventure-begins.ogg`.
 
+## Kingslayer at the Clockwork Gate
+
+- Project-supplied audio file, used unchanged for forest combat.
+- Used file: `music/Kingslayer_at_the_Clockwork_Gate.mp3`.
+
 ## Kenney Interface Sounds
 
 - Author: Kenney
 - License: CC0 1.0
-- Used files: `open_001.ogg`, `close_001.ogg`, `select_001.ogg`, `click_001.ogg` and `confirmation_001.ogg` under `kenney-interface/`.
+- Used files: `close_001.ogg`, `select_001.ogg`, `click_001.ogg` and `confirmation_001.ogg` under `kenney-interface/`.
 - [Source](https://kenney.nl/assets/interface-sounds)
+
+## Kenney RPG Audio
+
+- Author: Kenney
+- License: CC0 1.0
+- All original effects under `kenney-rpg-audio/`. Menus and game windows use `bookPlace1.ogg` when opening.
+- [Source](https://kenney.nl/assets/rpg-audio)
+
+## Kenney UI Audio
+
+- Author: Kenney
+- License: CC0 1.0
+- Used files: `rollover2.ogg` for inventory selection and `switch11.ogg` for equipment changes under `kenney-ui-audio/`.
+- [Source](https://kenney.nl/assets/ui-audio)
 
 ## Kenney Music Jingles
 

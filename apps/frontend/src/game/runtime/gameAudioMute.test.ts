@@ -6,7 +6,7 @@ import {
 import type { Sound } from 'excalibur'
 import { afterEach, expect, it, vi } from 'vitest'
 
-import { soundCatalog } from '../assets/soundCatalog'
+import { musicCatalog, soundCatalog } from '../assets/soundCatalog'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { isAudioMuted, setAudioMuted } from './audioPreference'
 import type { Footstep } from './footsteps'
@@ -47,6 +47,23 @@ function clip(volume: number) {
         }),
     }
 }
+
+it('replaces the melee swing for a magic attack while keeping the normal attack sound', () => {
+    const music = clip(musicCatalog.adventureBegins.volume)
+    const melee = clip(soundCatalog.attack.volume)
+    const audio = new GameAudio(
+        new Map([['attack', melee as unknown as Sound]]),
+        music as unknown as Sound
+    )
+    try {
+        audio.playEventSound({ kind: 'attack', abilityId: 'fireball', delivery: 'magic' })
+        expect(melee.play).not.toHaveBeenCalled()
+        audio.playEventSound({ kind: 'attack', delivery: 'melee_physical' })
+        expect(melee.play).toHaveBeenCalledOnce()
+    } finally {
+        audio.stop()
+    }
+})
 function snapshot(x: number): WorldSnapshot {
     return worldFixture([
         characterFixture('hero', { position: { x, y: 8 }, velocity: { x: 90, y: 0 } }),
@@ -67,7 +84,7 @@ it.each(['/?test=1', '/?mute=1'])(
     (url) => {
         window.localStorage.setItem('ratata:audio-muted', 'false')
         window.history.replaceState({}, '', url)
-        const music = clip(0.18),
+        const music = clip(musicCatalog.adventureBegins.volume),
             effect = clip(0.22)
         const player = new GameAudio(
             new Map([
@@ -110,7 +127,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
     setAudioMuted(false)
     const now = vi.spyOn(performance, 'now').mockReturnValue(0)
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-    const music = clip(0.18),
+    const music = clip(musicCatalog.adventureBegins.volume),
         effect = clip(soundCatalog.uiOpen.volume)
     const player = new GameAudio(
         new Map([['uiOpen', effect as unknown as Sound]]),
@@ -145,7 +162,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
         expect(footsteps.play).toHaveBeenCalledOnce()
         setAudioMuted(false)
         expect(music.play).toHaveBeenCalledTimes(2)
-        expect(music.volume).toBe(0.18)
+        expect(music.volume).toBe(musicCatalog.adventureBegins.volume)
         expect(effect.volume).toBe(soundCatalog.uiOpen.volume)
         player.observeWorld(snapshot(68), 'hero')
         now.mockReturnValue(900)
@@ -165,7 +182,7 @@ it('stops all active voices immediately and resumes with authored gains and the 
 it('resumes a paused music track once and waits for visibility when unmuted while hidden', () => {
     setAudioMuted(false)
     const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
-    const music = clip(0.18)
+    const music = clip(musicCatalog.adventureBegins.volume)
     const player = new GameAudio(new Map(), music as unknown as Sound)
     const changeVisibility = (value: boolean) => {
         hidden.mockReturnValue(value)
@@ -212,7 +229,7 @@ it('resumes a paused music track once and waits for visibility when unmuted whil
 })
 it('forces silence from the automated browser build flag before music playback', () => {
     vi.stubEnv('VITE_GAME_AUDIO_MUTED', '1')
-    const music = clip(0.18)
+    const music = clip(musicCatalog.adventureBegins.volume)
     const player = new GameAudio(new Map(), music as unknown as Sound)
     try {
         player.playMusic()
@@ -238,7 +255,8 @@ it('plays live NPC speech by default and honors voice and master mute controls',
             public constructor(public readonly text: string) {}
         }
     )
-    const player = new GameAudio(new Map(), clip(0.18) as unknown as Sound)
+    const music = clip(musicCatalog.adventureBegins.volume)
+    const player = new GameAudio(new Map(), music as unknown as Sound)
     player.setMap({
         footsteps: { width: 1, height: 1, tileWidth: 16, tileHeight: 16, surfaces: [] },
     })

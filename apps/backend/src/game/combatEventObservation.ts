@@ -67,6 +67,7 @@ function redactActor(event: GameEventPayload, privateText: boolean): void {
     delete event.actorId
     delete event.actionId
     delete event.attackGeometry
+    delete event.castMode
     delete event.position
     delete event.projectile
     delete event.speakerName

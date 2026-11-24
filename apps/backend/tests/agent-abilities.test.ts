@@ -166,6 +166,7 @@ it('allows a noncombat personality to devote a harmless prayer beside potential 
             actorId: actor.id,
             abilityId: 'pray',
             phase: 'completed',
+            castMode: 'devotion',
         },
     ])
     expect(undead.hp).toBe(undead.maxHp)

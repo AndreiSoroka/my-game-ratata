@@ -1,4 +1,6 @@
 const town = 512
+const horizontalWall = town + 100
+const verticalWall = town + 123
 const property = (name, value, type = 'string') => ({ name, type, value })
 const directions = ['north', 'south', 'west', 'east']
 
@@ -97,6 +99,37 @@ function gate(direction, nextId) {
     return { node, supports, leaves, opening }
 }
 
+function wallFootprints(walls, nextId) {
+    const lines = new Map()
+    for (const [x, y, tile] of walls) {
+        const horizontal = tile === horizontalWall
+        const line = horizontal ? y : x
+        const key = `${tile}:${line}`
+        const run = lines.get(key) ?? { horizontal, line, offsets: [] }
+        run.offsets.push(horizontal ? x : y)
+        lines.set(key, run)
+    }
+    const rectangles = []
+    for (const { horizontal, line, offsets } of lines.values()) {
+        const ordered = offsets.sort((a, b) => a - b)
+        let start = ordered[0]
+        for (let index = 0; index < ordered.length; index++) {
+            const end = ordered[index]
+            if (ordered[index + 1] === end + 1) continue
+            const id = nextId()
+            const length = end - start + 1
+            const name = `wall-${id}`
+            rectangles.push(
+                horizontal
+                    ? part(id, 'wall', name, start, line, length, 1)
+                    : part(id, 'wall', name, line, start, 1, length)
+            )
+            start = ordered[index + 1]
+        }
+    }
+    return rectangles
+}
+
 /** Reserve every collision and visible pixel footprint before any plot is chosen. */
 export function planFortifications(width = 96, height = 80) {
     let id = 50000
@@ -113,10 +146,10 @@ export function planFortifications(width = 96, height = 80) {
     const walls = []
     for (let x = 12; x <= 84; x++)
         for (const y of [12, 67])
-            if (Math.abs(x - 48) > 3) walls.push([x, y, town + 100])
+            if (Math.abs(x - 48) > 3) walls.push([x, y, horizontalWall])
     for (let y = 12; y <= 67; y++)
         for (const x of [12, 84])
-            if (Math.abs(y - 40) > 3) walls.push([x, y, town + 123])
+            if (Math.abs(y - 40) > 3) walls.push([x, y, verticalWall])
     const reserved = Array(width * height).fill(false)
     const reserve = (x, y, w, h) => {
         for (let py = y - 2; py < y + h + 2; py++)
@@ -133,7 +166,13 @@ export function planFortifications(width = 96, height = 80) {
     // The whole opening is also a protected passage; only roads may be stamped here.
     for (const { opening } of gates)
         reserve(opening.x, opening.y, opening.w, opening.h)
-    return { corners, gates, walls, reserved }
+    return {
+        corners,
+        gates,
+        walls,
+        wallFootprints: wallFootprints(walls, nextId),
+        reserved,
+    }
 }
 
 export function drawFortifications(ctx, plan) {
@@ -178,5 +217,6 @@ export function drawFortifications(ctx, plan) {
             ...supports,
             ...leaves,
         ]),
+        ...plan.wallFootprints,
     ]
 }

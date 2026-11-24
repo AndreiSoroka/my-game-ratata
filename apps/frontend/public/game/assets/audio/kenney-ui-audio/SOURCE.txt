@@ -1,0 +1,4 @@
+Kenney UI Audio 1.0
+https://kenney.nl/assets/ui-audio
+CC0 1.0. Downloaded 2026-11-24. Selected original effects, unchanged.
+Archive SHA-256: 946fc23a63d535d693eb31b2eabb80c8c28d6351e2186b344ceb71b2cb1d5eb6

@@ -77,6 +77,8 @@ export interface GameEventPayload {
     /** Fixed authoritative action duration, including phase-dependent rituals. */
     durationMs?: number
     phase?: 'started' | 'completed' | 'interrupted'
+    /** A successful standalone devotional action, with no ongoing cast. */
+    castMode?: 'devotion'
 
     /** Authoritative recipient filter; stripped before sending over a socket. */
     audienceIds?: string[]

@@ -43,7 +43,15 @@ Grass, concrete and wood footsteps use nine unchanged clips (three per material)
 
 ## Kenney Interface Sounds and Music Jingles
 
-Menus and reward confirmations use five original clips from **Interface Sounds 1.0**. Mastery level increases use `jingles_PIZZI04.ogg` from **Music Jingles 1.0**. Both Kenney packs use [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The original licenses and source records accompany the clips in `apps/frontend/public/game/assets/audio/kenney-interface/` and `apps/frontend/public/game/assets/audio/kenney-jingles/`. [Interface Sounds](https://kenney.nl/assets/interface-sounds) · [Music Jingles](https://kenney.nl/assets/music-jingles)
+Menu closing, selection, clicks and reward confirmations use four original clips from **Interface Sounds 1.0**. Mastery level increases use `jingles_PIZZI04.ogg` from **Music Jingles 1.0**. Both Kenney packs use [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The original licenses and source records accompany the clips in `apps/frontend/public/game/assets/audio/kenney-interface/` and `apps/frontend/public/game/assets/audio/kenney-jingles/`. [Interface Sounds](https://kenney.nl/assets/interface-sounds) · [Music Jingles](https://kenney.nl/assets/music-jingles)
+
+## Kenney RPG Audio
+
+Opening menus and game windows uses `bookPlace1.ogg`, a short, low thump from **RPG Audio 1.0**. All 51 individual effects from the download are included unchanged in `apps/frontend/public/game/assets/audio/kenney-rpg-audio/`, alongside the original CC0 license and archive checksum. [RPG Audio](https://kenney.nl/assets/rpg-audio)
+
+## Kenney UI Audio
+
+Moving between inventory cells and selecting an item use `rollover2.ogg`. Successful changes to equipment use `switch11.ogg`. The two clips from **UI Audio 1.0** are unchanged and stored with their original CC0 license in `apps/frontend/public/game/assets/audio/kenney-ui-audio/`. [UI Audio](https://kenney.nl/assets/ui-audio)
 
 ## Portal and forest ambience
 
@@ -52,6 +60,18 @@ Menus and reward confirmations use five original clips from **Interface Sounds 1
 - `forest-bird-1.mp3` uses the first 2.48 seconds of [Turdus_merula_06.wav by tinga](https://freesound.org/people/tinga/sounds/189526/).
 - `forest-bird-2.mp3` uses the first 2.25 seconds of [Turdus_merula_19.wav by tinga](https://freesound.org/people/tinga/sounds/189549/).
 - `forest-wind.mp3` uses the gust from 40.5 to 46.5 seconds of [Forest, close up of trees rustling in the wind.wav by Anya_Media](https://freesound.org/people/Anya_Media/sounds/523389/).
+
+## Casting voices and shore ambience
+
+The casting and shore clips in `apps/frontend/public/game/assets/audio/ambience/` use public Freesound previews released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The two voices are filtered mono MP3s with short fades. The shore clip is a mono PCM WAV loop.
+
+- `magic-cast.mp3` uses the passage from 2.97 to 3.93 seconds with two quiet echo taps. [Whisper.wav by PlumForestPodcast](https://freesound.org/people/PlumForestPodcast/sounds/517868/)
+- `prayer-whisper.mp3` uses the quieter passage from 31.04 to 33.46 seconds with the high frequencies softened. [gibberish mumbling and whispering.aif by frosthardr](https://freesound.org/people/frosthardr/sounds/346638/)
+- `water-shore.wav` uses the passage from 23.7 to 33.1 seconds. A 1.4-second overlap produces the eight-second loop. [200906 Water waves lapping, lake, gentle, close, PEC 9am.flac by TRP](https://freesound.org/people/TRP/sounds/568819/)
+
+## Human death voice
+
+`human-death.mp3` uses the passage from 0.34 to 1.16 seconds under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/), filtered and encoded as a mono MP3 with short fades. [Hero Dying 1](https://freesound.org/people/vox_artist/sounds/512160/)
 
 ## Project-authored ground tiles
 

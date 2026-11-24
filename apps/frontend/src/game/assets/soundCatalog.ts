@@ -2,6 +2,7 @@ const uiSoundIds = [
     'uiOpen',
     'uiClose',
     'uiSelect',
+    'uiSlotSelect',
     'uiClick',
     'uiConfirmation',
     'masteryUp',
@@ -45,13 +46,14 @@ export interface MusicAssetDefinition extends SoundAssetDefinition {
 const sfxRoot = '/game/assets/audio/sfx'
 const musicRoot = '/game/assets/audio/music'
 const interfaceRoot = '/game/assets/audio/kenney-interface'
+const uiAudioRoot = '/game/assets/audio/kenney-ui-audio'
 
 export const soundCatalog: Record<GameSoundId, SoundAssetDefinition> = {
     attack: sfx('attack-swing.wav', 0.42),
     chestOpen: sfx('chest-open.wav', 0.45),
     drink: sfx('drink.wav', 0.35),
     drop: sfx('pickup-drop.wav', 0.28),
-    equip: sfx('equip.wav', 0.32),
+    equip: { src: `${uiAudioRoot}/switch11.ogg`, volume: 0.24 },
     hit: sfx('attack-hit.wav', 0.34),
     slimeHop: sfx('slime-hop.wav', 0.1),
     stepGrass0: { src: '/game/assets/audio/kenney-impact/footstep_grass_000.ogg', volume: 0.19 },
@@ -65,9 +67,10 @@ export const soundCatalog: Record<GameSoundId, SoundAssetDefinition> = {
     stepWood2: { src: '/game/assets/audio/kenney-impact/footstep_wood_002.ogg', volume: 0.2 },
     pickup: sfx('pickup-drop.wav', 0.24),
     stash: sfx('chest-open.wav', 0.24),
-    uiOpen: { src: `${interfaceRoot}/open_001.ogg`, volume: 0.2 },
+    uiOpen: { src: '/game/assets/audio/kenney-rpg-audio/bookPlace1.ogg', volume: 0.12 },
     uiClose: { src: `${interfaceRoot}/close_001.ogg`, volume: 0.18 },
     uiSelect: { src: `${interfaceRoot}/select_001.ogg`, volume: 0.12 },
+    uiSlotSelect: { src: `${uiAudioRoot}/rollover2.ogg`, volume: 0.12 },
     uiClick: { src: `${interfaceRoot}/click_001.ogg`, volume: 0.16 },
     uiConfirmation: { src: `${interfaceRoot}/confirmation_001.ogg`, volume: 0.22 },
     masteryUp: { src: '/game/assets/audio/kenney-jingles/jingles_PIZZI04.ogg', volume: 0.22 },
@@ -77,7 +80,12 @@ export const musicCatalog = {
     adventureBegins: {
         loop: true,
         src: `${musicRoot}/adventure-begins.ogg`,
-        volume: 0.18,
+        volume: 0.108,
+    },
+    forestBattle: {
+        loop: true,
+        src: `${musicRoot}/Kingslayer_at_the_Clockwork_Gate.mp3`,
+        volume: 0.04,
     },
 } as const satisfies Record<string, MusicAssetDefinition>
 

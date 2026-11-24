@@ -1,11 +1,18 @@
 import { type PlayOptions, Sound, type SoundTrack } from 'excalibur'
 
+import { musicCatalog } from '../assets/soundCatalog'
+
 const root = '/game/assets/audio/ambience'
 const assets = {
-    portal: { file: 'portal-hum.wav', volume: 0.1 },
-    bird1: { file: 'forest-bird-1.mp3', volume: 0.15 },
-    bird2: { file: 'forest-bird-2.mp3', volume: 0.15 },
-    wind: { file: 'forest-wind.mp3', volume: 0.22 },
+    portal: { src: `${root}/portal-hum.wav`, volume: 0.1 },
+    bird1: { src: `${root}/forest-bird-1.mp3`, volume: 0.15 },
+    bird2: { src: `${root}/forest-bird-2.mp3`, volume: 0.15 },
+    wind: { src: `${root}/forest-wind.mp3`, volume: 0.22 },
+    water: { src: `${root}/water-shore.wav`, volume: 0.14 },
+    magicCast: { src: `${root}/magic-cast.mp3`, volume: 0.24 },
+    prayerWhisper: { src: `${root}/prayer-whisper.mp3`, volume: 0.16 },
+    humanDeath: { src: `${root}/human-death.mp3`, volume: 0.22 },
+    forestBattle: musicCatalog.forestBattle,
 } as const
 
 export type AmbienceSoundId = keyof typeof assets
@@ -72,7 +79,7 @@ export class WorldAmbienceSounds {
         }, 8000)
         this.pending.set(controller, timeout)
         try {
-            const sound = await this.loadSound(`${root}/${definition.file}`, controller.signal)
+            const sound = await this.loadSound(definition.src, controller.signal)
             if (this.disposed || controller.signal.aborted) return
             sound.volume = definition.volume
             this.ready.set(id, sound)

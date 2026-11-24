@@ -1,11 +1,54 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { UiSoundId } from '../assets/soundCatalog'
 import { adventureFixture, characterFixture } from '../testing/characterFixture'
+import { gameUiSoundKey } from './gameUiSound'
 import InventoryOverlay from './InventoryOverlay.vue'
 
 const player = () =>
     characterFixture('self', { inventory: [{ instanceId: 'food', itemId: 'food' }] })
+
+it('plays the cell cue for navigation and selection while initial and restored focus stay silent', async () => {
+    const boots = { instanceId: 'boots', itemId: 'boots' } as const
+    const food = { instanceId: 'food', itemId: 'food' } as const
+    const playUiSound = vi.fn<(id: UiSoundId) => void>()
+    const wrapper = mount(InventoryOverlay, {
+        props: { character: characterFixture('self', { inventory: [boots, food] }), chests: [] },
+        attachTo: document.body,
+        global: { provide: { [gameUiSoundKey]: playUiSound } },
+    })
+    try {
+        await flushPromises()
+        const bootsSlot = wrapper.get<HTMLButtonElement>('[data-item-instance-id="boots"]')
+        const foodSlot = wrapper.get<HTMLButtonElement>('[data-item-instance-id="food"]')
+        expect(document.activeElement).toBe(bootsSlot.element)
+        expect(playUiSound).not.toHaveBeenCalled()
+
+        await bootsSlot.trigger('keydown', { code: 'ArrowRight' })
+        expect(document.activeElement).toBe(foodSlot.element)
+        expect(playUiSound.mock.calls).toEqual([['uiSlotSelect']])
+
+        bootsSlot.element.focus()
+        await bootsSlot.trigger('keydown', { code: 'Enter' })
+        await flushPromises()
+        expect(playUiSound.mock.calls).toEqual([['uiSlotSelect'], ['uiSlotSelect']])
+
+        await wrapper.get('.inventory-actions button').trigger('click')
+        expect(wrapper.emitted('inventoryAction')).toEqual([
+            [{ action: 'equip', itemInstanceId: 'boots' }],
+        ])
+        await wrapper.setProps({
+            character: characterFixture('self', { inventory: [food], equipment: { boots } }),
+        })
+        await flushPromises()
+        expect(document.activeElement).toBe(wrapper.get('[data-item-instance-id="food"]').element)
+        expect(playUiSound).toHaveBeenCalledTimes(2)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
 describe('inventory items and material stacks', () => {
     it('shows ten herbs in two occupied slots, separate wood items and no duplicate materials wallet', async () => {
         const character = characterFixture('self', {

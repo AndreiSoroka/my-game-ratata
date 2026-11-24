@@ -1,3 +1,4 @@
+import type { ServerMessage, WorldSnapshot } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
 test.describe('inventory equipment keyboard focus', () => {
@@ -7,6 +8,7 @@ test.describe('inventory equipment keyboard focus', () => {
         test(`returns to the original slot after equipping (${mobile ? 'mobile' : 'desktop'})`, async ({
             page,
         }, info) => {
+            const initialSnapshot = captureInitialSnapshot(page)
             await page.setViewportSize(
                 mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
             )
@@ -17,7 +19,7 @@ test.describe('inventory equipment keyboard focus', () => {
                 `equip-${info.project.name}-${mobile}`
             )
             await expect(page.locator('canvas[data-game-canvas=true]')).toBeVisible()
-            await acquireBoots(page)
+            await acquireBoots(page, initialSnapshot())
             try {
                 await checkKeyboardEquip(page)
             } finally {
@@ -76,10 +78,24 @@ async function checkKeyboardEquip(page: Page) {
     await expect(page.locator('canvas[data-game-canvas=true]')).toBeFocused()
 }
 
-async function acquireBoots(page: Page) {
-    const ground = await page.evaluate(() =>
-        window.__ratataTest!.getState().snapshot?.items.find((item) => item.itemId === 'boots')
-    )
+/** Keep objects disclosed at join before the camera narrows the server's view. */
+function captureInitialSnapshot(page: Page): () => WorldSnapshot | undefined {
+    let initial: WorldSnapshot | undefined
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framereceived', ({ payload }) => {
+            const message = JSON.parse(String(payload)) as ServerMessage
+            if (message.type === 'world_init') initial = message.snapshot
+        })
+    })
+    return () => initial
+}
+
+async function acquireBoots(page: Page, initial: WorldSnapshot | undefined) {
+    const ground =
+        (await page.evaluate(() =>
+            window.__ratataTest!.getState().snapshot?.items.find((item) => item.itemId === 'boots')
+        )) ?? initial?.items.find((item) => item.itemId === 'boots')
     if (ground) {
         await moveTo(page, ground.position)
         await page.evaluate(
@@ -87,11 +103,12 @@ async function acquireBoots(page: Page) {
             ground.id
         )
     } else {
-        const fiber = await page.evaluate(() =>
-            window
-                .__ratataTest!.getState()
-                .snapshot!.adventure!.resourceNodes.find((node) => node.kind === 'fiber')
-        )
+        const fiber =
+            (await page.evaluate(() =>
+                window
+                    .__ratataTest!.getState()
+                    .snapshot!.adventure!.resourceNodes.find((node) => node.kind === 'fiber')
+            )) ?? initial?.adventure?.resourceNodes.find((node) => node.kind === 'fiber')
         expect(fiber).toBeDefined()
         await moveTo(page, fiber!.position)
         await expect

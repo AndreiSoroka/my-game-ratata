@@ -2,6 +2,8 @@ import { AudioContextFactory, Future } from 'excalibur'
 
 import { verifyAmbience, verifyForcedSilentAmbience, verifyGestureAmbience } from './ambienceProbe'
 import { verifyAudio } from './audioProbe'
+import { verifyBattleMusic } from './battleMusicProbe'
+import { verifyCastAndWaterAudio } from './castAndWaterProbe'
 import { verifyCancellation, verifyReentry, verifyStartupFailures } from './lifecycleProbe'
 import { verifyRendering } from './renderingProbe'
 
@@ -11,6 +13,8 @@ interface EngineHarness {
     ambience: () => ReturnType<typeof verifyAmbience>
     silentAmbience: () => ReturnType<typeof verifyForcedSilentAmbience>
     gestureAmbience: () => ReturnType<typeof verifyGestureAmbience>
+    castAndWaterAudio: () => ReturnType<typeof verifyCastAndWaterAudio>
+    battleMusic: () => ReturnType<typeof verifyBattleMusic>
     cancel: () => ReturnType<typeof verifyCancellation>
     fail: () => ReturnType<typeof verifyStartupFailures>
     reenter: (entries: number) => ReturnType<typeof verifyReentry>
@@ -49,6 +53,8 @@ window.engineHarness = {
     silentAmbience: () => audioReady.promise.then(verifyForcedSilentAmbience),
     gestureAmbience: () =>
         audioReady.promise.then((context) => verifyGestureAmbience(context, unlock)),
+    castAndWaterAudio: () => audioReady.promise.then(verifyCastAndWaterAudio),
+    battleMusic: () => audioReady.promise.then(verifyBattleMusic),
     cancel: () => audioReady.promise.then(verifyCancellation),
     fail: () => audioReady.promise.then(verifyStartupFailures),
     reenter: (entries) => audioReady.promise.then(() => verifyReentry(entries)),

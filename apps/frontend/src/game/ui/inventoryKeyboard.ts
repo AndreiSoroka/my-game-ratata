@@ -3,7 +3,8 @@ import { activateFocusedButton } from './uiKeyboard'
 export function inventoryKey(
     event: KeyboardEvent,
     panel: HTMLElement | undefined,
-    close: () => void
+    close: () => void,
+    onSlotChange: () => void
 ): void {
     if (event.code === 'Escape' || event.key === 'Escape') {
         event.preventDefault()
@@ -11,8 +12,16 @@ export function inventoryKey(
         return
     }
     if (activateFocusedButton(event, panel)) return
-    const target = event.target
-    if (!(target instanceof HTMLButtonElement)) return
+    if (event.target instanceof HTMLButtonElement)
+        focusInventoryNeighbor(event, panel, event.target, onSlotChange)
+}
+
+function focusInventoryNeighbor(
+    event: KeyboardEvent,
+    panel: HTMLElement | undefined,
+    target: HTMLButtonElement,
+    onSlotChange: () => void
+): void {
     const inGrid = target.classList.contains('inventory-slot')
     const directions: Record<string, number> = inGrid
         ? { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 10, ArrowUp: -10 }
@@ -27,5 +36,8 @@ export function inventoryKey(
     const current = buttons.indexOf(target)
     if (current < 0) return
     event.preventDefault()
-    buttons[(current + direction + buttons.length) % buttons.length]?.focus()
+    const next = buttons[(current + direction + buttons.length) % buttons.length]
+    if (next === undefined || next === target) return
+    next.focus()
+    if (inGrid && document.activeElement === next) onSlotChange()
 }
