@@ -29,9 +29,17 @@ for (const layout of [
             const firstName = `g-a-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
             const secondName = `g-b-${info.project.name}-${layout.name}-${String(info.repeatEachIndex)}`
             const useMouse = layout.name === 'desktop'
+            // Stage the gift with a consistent view of resources before testing the social layout.
+            await first.setViewportSize({ width: 1280, height: 800 })
             const firstId = await joinSocial(first, firstName)
             giftId = await gatherGift(first)
+            await first.setViewportSize(viewport)
             const secondId = await joinSocial(second, secondName)
+            await Promise.all(
+                [first, second].map((page) =>
+                    page.addStyleTag({ content: '.test-panel { display: none !important }' })
+                )
+            )
             const point = await first.evaluate(
                 () => window.__ratataTest!.getState().player!.position
             )
