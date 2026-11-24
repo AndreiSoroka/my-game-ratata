@@ -3,7 +3,15 @@ import type {
     WorldObjectClientMessage,
     WorldObjectSnapshot,
 } from './environment'
-export type * from './environment'
+export type {
+    DoorAction,
+    DoorState,
+    InteractionBoundarySegment,
+    WorldObjectBounds,
+    WorldObjectClientMessage,
+    WorldObjectKind,
+    WorldObjectSnapshot,
+} from './environment'
 
 import type { CityStateSnapshot } from './cityState'
 import type { CraftOrderClientMessage } from './craftOrders'
