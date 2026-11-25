@@ -6,15 +6,28 @@ import {
 } from '@my-game-ratata/contracts'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import type { CompanionWorld } from '../src/game/agentDecisions'
+import { GameCharacter } from '../src/game/character'
 import { shouldRetireCharacter } from '../src/game/characterLife'
 import { tickCharacterTimedState } from '../src/game/characterRecovery'
+import { enqueueCharacterRoute } from '../src/game/characterRoute'
+import { companionSoul } from '../src/game/companionProfiles'
+import { CompanionService } from '../src/game/companions'
 import { createItemInstance } from '../src/game/inventory'
+import { advanceCharacter } from '../src/game/movement'
 import { advancePursuit } from '../src/game/pursuit'
 import { pursuits } from '../src/game/pursuitState'
 import { GameRoom } from '../src/game/room'
+import {
+    characterMovementIntent,
+    travelRoomCharacter,
+} from '../src/game/roomTravel'
 import { WorldLocations } from '../src/game/worldLocations'
 import { WorldMaps } from '../src/game/worldMaps'
-import { nextLocationToward } from '../src/game/worldPassages'
+import {
+    crossedDungeonPassage,
+    nextLocationToward,
+} from '../src/game/worldPassages'
 import { chestHero, joinChestRoom } from './chestTestHelpers'
 
 afterEach(() => {
@@ -36,46 +49,155 @@ it('loads reciprocal passages on the same generated maps and only crosses during
         surfaceLocationId: CENTER_LOCATION_ID,
     })
     const tower = world.get().navigation.grid.dungeonPassage
-    const stairs = dungeon.navigation.grid.dungeonPassage
-    assert(tower !== undefined && stairs !== undefined)
+    const exit = dungeon.navigation.grid.dungeonPassage
+    assert(tower !== undefined && exit !== undefined)
+    expect(tower.triggerRadius).toBe(7)
+    expect(exit.triggerRadius).toBe(12)
+    expect(exit.arrival.y - exit.position.y).toBe(
+        dungeon.navigation.grid.tileHeight
+    )
+    const north = { x: 0, y: -1 }
+    for (const side of [-1, 1]) {
+        const offset = (side * dungeon.navigation.grid.tileWidth) / 2
+        expect(
+            crossedDungeonPassage(
+                dungeon.navigation,
+                { x: exit.arrival.x + offset, y: exit.arrival.y },
+                { x: exit.position.x + offset, y: exit.position.y },
+                north
+            )
+        ).toBe(exit)
+    }
     const player = chestHero('explorer')
     player.inventory.push(createItemInstance('food'))
     const inventory = [...player.inventory]
     player.position = { ...tower.position }
-    const intent = { x: 0, y: -1 }
-    expect(world.travel(player, intent, 10_000, tower.position)).toBeUndefined()
+    expect(world.travel(player, north, 10_000, tower.position)).toBeUndefined()
     player.connected = false
     player.tags.add('offline')
-    expect(world.travel(player, intent, 10_000, tower.arrival)).toBeUndefined()
+    expect(world.travel(player, north, 10_000, tower.arrival)).toBeUndefined()
     player.tags.delete('offline')
     player.connected = true
-    player.setMoveInput(intent)
-    expect(world.travel(player, intent, 10_000, tower.arrival)).toBeDefined()
+    player.setMoveInput(north)
+    expect(world.travel(player, north, 10_000, tower.arrival)).toBeDefined()
     expect(player).toMatchObject({
         locationId: dungeon.description.id,
-        position: stairs.arrival,
+        position: exit.arrival,
         inventory,
     })
     expect(player.getMoveInput()).toEqual({ x: 0, y: 0 })
-    expect(world.travel(player, intent, 10_001, stairs.arrival)).toBeUndefined()
+    expect(world.travel(player, north, 10_001, exit.arrival)).toBeUndefined()
     expect(world.mapAsset('dungeons', dungeon.description.id)).toBeDefined()
     expect(world.mapAsset('stale', dungeon.description.id)).toBeUndefined()
 
-    player.position = { ...stairs.position }
+    player.position = { ...exit.position }
     player.alive = false
-    expect(
-        world.travel(player, { x: 0, y: 1 }, 11_000, stairs.arrival)
-    ).toBeUndefined()
+    expect(world.travel(player, north, 11_000, exit.arrival)).toBeUndefined()
     player.alive = true
-    expect(
-        world.travel(player, { x: 0, y: 1 }, 12_000, stairs.arrival)
-    ).toBeDefined()
+    expect(world.travel(player, north, 12_000, exit.arrival)).toBeDefined()
     expect(player).toMatchObject({
         locationId: CENTER_LOCATION_ID,
         position: tower.arrival,
         inventory,
         id: 'explorer',
     })
+})
+
+it('lets an agreeing Bran re-enter the tower threshold and follow back through the arch', () => {
+    const maps = new WorldMaps({ seed: 'dungeon-9' })
+    const world = new WorldLocations(
+        maps.navigation(CENTER_LOCATION_ID),
+        undefined,
+        maps
+    )
+    const tower = world.get().navigation.grid.dungeonPassage
+    assert(tower !== undefined)
+    const exit = world.get(tower.destinationLocationId).navigation.grid
+        .dungeonPassage
+    assert(exit !== undefined)
+
+    const player = chestHero('explorer', tower.arrival)
+    const bran = new GameCharacter({
+        archetype: 'human',
+        controllerKind: 'scripted',
+        faction: player.faction,
+        id: 'npc_veteran_1',
+        nickname: 'Бран',
+        soul: companionSoul('npc_veteran_1'),
+        spawnPosition: tower.position,
+    })
+    const actors = new Map([
+        [player.id, player],
+        [bran.id, bran],
+    ])
+    const companionWorld: CompanionWorld = {
+        getCharacter: (id) => actors.get(id),
+        navigationFor: (actor) => world.get(actor.locationId).navigation,
+        findVisibleTarget: () => undefined,
+        requestAttack: () => undefined,
+    }
+    const service = new CompanionService()
+    let now = 10_000
+    expect(
+        service.applyModelOrder(
+            player,
+            bran,
+            { type: 'companion_request', targetId: bran.id, request: 'follow' },
+            now,
+            {
+                modelConsent: true,
+                questCompleted: () => false,
+                hasLineOfSight: (actor, npc) =>
+                    companionWorld
+                        .navigationFor(actor)
+                        .hasLineOfSight(actor.position, npc.position),
+            }
+        )
+    ).toEqual({ accepted: true })
+
+    const deltaMs = 50
+    for (const passage of [tower, exit]) {
+        expect(
+            enqueueCharacterRoute(
+                player,
+                passage.position,
+                false,
+                companionWorld.navigationFor(player),
+                now
+            ).accepted
+        ).toBe(true)
+        for (let elapsed = 0; elapsed < 3_000; elapsed += deltaMs) {
+            now += deltaMs
+            service.update(bran, companionWorld, now)
+            for (const character of actors.values()) {
+                const before = { ...character.position }
+                const intent = characterMovementIntent(character, now, deltaMs)
+                advanceCharacter({
+                    character,
+                    deltaMs,
+                    navigation: companionWorld.navigationFor(character),
+                    now,
+                })
+                travelRoomCharacter(
+                    character,
+                    intent,
+                    world,
+                    actors,
+                    now,
+                    before
+                )
+            }
+            if (bran.locationId === passage.destinationLocationId) {
+                break
+            }
+        }
+        expect(player.locationId).toBe(passage.destinationLocationId)
+        expect(bran.locationId).toBe(passage.destinationLocationId)
+        expect(bran.soul.companion).toMatchObject({
+            leaderId: player.id,
+            order: 'follow',
+        })
+    }
 })
 
 it('casts a two-way city portal underground and lets a pursuing skeleton cross', () => {

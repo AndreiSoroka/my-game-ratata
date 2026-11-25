@@ -54,7 +54,10 @@ const browserFixture: NpcAiProvider = {
                 (event) =>
                     event.kind === 'message' &&
                     (event.text.startsWith('Пойдём вместе:') ||
-                        event.text.startsWith('Come with me,'))
+                        event.text.startsWith('Come with me,') ||
+                        (context.actorId === 'npc_veteran_1' &&
+                            event.text ===
+                                'я хочу отправится в подземелье, пойдем со мной'))
             )
         const english = context.speechLanguage === 'en'
         const hasMessage = context.events.some(

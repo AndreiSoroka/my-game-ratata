@@ -9,6 +9,7 @@ export interface DungeonPassage {
     destinationLocationId: string
     position: Vector2
     arrival: Vector2
+    triggerRadius: number
 }
 
 export function readDungeonMapData(
@@ -33,7 +34,13 @@ export function readDungeonMapData(
         ) {
             throw new Error(`Invalid dungeon passage on ${mapId}`)
         }
-        return { id, destinationLocationId, position, arrival: { x, y } }
+        return {
+            id,
+            destinationLocationId,
+            position,
+            arrival: { x, y },
+            triggerRadius: readTriggerRadius(object, mapId),
+        }
     })
     const skeletons = objects(map, 'Dungeon spawns').map((object) => {
         const point = { x: object.x, y: object.y }
@@ -62,6 +69,21 @@ function objects(map: TiledMap, name: string): readonly EncounterMapObject[] {
 
 function property(object: EncounterMapObject, name: string): unknown {
     return object.properties?.find((entry) => entry.name === name)?.value
+}
+
+function readTriggerRadius(object: EncounterMapObject, mapId: string): number {
+    const radius = property(object, 'triggerRadius')
+    if (radius === undefined) {
+        return 7
+    }
+    if (
+        typeof radius !== 'number' ||
+        !Number.isInteger(radius) ||
+        radius <= 0
+    ) {
+        throw new Error(`Invalid dungeon passage radius on ${mapId}`)
+    }
+    return radius
 }
 
 function inside(point: Vector2, map: TiledMap): boolean {

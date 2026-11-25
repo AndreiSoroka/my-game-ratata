@@ -3,7 +3,6 @@ import {
     type CompanionWaitMode,
     type GameEventPayload,
     type Vector2,
-    WORLD_DIRECTIONS,
 } from '@my-game-ratata/contracts'
 
 import type { CompanionWorld } from './agentDecisions'
@@ -11,14 +10,13 @@ import type { GameCharacter } from './character'
 import { findStandingApproach } from './characterSpacing'
 import { isTargetInAttackRange } from './combat'
 import { sightForCompanion, tryCompanionShot } from './companionAbilities'
-import type { CompanionProfile } from './companionProfiles'
-import { findActorPath } from './doorNavigation'
-import { distance } from './math'
 import {
-    type RegionalExit,
-    regionalExit,
-    regionalRoute,
-} from './regionalNavigation'
+    advanceCompanionTravel,
+    type CompanionTravelLeg,
+    planCompanionPath,
+} from './companionNavigation'
+import type { CompanionProfile } from './companionProfiles'
+import { distance } from './math'
 
 export interface CompanionRuntime {
     anchor: Vector2
@@ -37,12 +35,7 @@ export interface CompanionRuntime {
     waitDeparted?: boolean
     waitResumeOrder?: 'follow' | 'idle'
     waitResumeLeaderId?: string | null
-    regionalLeg?: {
-        from: string
-        to: string
-        exit: RegionalExit | undefined
-        plannedAt: number
-    }
+    regionalLeg?: CompanionTravelLeg
 }
 
 export function advanceCompanionIntent(
@@ -56,7 +49,14 @@ export function advanceCompanionIntent(
         return []
     }
     if (leader !== undefined && needsCrossing(character, leader, state)) {
-        advanceCompanionTravel(character, leader.locationId, state, world, now)
+        advanceCompanionTravel(
+            character,
+            leader.locationId,
+            state,
+            world,
+            now,
+            world.navigationFor(leader).grid.dungeonPassage
+        )
         return []
     }
     const target = state.profile.canFight
@@ -110,7 +110,7 @@ function followLeader(
     if (approach.kind !== 'approaching') {
         const outOfRange = distance(actor.position, leader.position) > radius
         if (outOfRange) {
-            planPath(actor, leader.position, state, world, now)
+            planCompanionPath(actor, leader.position, state, world, now)
         }
         return outOfRange
     }
@@ -191,7 +191,7 @@ function atWaitAnchor(
     ) {
         return true
     }
-    planPath(character, state.anchor, state, world, now)
+    planCompanionPath(character, state.anchor, state, world, now)
     return false
 }
 
@@ -225,66 +225,8 @@ function engage(
     if (state.profile.stationary || state.order === 'guard') {
         return undefined
     }
-    planPath(character, target.position, state, world, now)
+    planCompanionPath(character, target.position, state, world, now)
     return []
-}
-
-export function advanceCompanionTravel(
-    character: GameCharacter,
-    destination: string,
-    state: CompanionRuntime,
-    world: CompanionWorld,
-    now: number
-): void {
-    const navigation = world.navigationFor(character)
-    let leg = state.regionalLeg
-    if (
-        leg?.from !== character.locationId ||
-        leg.to !== destination ||
-        (leg.exit === undefined && now >= leg.plannedAt + 1_000)
-    ) {
-        const next = regionalRoute(character.locationId, destination)?.[1]
-        leg = {
-            from: character.locationId,
-            to: destination,
-            plannedAt: now,
-            exit:
-                next === undefined
-                    ? undefined
-                    : regionalExit(
-                          character.position,
-                          character.locationId,
-                          next,
-                          navigation
-                      ),
-        }
-        state.regionalLeg = leg
-    }
-    if (leg.exit === undefined) {
-        character.setPath([])
-        return
-    }
-    if (distance(character.position, leg.exit.point) <= 1) {
-        character.setMoveInput(WORLD_DIRECTIONS[leg.exit.direction])
-        return
-    }
-    planPath(character, leg.exit.point, state, world, now)
-}
-
-function planPath(
-    character: GameCharacter,
-    target: Vector2,
-    state: CompanionRuntime,
-    world: CompanionWorld,
-    now: number
-): void {
-    if (character.hasPath() && now - state.lastPlanAt < 300) {
-        return
-    }
-    character.setPath(
-        findActorPath(world.navigationFor(character), character, target)
-    )
-    state.lastPlanAt = now
 }
 
 function needsCrossing(

@@ -2,24 +2,45 @@ import assert from 'node:assert/strict'
 
 import {
     CENTER_LOCATION_ID,
+    type ServerMessage,
     type Vector2,
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
 import { generateDungeonRegion } from '../../../scripts/generate-dungeons.mjs'
+import { walkTo } from './world-navigation'
 
 interface Passage extends Vector2 {
     properties: { name: string; value: unknown }[]
 }
 
-test('walks through a tower and back with the same character', async ({ page }) => {
-    test.setTimeout(150_000)
+const branId = 'npc_veteran_1'
+
+test('walks through a tower and back with Bran and a working viewport', async ({ page }) => {
+    test.setTimeout(180_000)
+    let branAccepted = false
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framereceived', ({ payload }) => {
+            const message = JSON.parse(String(payload)) as ServerMessage
+            if (
+                message.type === 'event' &&
+                message.event.kind === 'chat' &&
+                message.event.actorId === branId &&
+                message.event.text === 'Согласен идти вместе.'
+            ) {
+                branAccepted = true
+            }
+        })
+    })
     await page.goto('/?test=1')
     await page.waitForFunction(() => Boolean(window.__ratataTest))
     await page.evaluate(() => window.__ratataTest!.join('Dungeon explorer', 'vanguard'))
     await expect.poll(() => playerLocation(page)).toBe(CENTER_LOCATION_ID)
     const playerId = await page.evaluate(() => window.__ratataTest!.getState().player!.id)
+    await inviteBran(page)
+    await expect.poll(() => branAccepted).toBe(true)
 
     const seed = process.env['GAME_WORLD_SEED'] ?? 'fortifications-browser-2026'
     const parents = new Set(
@@ -48,11 +69,63 @@ test('walks through a tower and back with the same character', async ({ page }) 
     await cross(page, tower)
     await expectViewportFor(page, dungeonId)
     expect(await page.evaluate(() => window.__ratataTest!.observe().exits)).toEqual([])
-    const stairs = await currentPassage(page)
-    await cross(page, stairs)
+    await expectBranInLocation(page, dungeonId)
+    const exit = await currentPassage(page)
+    const arrivalY = await page.evaluate(() => window.__ratataTest!.getState().player!.position.y)
+    expect(arrivalY).toBeGreaterThan(exit.y)
+    await cross(page, exit)
     await expectViewportFor(page, nearest.id)
+    await expectBranInLocation(page, nearest.id)
     expect(await page.evaluate(() => window.__ratataTest!.getState().player!.id)).toBe(playerId)
 })
+
+async function inviteBran(page: Page): Promise<void> {
+    const tavern = await page.waitForFunction(() =>
+        window
+            .__ratataTest!.observe()
+            .targets.find(
+                (target) => target.kind === 'building' && target.name.includes('Три дороги')
+            )
+    )
+    const entrance = await tavern.jsonValue()
+    assert(entrance, 'The tavern has an authored entrance')
+    await walkTo(page, entrance.position, 4)
+    const nearbyBran = await page.waitForFunction(
+        (id) => window.__ratataTest!.observe().targets.find((target) => target.id === id),
+        branId
+    )
+    const target = await nearbyBran.jsonValue()
+    assert(target, 'Bran is visible at the tavern')
+    await walkTo(page, target.position, 18)
+    await page.evaluate(
+        (targetId) =>
+            window.__ratataTest!.send({
+                type: 'chat',
+                targetId,
+                text: 'я хочу отправится в подземелье, пойдем со мной',
+            }),
+        branId
+    )
+}
+
+async function expectBranInLocation(page: Page, locationId: string): Promise<void> {
+    await expect
+        .poll(
+            () =>
+                page.evaluate(
+                    ({ branId, locationId }) => {
+                        const { snapshot } = window.__ratataTest!.getState()
+                        return (
+                            snapshot?.location?.id === locationId &&
+                            snapshot.characters.some((actor) => actor.id === branId && actor.alive)
+                        )
+                    },
+                    { branId, locationId }
+                ),
+            { timeout: 30_000, message: `Bran follows into ${locationId}` }
+        )
+        .toBe(true)
+}
 
 function playerLocation(page: Page) {
     return page.evaluate(() => window.__ratataTest!.getState().location?.id)

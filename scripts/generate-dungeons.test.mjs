@@ -50,8 +50,13 @@ test('seeded dungeons span the region with connected 3–30 tile rooms and spars
     const quantities = new Set()
     const locations = new Set()
     const variants = new Set()
-    for (let index = 0; index < 40; index++) {
-        const seed = `dungeon-sweep-${index}`
+    const seeds = [
+        ...Array.from({ length: 40 }, (_, index) => `dungeon-sweep-${index}`),
+        'exit-north-18',
+        'exit-north-139',
+        'exit-north-315',
+    ]
+    for (const [index, seed] of seeds.entries()) {
         const definitions = generateDungeonRegion(
             seed,
             WORLD_LOCATION_DEFINITIONS
@@ -81,6 +86,7 @@ test('seeded dungeons span the region with connected 3–30 tile rooms and spars
             )
             const arrivalX = property(passage, 'arrivalX')
             const arrivalY = property(passage, 'arrivalY')
+            assert.equal(property(passage, 'triggerRadius'), 12)
             const reachable = connectedFloor(
                 map,
                 cellAt(map, arrivalX, arrivalY)
@@ -92,6 +98,42 @@ test('seeded dungeons span the region with connected 3–30 tile rooms and spars
                 collision.filter((tile) => tile === 0).length
             )
             const rooms = layer(map, 'Dungeon rooms').objects
+            const [entry] = rooms
+            const floor = layer(map, 'Stone floor').data
+            const walls = layer(map, 'Dungeon walls').data
+            const furnishings = layer(map, 'Exit arch and wall torches').data
+            const surfaces = layer(map, 'Footstep surfaces').data
+            const leftThreshold = cellAt(map, passage.x - 8, passage.y)
+            const rightThreshold = leftThreshold + 1
+            assert.equal(passage.x % 16, 0)
+            assert.equal(passage.y, entry.y - 8)
+            assert.ok(passage.x > entry.x && passage.x < entry.x + entry.width)
+            assert.equal(arrivalX, passage.x)
+            assert.equal(arrivalY, passage.y + 16)
+            assert.ok(walls[leftThreshold - 1] || walls[rightThreshold + 1])
+            assert.deepEqual(
+                [
+                    furnishings[leftThreshold - map.width],
+                    furnishings[rightThreshold - map.width],
+                    furnishings[leftThreshold],
+                    furnishings[rightThreshold],
+                ],
+                [2533, 2534, 2565, 2566]
+            )
+            for (const cell of [leftThreshold, rightThreshold]) {
+                assert.ok(reachable.has(cell))
+                assert.ok(reachable.has(cell - map.width))
+                assert.ok(reachable.has(cell + map.width))
+                assert.equal(floor[cell], 0)
+                assert.equal(floor[cell - map.width], 0)
+                assert.equal(surfaces[cell], 2177)
+                assert.equal(surfaces[cell + map.width], 2177)
+                assert.equal(surfaces[cell - map.width], 2177)
+                assert.equal(floor[cell - 2 * map.width], 0)
+                assert.equal(walls[cell - 2 * map.width], 0)
+                assert.equal(collision[cell - 2 * map.width], 1)
+                assert.notEqual(floor[cell + map.width], 0)
+            }
             assert.ok(
                 rooms.every((room) =>
                     [room.width, room.height].every(
@@ -162,6 +204,9 @@ test('tower thresholds and arrival cells reach the ordinary surface roads', () =
         for (const map of maps) {
             const [passage] = layer(map, 'Dungeon passages').objects
             assert.equal(property(passage, 'destinationLocationId'), dungeon.id)
+            assert.ok(
+                !passage.properties.some(({ name }) => name === 'triggerRadius')
+            )
             const reachable = connectedFloor(map, cellAt(map, 48 * 16, 3 * 16))
             assert.ok(
                 reachable.has(cellAt(map, passage.x, passage.y)),

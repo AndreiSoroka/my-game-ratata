@@ -147,6 +147,7 @@ function passage(id, definition, isEntrance, x, y, arrivalY) {
             ),
             prop('arrivalX', 'int', tileCenter(x)),
             prop('arrivalY', 'int', tileCenter(arrivalY)),
+            ...(isEntrance ? [] : [prop('triggerRadius', 'int', 12)]),
         ]
     )
 }
@@ -395,6 +396,57 @@ function wallTile(open, x, y) {
     return open(x, y + 2) ? originalTile(2, 0) : 0
 }
 
+function northDoorway(room, grid) {
+    const { at, solid } = grid
+    const y = room.y - 1
+    const open = (x, row) => solid[at(x, row)] === 0
+    const openCells = (x, row) =>
+        Number(open(x, row)) + Number(open(x + 1, row))
+    const candidates = Array.from({ length: room.width - 1 }, (_, index) => {
+        const x = room.x + index
+        return {
+            x,
+            openFlanks: Number(open(x - 1, y)) + Number(open(x + 2, y)),
+            wallOverlap: openCells(x, y - 2),
+            archOverlap: openCells(x, y - 1) + openCells(x, y),
+            distance: Math.abs(x + 0.5 - room.centerX),
+        }
+    })
+    candidates.sort(
+        (a, b) =>
+            a.openFlanks - b.openFlanks ||
+            a.wallOverlap - b.wallOverlap ||
+            a.archOverlap - b.archOverlap ||
+            a.distance - b.distance
+    )
+    for (const { x, openFlanks } of candidates) {
+        const arch = [at(x, y - 1), at(x + 1, y - 1), at(x, y), at(x + 1, y)]
+        const backing = [at(x, y - 2), at(x + 1, y - 2)]
+        const flanks =
+            openFlanks === 2 ? [at(x - 1, y), at(x + 2, y)] : [undefined]
+        for (const flank of flanks) {
+            const wall = flank === undefined ? backing : [...backing, flank]
+            if (
+                wall.every((cell) => solid[cell]) ||
+                doorwayKeepsRoutes(grid, room, arch, wall)
+            ) {
+                return { x, y, arch, backing, wall }
+            }
+        }
+    }
+    throw new Error('Dungeon entrance room has no connected northern doorway')
+}
+
+function doorwayKeepsRoutes(grid, room, arch, wall) {
+    const solid = grid.solid.slice()
+    for (const cell of arch) solid[cell] = 0
+    for (const cell of wall) solid[cell] = 1
+    const distances = walkDistances({ ...grid, solid }, [
+        grid.at(room.centerX, room.centerY),
+    ])
+    return solid.every((blocked, cell) => blocked || distances[cell] >= 0)
+}
+
 export function generateDungeonMap(definition, seed, regionName) {
     const { id, size } = definition
     const roll = seededRoll(`${id}:${seed}`)
@@ -415,6 +467,21 @@ export function generateDungeonMap(definition, seed, regionName) {
         for (let y = room.y; y < room.y + room.height; y++)
             for (let x = room.x; x < room.x + room.width; x++) carve(x, y)
     connectRooms(rooms, carve, roll)
+    const entry = rooms[0]
+    const {
+        x: exitLeft,
+        y: exitY,
+        arch,
+        backing,
+        wall,
+    } = northDoorway(entry, {
+        at,
+        height,
+        solid,
+        width,
+    })
+    const exitX = exitLeft + 0.5
+    const arrivalY = exitY + 1
     const floorVariants = [
         [1, 4],
         [2, 4],
@@ -434,21 +501,34 @@ export function generateDungeonMap(definition, seed, regionName) {
                         roll(100) < 77 ? 0 : roll(floorVariants.length)
                     ]
                 )
-            else walls[cell] = wallTile(open, x, y)
         }
     }
-    const entry = rooms[0]
-    const exitX = entry.centerX
-    const exitY = entry.y + entry.height - 1
-    furnishings[at(exitX, exitY)] = originalTile(5, 12)
+    const archTiles = [
+        originalTile(5, 15),
+        originalTile(6, 15),
+        originalTile(5, 16),
+        originalTile(6, 16),
+    ]
+    // Put the opaque wall behind the arch so light can reach all of its artwork.
+    for (const cell of arch) {
+        solid[cell] = 0
+        floor[cell] = 0
+    }
+    for (const cell of wall) {
+        solid[cell] = 1
+        floor[cell] = 0
+    }
+    for (let y = 1; y < height - 1; y++)
+        for (let x = 1; x < width - 1; x++)
+            if (!open(x, y)) walls[at(x, y)] = wallTile(open, x, y)
+    const entrySouthY = entry.y + entry.height - 1
+    const distanceFromEntrySouth = (room) =>
+        Math.abs(room.centerX - entry.centerX) +
+        Math.abs(room.centerY - entrySouthY)
     const distantRooms = rooms
         .slice(1)
-        .sort(
-            (a, b) =>
-                Math.abs(b.centerX - exitX) +
-                Math.abs(b.centerY - exitY) -
-                (Math.abs(a.centerX - exitX) + Math.abs(a.centerY - exitY))
-        )
+        .sort((a, b) => distanceFromEntrySouth(b) - distanceFromEntrySouth(a))
+    const wallTorchRadius = 94
     const lights = []
     for (const [index, room] of distantRooms.entries()) {
         const candidates = Array.from(
@@ -458,19 +538,22 @@ export function generateDungeonMap(definition, seed, regionName) {
         if (!candidates.length) continue
         const x = candidates[roll(candidates.length)]
         const y = room.y
+        const lightX = tileCenter(x)
+        const lightY = y * tileSize + 3
         const lit =
-            index % 2 === 0 && Math.abs(x - exitX) + Math.abs(y - exitY) > 7
+            index % 2 === 0 &&
+            Math.abs(x - exitX) + Math.abs(y - exitY) > 7 &&
+            Math.hypot(
+                lightX - tileCenter(exitX),
+                lightY - tileCenter(arrivalY)
+            ) > wallTorchRadius
         furnishings[at(x, y - 1)] = propGid + (lit ? 1 : 0)
         if (lit)
             lights.push(
-                point(
-                    20 + index,
-                    'Настенный факел',
-                    'torch',
-                    tileCenter(x),
-                    y * tileSize + 3,
-                    [prop('radius', 'int', 94), prop('lit', 'bool', true)]
-                )
+                point(20 + index, 'Настенный факел', 'torch', lightX, lightY, [
+                    prop('radius', 'int', wallTorchRadius),
+                    prop('lit', 'bool', true),
+                ])
             )
     }
     const nearEntryTorch = [entry.centerX - 1, entry.centerX + 1].find(
@@ -478,6 +561,9 @@ export function generateDungeonMap(definition, seed, regionName) {
     )
     if (nearEntryTorch !== undefined)
         furnishings[at(nearEntryTorch, entry.y - 1)] = propGid
+    for (const [index, cell] of arch.entries())
+        furnishings[cell] = archTiles[index]
+    for (const cell of backing) walls[cell] = 0
     const spawnCount = size === 'large' ? 4 : size === 'medium' ? 3 : 2
     const spawnRooms = [distantRooms[0]]
     const distance = (a, b) =>
@@ -529,19 +615,19 @@ export function generateDungeonMap(definition, seed, regionName) {
         layers: [
             tileLayer(1, 'Stone floor', floor),
             tileLayer(2, 'Dungeon walls', walls),
-            tileLayer(3, 'Stairs and wall torches', furnishings),
+            tileLayer(3, 'Exit arch and wall torches', furnishings),
             tileLayer(4, 'Collision', solid, false, [
                 prop('solid', 'bool', true),
             ]),
             tileLayer(
                 5,
                 'Footstep surfaces',
-                floor.map((tile) => (tile === 0 ? 0 : originalTile(1, 4))),
+                solid.map((blocked) => (blocked ? 0 : originalTile(1, 4))),
                 false,
                 [prop(`surface.${originalTile(1, 4)}`, 'string', 'stone')]
             ),
             objectLayer(6, 'Dungeon passages', [
-                passage(10, definition, false, exitX, exitY, exitY - 1),
+                passage(10, definition, false, exitX, exitY, arrivalY),
             ]),
             objectLayer(7, 'Dungeon lights', lights),
             objectLayer(
