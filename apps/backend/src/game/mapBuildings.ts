@@ -4,6 +4,7 @@ import type { Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 export interface MapBuildingDefinition {
     id: string
     name: string
+    kind?: string
     bounds: WorldObjectBounds
     entry: Vector2
     interior: Vector2
@@ -46,6 +47,7 @@ export function readMapBuildings(map: BuildingMap): MapBuildingDefinition[] {
             x: numberProperty(object, 'interiorX', entry.x),
             y: numberProperty(object, 'interiorY', entry.y),
         }
+        const kind = buildingKind(object)
         if (
             id.length === 0 ||
             seen.has(id) ||
@@ -57,8 +59,23 @@ export function readMapBuildings(map: BuildingMap): MapBuildingDefinition[] {
             throw new Error('Invalid or repeated authored building')
         }
         seen.add(id)
-        return { id, name: object.name, bounds, entry, interior }
+        return {
+            id,
+            name: object.name,
+            ...(kind === undefined ? {} : { kind }),
+            bounds,
+            entry,
+            interior,
+        }
     })
+}
+
+function buildingKind(object: BuildingObject): string | undefined {
+    const kind = object.properties?.find(({ name }) => name === 'kind')?.value
+    if (kind !== undefined && typeof kind !== 'string') {
+        throw new Error('Invalid building property kind')
+    }
+    return kind
 }
 
 export function containsBuildingPoint(

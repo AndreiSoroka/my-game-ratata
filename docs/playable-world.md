@@ -60,8 +60,16 @@ menu, handle the current chat/window, cancel a ritual or automated action/target
 menu if nothing remains to cancel. Holding Escape does not advance through these
 steps. The menu button beside Inventory also works on touch screens.
 **Вернуться в игру** resumes input; **Выйти из игры** returns to sign-in without
-abandoning the living identity, including during rescue. Signing in with the same
-name resumes that identity. The world continues while the menu is open.
+abandoning the living identity, including during rescue. The world continues
+while the menu is open.
+
+When the last connection leaves, the character stays in the world as a
+vulnerable Echo. It walks within three tiles of the departure point for one
+minute of game time, then heads to the Three Roads inn in Novogorod. Seeing a
+hostile character sends it to the inn early. An active scenario keeps control
+until it finishes, when the walk starts at the scenario's final position.
+Signing in with the same name resumes control of the same character at its
+current position.
 
 The camera can reveal six tiles beyond each map edge. Five layers of pixel stars
 drift at different speeds across the black margin as the camera moves. The compact

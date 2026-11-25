@@ -1,5 +1,6 @@
 import type { GameCharacter } from './character'
 import { advanceCharacterControl } from './characterControl'
+import { EchoController } from './echoController'
 import { canYieldWhileIdle } from './idleNpcSpacing'
 import type { GameRoom } from './room'
 import type { SimulationContext } from './roomSimulation'
@@ -16,6 +17,10 @@ export function advanceControllers(
         const character = characters.get(id)
         if (character === undefined) {
             room.scenarios.defer(id, now)
+            continue
+        }
+        if (controller instanceof EchoController) {
+            controller.update(character, room, now, conversations.has(id))
             continue
         }
         if (context.companions.prepareSafety(character, room, now)) {

@@ -18,11 +18,11 @@ import { createRoomChestActions } from './roomChests'
 import * as roomClientDispatch from './roomClientDispatch'
 import { createRoomControlRequester } from './roomControl'
 import * as roomEconomy from './roomEconomy'
-import { createDefaultRoomJoiner, leaveRoom } from './roomIdentity'
 import { createRoomItemPicker } from './roomItems'
 import { RoomLife } from './roomLife'
 import { RoomLoop, roomTickMs } from './roomLoop'
 import { openRoomSocket, type RoomSocket } from './roomMessaging'
+import { createRoomPlayerConnections } from './roomPlayerConnections'
 import * as roomQueries from './roomQueries'
 import * as roomScenarios from './roomScenarios'
 import { createRoomServices, type RoomServices } from './roomServices'
@@ -150,14 +150,7 @@ export class GameRoom {
     }
 
     public handleClose(ws: RoomSocket): void {
-        leaveRoom(
-            this.connections,
-            this.characters,
-            ws,
-            this.world.closeChestViews.bind(this.world),
-            this.closeConversations,
-            this.gameplayNow()
-        )
+        this.playerConnections.leave(ws)
         this.refreshPresence()
     }
 
@@ -286,13 +279,13 @@ export class GameRoom {
             parties: this.parties,
             world: this.world,
             connections: this.connections,
-            join: (...args) => this.join(...args),
+            join: (...args) => this.playerConnections.join(...args),
             abandon: (actor) => this.life.abandon(actor, this.gameplayNow()),
         }),
         this.refreshPresence
     )
 
-    private readonly join = createDefaultRoomJoiner({
+    private readonly playerConnections = createRoomPlayerConnections({
         closeConversations: this.closeConversations,
         characters: this.characters,
         connections: this.connections,

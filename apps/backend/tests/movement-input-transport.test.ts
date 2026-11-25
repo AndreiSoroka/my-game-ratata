@@ -20,6 +20,7 @@ afterEach(() => {
     for (const room of rooms.splice(0)) {
         room.stop()
     }
+    vi.restoreAllMocks()
     vi.useRealTimers()
     vi.unstubAllGlobals()
 })
@@ -109,11 +110,23 @@ it('keeps successive starts, stops and reversals inside one real server step', (
 
 it('discards pending manual credit on disconnect before the next step', () => {
     const f = fixture()
+    const control = joinScenarioRoom(f.room, 'No timed input')
+    control.actor.config.moveSpeed = f.actor.config.moveSpeed
+    const controlOrigin = { ...control.actor.position }
+    vi.spyOn(Math, 'random').mockReturnValue(0.99)
     vi.advanceTimersByTime(10)
     f.send({ type: 'move_input', axis: { x: 1, y: 0 } })
     vi.advanceTimersByTime(15)
     f.room.handleClose(f.socket)
+    f.room.handleClose(control.socket)
     vi.advanceTimersByTime(25)
-    expect(f.actor.position).toEqual(f.origin)
+    expect(control.actor.position).not.toEqual(controlOrigin)
+    expect({
+        x: f.actor.position.x - f.origin.x,
+        y: f.actor.position.y - f.origin.y,
+    }).toEqual({
+        x: control.actor.position.x - controlOrigin.x,
+        y: control.actor.position.y - controlOrigin.y,
+    })
     expect(f.actor.getMoveInput()).toEqual({ x: 0, y: 0 })
 })

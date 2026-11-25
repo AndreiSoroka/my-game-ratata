@@ -18,18 +18,15 @@ import { cancelMagicChannel } from './magicState'
 import { cancelMovementMode } from './movementActions'
 import { prepareConstellationLayout } from './personalConstellationSky'
 import { cancelPrayerCast } from './prayerCancellation'
-import type { GameRoom } from './room'
 import {
     broadcastEvent,
     clearSnapshotStream,
     type RoomSocket,
     sendError,
 } from './roomMessaging'
-import { createRoomPlayerFactory } from './roomPlayer'
 import { sendInitialRoomState } from './roomSnapshotPublication'
 import { clearSocketViewport } from './roomViewport'
 import { closeSnapshotSocket } from './snapshotStream'
-import type { WorldLocations } from './worldLocations'
 
 export interface JoinContext {
     closeChestViews?: (actorId: string) => void
@@ -48,64 +45,10 @@ export interface JoinContext {
     closeConversations?: (characterId: string) => void
     onJoined?: (socket: RoomSocket, locale: GameLocale) => void
     onAttached?: () => void
+    onDetached?: (character: GameCharacter, now: number) => void
     now?: () => number
     tickMs: number
     clockResumeRevision?: () => number
-}
-
-export function createRoomJoiner(
-    context: Omit<JoinContext, 'closeChestViews' | 'mapFor' | 'snapshotFor'> & {
-        room: GameRoom
-        world: () => WorldLocations
-    }
-) {
-    return (
-        ws: RoomSocket,
-        nickname: string,
-        archetype: GameCharacter['archetype'],
-        heroClass?: HeroClass,
-        createOnly?: boolean,
-        locale?: GameLocale
-    ): void =>
-        joinRoom(
-            {
-                ...context,
-                onJoined: (socket, locale) =>
-                    context.room.speechTranslations.joined(socket, locale),
-                now: context.room.gameplayNow,
-                clockResumeRevision: context.room.clockResumeRevision,
-                closeChestViews: (id) => context.world().closeChestViews(id),
-                mapFor: (character) =>
-                    context.room.navigationFor(character).summary,
-                snapshotFor: (character) =>
-                    context.room.snapshot(
-                        context.room.gameplayNow(),
-                        character.locationId,
-                        character.id
-                    ),
-            },
-            ws,
-            nickname,
-            archetype,
-            heroClass,
-            createOnly,
-            locale
-        )
-}
-
-export function createDefaultRoomJoiner(
-    context: Omit<Parameters<typeof createRoomJoiner>[0], 'createPlayer'>
-) {
-    return createRoomJoiner({
-        ...context,
-        createPlayer: createRoomPlayerFactory(
-            context.characters,
-            context.nicknames,
-            () => context.room.navigation,
-            () => context.room.refreshPrayerAuraEnvironment(),
-            context.room.gameplayNow
-        ),
-    })
 }
 
 export function joinRoom(
@@ -189,8 +132,7 @@ function detachPreviousHero(
             existingCharacter !== undefined &&
             existingId !== existingPlayerId
         ) {
-            existingCharacter.connected = false
-            setCharacterControlSource(existingCharacter, 'script')
+            markDetached(existingCharacter, now, context.onDetached)
         }
     }
 }
@@ -244,7 +186,8 @@ export function leaveRoom(
     socket: RoomSocket,
     closeChestViews: (actorId: string) => void,
     closeConversations?: (characterId: string) => void,
-    now = Date.now()
+    now = Date.now(),
+    onDetached?: JoinContext['onDetached']
 ): void {
     clearSocketViewport(socket)
     clearSnapshotStream(socket)
@@ -261,14 +204,23 @@ export function leaveRoom(
     const player = characters.get(playerId)
     stopAndPublish(player, connections.keys(), now)
     if (player !== undefined) {
-        player.connected = false
-        setCharacterControlSource(player, 'script')
+        markDetached(player, now, onDetached)
     }
     broadcastEvent(
         connections.keys(),
         { actorId: playerId, kind: 'leave' },
         now
     )
+}
+
+function markDetached(
+    character: GameCharacter,
+    now: number,
+    onDetached: JoinContext['onDetached']
+): void {
+    character.connected = false
+    setCharacterControlSource(character, 'script')
+    onDetached?.(character, now)
 }
 
 function stopAndPublish(
@@ -295,7 +247,8 @@ function initializeJoinedPlayer(
             ws,
             (id) => context.closeChestViews?.(id),
             context.closeConversations,
-            now()
+            now(),
+            context.onDetached
         )
         closeSnapshotSocket(ws)
         return false

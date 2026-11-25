@@ -110,18 +110,30 @@ describe('last socket detachment guard', () => {
         ])
         const characters = new Map([[actor.id, actor]])
         const closeChest = vi.fn(),
-            closeConversation = vi.fn()
-        leaveRoom(connections, characters, first, closeChest, closeConversation)
+            closeConversation = vi.fn(),
+            detached = vi.fn<(character: GameCharacter, now: number) => void>()
+        leaveRoom(
+            connections,
+            characters,
+            first,
+            closeChest,
+            closeConversation,
+            1000,
+            detached
+        )
         expect(actor.connected).toBe(true)
         expect(actor.soul.controlSource).toBe('human')
         expect(closeChest).not.toHaveBeenCalled()
         expect(closeConversation).not.toHaveBeenCalled()
+        expect(detached).not.toHaveBeenCalled()
         leaveRoom(
             connections,
             characters,
             second,
             closeChest,
-            closeConversation
+            closeConversation,
+            1001,
+            detached
         )
         expect(actor.connected).toBe(false)
         expect(actor.soul).toMatchObject({
@@ -130,5 +142,6 @@ describe('last socket detachment guard', () => {
         })
         expect(closeChest).toHaveBeenCalledExactlyOnceWith(actor.id)
         expect(closeConversation).toHaveBeenCalledExactlyOnceWith(actor.id)
+        expect(detached).toHaveBeenCalledExactlyOnceWith(actor, 1001)
     })
 })

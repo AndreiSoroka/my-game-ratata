@@ -1,6 +1,7 @@
 import type { AdventureResourceNode } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
+import { expectEchoReconnect } from './echo-reconnect'
 import { joinSocial, socialMenu } from './social-helpers'
 import { captureInitialSnapshot, enterBuilding, walkTo } from './world-navigation'
 
@@ -9,7 +10,7 @@ const merchantId = 'npc_merchant_1'
 test('buys, equips, swaps and unequips portable lights through the shop and inventory', async ({
     page,
 }) => {
-    test.setTimeout(120_000)
+    test.setTimeout(150_000)
     await page.setViewportSize({ width: 1280, height: 800 })
     const initialSnapshot = captureInitialSnapshot(page)
     await joinSocial(page, 'portable-light-buyer')
@@ -76,6 +77,11 @@ test('buys, equips, swaps and unequips portable lights through the shop and inve
         await expect(lightSlot.getByRole('img', { name: label })).toBeVisible()
     }
     await expect(bag.getByRole('button', { name: 'Факел', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(bag).toHaveCount(0)
+    await expectEchoReconnect(page)
+    await page.keyboard.press('KeyI')
+    await expect(bag).toBeVisible()
     await lightSlot.click()
     await expect.poll(light).toBeUndefined()
     await expect(lightSlot).toHaveAccessibleName('Свет')

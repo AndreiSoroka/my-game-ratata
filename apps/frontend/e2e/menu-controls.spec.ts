@@ -104,27 +104,36 @@ for (const mobile of [false, true]) {
                 }, stoppingTick)
             )
             .toEqual({ advanced: true, velocity: { x: 0, y: 0 }, path: [] })
-        const saved = await page.evaluate(() => window.__ratataTest!.getState().player!)
-        await menu.getByRole('button', { name: 'Выйти из игры' }).click()
-        await expect(page.getByLabel('Имя героя')).toBeVisible()
-        expect(await page.evaluate(() => window.__ratataTest!.getState().connected)).toBe(false)
-        await page.getByLabel('Имя героя').fill(saved.nickname)
-        await page.getByRole('radio', { name: 'Следопыт', exact: true }).check()
-        await page.getByRole('button', { name: 'Войти', exact: true }).click()
-        await expect
-            .poll(() => page.evaluate(() => window.__ratataTest!.getState().connected))
-            .toBe(true)
-        await expect(menu).toHaveCount(0)
-        const restored = await page.evaluate(() => window.__ratataTest!.getState().player!)
-        expect(restored.id).toBe(saved.id)
-        expect(restored.inventory).toEqual(saved.inventory)
-        expect(restored.equipment).toEqual(saved.equipment)
-        expect(restored.position).toEqual(saved.position)
-        expect(restored.heroClass).toBe('arcanist')
+        await expectMenuReconnect(page, menu)
         await expect(statusFrame).toHaveAttribute('data-fantasy-border', 'border-018')
         await expect(page.getByRole('button', { name: /^2: Искра/ })).toBeVisible()
         await expect(page.getByRole('button', { name: /^3: Искра/ })).toBeVisible()
     })
+}
+
+async function expectMenuReconnect(page: Page, menu: Locator): Promise<void> {
+    const { player, location } = await page.evaluate(() => window.__ratataTest!.getState())
+    const saved = player!
+    await menu.getByRole('button', { name: 'Выйти из игры' }).click()
+    await expect(page.getByLabel('Имя героя')).toBeVisible()
+    expect(await page.evaluate(() => window.__ratataTest!.getState().connected)).toBe(false)
+    await page.getByLabel('Имя героя').fill(saved.nickname)
+    await page.getByRole('radio', { name: 'Следопыт', exact: true }).check()
+    await page.getByRole('button', { name: 'Войти', exact: true }).click()
+    await expect
+        .poll(() => page.evaluate(() => window.__ratataTest!.getState().connected))
+        .toBe(true)
+    await expect(menu).toHaveCount(0)
+    const resumed = await page.evaluate(() => window.__ratataTest!.getState())
+    const restored = resumed.player!
+    expect(restored.id).toBe(saved.id)
+    expect(restored.inventory).toEqual(saved.inventory)
+    expect(restored.equipment).toEqual(saved.equipment)
+    expect(resumed.location?.id).toBe(location?.id)
+    expect(
+        Math.hypot(restored.position.x - saved.position.x, restored.position.y - saved.position.y)
+    ).toBeLessThanOrEqual(3 * location!.map.tileWidth)
+    expect(restored.heroClass).toBe('arcanist')
 }
 
 function trackDashCommands(page: Page): () => number {

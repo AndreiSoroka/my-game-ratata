@@ -172,7 +172,8 @@ export class NavigationService {
     public findPathWorld(
         from: Vector2,
         to: Vector2,
-        throughUnlockedDoors = false
+        throughUnlockedDoors = false,
+        canVisit?: (tile: TileCoordinate) => boolean
     ): Vector2[] {
         const start = this.worldToTile(from)
         const destination = this.clampWorld(to)
@@ -180,7 +181,7 @@ export class NavigationService {
         const grid = throughUnlockedDoors
             ? { ...this.grid, solid: this.solidsWithoutDoors }
             : this.grid
-        const tiles = findPath(grid, start, end)
+        const tiles = findPath(grid, start, end, canVisit)
 
         if (tiles.length === 0) {
             return []

@@ -82,7 +82,9 @@ export function regionalExit(
     locationId: string,
     nextLocationId: string,
     navigation: NavigationService,
-    preferredPoint?: Vector2
+    preferredPoint?: Vector2,
+    pathTo: (target: Vector2) => readonly Vector2[] = (target) =>
+        navigation.findPathWorld(from, target)
 ): RegionalExit | undefined {
     const direction = regionalDirection(locationId, nextLocationId)
     if (direction === undefined) {
@@ -126,7 +128,7 @@ export function regionalExit(
             Math.hypot(b.x - preferred.x, b.y - preferred.y)
     )
     for (const point of candidates) {
-        const path = navigation.findPathWorld(from, point)
+        const path = pathTo(point)
         if (
             path.length > 0 &&
             path.every((waypoint) =>

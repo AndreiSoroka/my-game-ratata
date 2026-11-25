@@ -48,9 +48,12 @@ function unwindPath(node: PathNode): TileCoordinate[] {
 export function findPath(
     grid: MapGrid,
     start: TileCoordinate,
-    end: TileCoordinate
+    end: TileCoordinate,
+    canVisit?: (tile: TileCoordinate) => boolean
 ): TileCoordinate[] {
-    if (isBlocked(grid, end)) {
+    const blocked = (tile: TileCoordinate) =>
+        isBlocked(grid, tile) || canVisit?.(tile) === false
+    if (blocked(end)) {
         return []
     }
 
@@ -81,14 +84,14 @@ export function findPath(
         }
 
         closed.add(tileKey(current))
-        visitNeighbors(grid, end, current, open, openMap, closed)
+        visitNeighbors(blocked, end, current, open, openMap, closed)
     }
 
     return []
 }
 
 function visitNeighbors(
-    grid: MapGrid,
+    blocked: (tile: TileCoordinate) => boolean,
     end: TileCoordinate,
     current: PathNode,
     open: PathNode[],
@@ -99,7 +102,7 @@ function visitNeighbors(
         const next = { x: current.x + offset.x, y: current.y + offset.y }
         const key = tileKey(next)
 
-        if (closed.has(key) || isBlocked(grid, next)) {
+        if (closed.has(key) || blocked(next)) {
             continue
         }
 
