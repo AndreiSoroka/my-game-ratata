@@ -15,13 +15,11 @@ import { cancelMovementMode } from './movementActions'
 import type { NavigationService } from './navigation'
 import { regionalRoute } from './regionalNavigation'
 
-const passageRadius = 7
-
 export function isInsideDungeonPassage(
     position: Vector2,
     passage: DungeonPassage
 ): boolean {
-    return distance(position, passage.position) <= passageRadius
+    return distance(position, passage.position) <= passage.triggerRadius
 }
 
 export function canUsePassage(character: GameCharacter, now: number): boolean {
@@ -55,7 +53,7 @@ export function crossedDungeonPassage(
         (intent.x === 0 && intent.y === 0) ||
         isInsideDungeonPassage(before, passage) ||
         segmentDistanceSquared(passage.position, before, after) >
-            passageRadius ** 2 ||
+            passage.triggerRadius ** 2 ||
         !navigation.hasLineOfSight(before, passage.position)
     ) {
         return undefined

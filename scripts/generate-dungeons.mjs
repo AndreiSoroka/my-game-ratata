@@ -147,6 +147,7 @@ function passage(id, definition, isEntrance, x, y, arrivalY) {
             ),
             prop('arrivalX', 'int', tileCenter(x)),
             prop('arrivalY', 'int', tileCenter(arrivalY)),
+            ...(isEntrance ? [] : [prop('triggerRadius', 'int', 12)]),
         ]
     )
 }
@@ -395,6 +396,28 @@ function wallTile(open, x, y) {
     return open(x, y + 2) ? originalTile(2, 0) : 0
 }
 
+function southDoorway(room, open, height) {
+    const columns = Array.from(
+        { length: room.width - 1 },
+        (_, index) => room.x + index
+    ).sort(
+        (a, b) =>
+            Math.abs(a + 0.5 - room.centerX) - Math.abs(b + 0.5 - room.centerX)
+    )
+    for (let y = room.y + room.height; y < height - 1; y++) {
+        const x = columns.find(
+            (x) =>
+                !open(x, y) &&
+                !open(x + 1, y) &&
+                !open(x, y + 1) &&
+                !open(x + 1, y + 1) &&
+                (open(x, y - 1) || open(x + 1, y - 1))
+        )
+        if (x !== undefined) return { x, y }
+    }
+    throw new Error('Dungeon entrance room has no southern wall for its exit')
+}
+
 export function generateDungeonMap(definition, seed, regionName) {
     const { id, size } = definition
     const roll = seededRoll(`${id}:${seed}`)
@@ -415,6 +438,17 @@ export function generateDungeonMap(definition, seed, regionName) {
         for (let y = room.y; y < room.y + room.height; y++)
             for (let x = room.x; x < room.x + room.width; x++) carve(x, y)
     connectRooms(rooms, carve, roll)
+    const entry = rooms[0]
+    const { x: exitLeft, y: exitY } = southDoorway(entry, open, height)
+    const exitX = exitLeft + 0.5
+    const archCells = [
+        at(exitLeft, exitY - 1),
+        at(exitLeft + 1, exitY - 1),
+        at(exitLeft, exitY),
+        at(exitLeft + 1, exitY),
+    ]
+    const openedByArch = new Set(archCells.filter((cell) => solid[cell] !== 0))
+    for (const cell of openedByArch) solid[cell] = 0
     const floorVariants = [
         [1, 4],
         [2, 4],
@@ -428,27 +462,36 @@ export function generateDungeonMap(definition, seed, regionName) {
     for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
             const cell = at(x, y)
-            if (open(x, y))
-                floor[cell] = originalTile(
-                    ...floorVariants[
-                        roll(100) < 77 ? 0 : roll(floorVariants.length)
-                    ]
-                )
-            else walls[cell] = wallTile(open, x, y)
+            if (open(x, y)) {
+                if (!openedByArch.has(cell))
+                    floor[cell] = originalTile(
+                        ...floorVariants[
+                            roll(100) < 77 ? 0 : roll(floorVariants.length)
+                        ]
+                    )
+            } else walls[cell] = wallTile(open, x, y)
         }
     }
-    const entry = rooms[0]
-    const exitX = entry.centerX
-    const exitY = entry.y + entry.height - 1
-    furnishings[at(exitX, exitY)] = originalTile(5, 12)
+    const archTiles = [
+        originalTile(5, 15),
+        originalTile(6, 15),
+        originalTile(5, 16),
+        originalTile(6, 16),
+    ]
+    // The atlas opening is transparent. Keep stone from showing through it.
+    for (const [index, cell] of archCells.entries()) {
+        furnishings[cell] = archTiles[index]
+        floor[cell] = 0
+    }
+    walls[at(exitLeft, exitY + 1)] = 0
+    walls[at(exitLeft + 1, exitY + 1)] = 0
+    const entrySouthY = entry.y + entry.height - 1
+    const distanceFromEntrySouth = (room) =>
+        Math.abs(room.centerX - entry.centerX) +
+        Math.abs(room.centerY - entrySouthY)
     const distantRooms = rooms
         .slice(1)
-        .sort(
-            (a, b) =>
-                Math.abs(b.centerX - exitX) +
-                Math.abs(b.centerY - exitY) -
-                (Math.abs(a.centerX - exitX) + Math.abs(a.centerY - exitY))
-        )
+        .sort((a, b) => distanceFromEntrySouth(b) - distanceFromEntrySouth(a))
     const lights = []
     for (const [index, room] of distantRooms.entries()) {
         const candidates = Array.from(
@@ -529,14 +572,14 @@ export function generateDungeonMap(definition, seed, regionName) {
         layers: [
             tileLayer(1, 'Stone floor', floor),
             tileLayer(2, 'Dungeon walls', walls),
-            tileLayer(3, 'Stairs and wall torches', furnishings),
+            tileLayer(3, 'Exit arch and wall torches', furnishings),
             tileLayer(4, 'Collision', solid, false, [
                 prop('solid', 'bool', true),
             ]),
             tileLayer(
                 5,
                 'Footstep surfaces',
-                floor.map((tile) => (tile === 0 ? 0 : originalTile(1, 4))),
+                solid.map((blocked) => (blocked ? 0 : originalTile(1, 4))),
                 false,
                 [prop(`surface.${originalTile(1, 4)}`, 'string', 'stone')]
             ),

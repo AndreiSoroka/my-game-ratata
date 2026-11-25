@@ -24,7 +24,10 @@ import {
 } from '../src/game/roomTravel'
 import { WorldLocations } from '../src/game/worldLocations'
 import { WorldMaps } from '../src/game/worldMaps'
-import { nextLocationToward } from '../src/game/worldPassages'
+import {
+    crossedDungeonPassage,
+    nextLocationToward,
+} from '../src/game/worldPassages'
 import { chestHero, joinChestRoom } from './chestTestHelpers'
 
 afterEach(() => {
@@ -46,8 +49,21 @@ it('loads reciprocal passages on the same generated maps and only crosses during
         surfaceLocationId: CENTER_LOCATION_ID,
     })
     const tower = world.get().navigation.grid.dungeonPassage
-    const stairs = dungeon.navigation.grid.dungeonPassage
-    assert(tower !== undefined && stairs !== undefined)
+    const exit = dungeon.navigation.grid.dungeonPassage
+    assert(tower !== undefined && exit !== undefined)
+    expect(tower.triggerRadius).toBe(7)
+    expect(exit.triggerRadius).toBe(12)
+    for (const side of [-1, 1]) {
+        const offset = (side * dungeon.navigation.grid.tileWidth) / 2
+        expect(
+            crossedDungeonPassage(
+                dungeon.navigation,
+                { x: exit.arrival.x + offset, y: exit.arrival.y },
+                { x: exit.position.x + offset, y: exit.position.y },
+                { x: 0, y: 1 }
+            )
+        ).toBe(exit)
+    }
     const player = chestHero('explorer')
     player.inventory.push(createItemInstance('food'))
     const inventory = [...player.inventory]
@@ -63,22 +79,22 @@ it('loads reciprocal passages on the same generated maps and only crosses during
     expect(world.travel(player, intent, 10_000, tower.arrival)).toBeDefined()
     expect(player).toMatchObject({
         locationId: dungeon.description.id,
-        position: stairs.arrival,
+        position: exit.arrival,
         inventory,
     })
     expect(player.getMoveInput()).toEqual({ x: 0, y: 0 })
-    expect(world.travel(player, intent, 10_001, stairs.arrival)).toBeUndefined()
+    expect(world.travel(player, intent, 10_001, exit.arrival)).toBeUndefined()
     expect(world.mapAsset('dungeons', dungeon.description.id)).toBeDefined()
     expect(world.mapAsset('stale', dungeon.description.id)).toBeUndefined()
 
-    player.position = { ...stairs.position }
+    player.position = { ...exit.position }
     player.alive = false
     expect(
-        world.travel(player, { x: 0, y: 1 }, 11_000, stairs.arrival)
+        world.travel(player, { x: 0, y: 1 }, 11_000, exit.arrival)
     ).toBeUndefined()
     player.alive = true
     expect(
-        world.travel(player, { x: 0, y: 1 }, 12_000, stairs.arrival)
+        world.travel(player, { x: 0, y: 1 }, 12_000, exit.arrival)
     ).toBeDefined()
     expect(player).toMatchObject({
         locationId: CENTER_LOCATION_ID,
@@ -88,7 +104,7 @@ it('loads reciprocal passages on the same generated maps and only crosses during
     })
 })
 
-it('lets an agreeing Bran re-enter the tower threshold and follow back through the stairs', () => {
+it('lets an agreeing Bran re-enter the tower threshold and follow back through the arch', () => {
     const maps = new WorldMaps({ seed: 'dungeon-9' })
     const world = new WorldLocations(
         maps.navigation(CENTER_LOCATION_ID),
@@ -97,9 +113,9 @@ it('lets an agreeing Bran re-enter the tower threshold and follow back through t
     )
     const tower = world.get().navigation.grid.dungeonPassage
     assert(tower !== undefined)
-    const stairs = world.get(tower.destinationLocationId).navigation.grid
+    const exit = world.get(tower.destinationLocationId).navigation.grid
         .dungeonPassage
-    assert(stairs !== undefined)
+    assert(exit !== undefined)
 
     const player = chestHero('explorer', tower.arrival)
     const bran = new GameCharacter({
@@ -141,7 +157,7 @@ it('lets an agreeing Bran re-enter the tower threshold and follow back through t
     ).toEqual({ accepted: true })
 
     const deltaMs = 50
-    for (const passage of [tower, stairs]) {
+    for (const passage of [tower, exit]) {
         expect(
             enqueueCharacterRoute(
                 player,
