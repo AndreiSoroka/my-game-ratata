@@ -14,6 +14,7 @@ import {
 
 import {
     type DungeonDefinition,
+    generateDungeonFloors,
     generateDungeonMap,
     generateDungeonRegion,
 } from '../../../../scripts/generate-dungeons.mjs'
@@ -24,6 +25,11 @@ import {
 } from '../../../../scripts/generate-map.mjs'
 import { createAdventureResourceNodes } from './adventureResourceData'
 import type { AdventureServiceOptions } from './adventureWorld'
+import {
+    type DungeonSecretDefinition,
+    dungeonSecretLayer,
+    readDungeonSecrets,
+} from './dungeonSecretData'
 import { readHarvestSources } from './harvestData'
 import { NavigationService, resolveMapRoot } from './navigation'
 import { buildGrid, type TiledMap } from './navigationGrid'
@@ -45,6 +51,9 @@ export interface WorldMapAsset {
 export interface DungeonLocationDefinition extends WorldLocationDefinition {
     biome: 'dungeon'
     dungeonSize: DungeonSize
+    dungeonId: string
+    floor: number
+    floorCount: number
     surfaceLocationId: string
 }
 
@@ -69,6 +78,10 @@ export class WorldMaps {
     public readonly epoch: string
     public readonly dungeons: readonly DungeonLocationDefinition[]
     private readonly entries = new Map<string, Entry>()
+    private readonly secrets = new Map<
+        string,
+        readonly DungeonSecretDefinition[]
+    >()
 
     public constructor(options: WorldMapOptions = {}) {
         this.seed = resolveWorldSeed(options.seed)
@@ -97,34 +110,59 @@ export class WorldMaps {
                 )
             )
         }
-        this.dungeons = dungeons.map((dungeon) => {
-            const surface = WORLD_LOCATION_DEFINITIONS.find(
-                ({ id }) => id === dungeon.surfaceLocationId
-            )
-            if (surface === undefined) {
-                throw new Error(
-                    `Unknown dungeon surface: ${dungeon.surfaceLocationId}`
+        this.dungeons = dungeons
+            .flatMap(generateDungeonFloors)
+            .map((dungeon) => {
+                const surface = WORLD_LOCATION_DEFINITIONS.find(
+                    ({ id }) => id === dungeon.surfaceLocationId
                 )
-            }
-            this.add(
-                dungeon.id,
-                generateDungeonMap(dungeon, this.seed, REGION_NAME)
-            )
-            return {
-                id: dungeon.id,
-                name: dungeon.name,
-                biome: 'dungeon',
-                dungeonSize: dungeon.size,
-                column: surface.column,
-                row: surface.row,
-                dangerLevel: dungeon.dangerLevel,
-                surfaceLocationId: surface.id,
-            }
-        })
+                if (surface === undefined) {
+                    throw new Error(
+                        `Unknown dungeon surface: ${dungeon.surfaceLocationId}`
+                    )
+                }
+                this.add(
+                    dungeon.id,
+                    generateDungeonMap(dungeon, this.seed, REGION_NAME)
+                )
+                return {
+                    id: dungeon.id,
+                    name: dungeon.name,
+                    biome: 'dungeon',
+                    dungeonSize: dungeon.size,
+                    dungeonId: dungeon.dungeonId,
+                    floor: dungeon.floor,
+                    floorCount: dungeon.floorCount,
+                    column: surface.column,
+                    row: surface.row,
+                    dangerLevel: dungeon.dangerLevel,
+                    surfaceLocationId: surface.id,
+                }
+            })
     }
 
     private add(id: string, value: unknown): void {
-        const source = readMap(value)
+        const map = readMap(value)
+        const secrets = readDungeonSecrets(map, id)
+        if (secrets.length > 0) {
+            this.secrets.set(id, secrets)
+        }
+        const { properties } = map
+        const source = {
+            ...map,
+            layers: map.layers.filter(
+                ({ name }) => name !== dungeonSecretLayer
+            ),
+            ...(properties === undefined
+                ? {}
+                : {
+                      // Publishing the world seed would let players reconstruct unopened rooms.
+                      properties: properties.filter(
+                          ({ name, value }) =>
+                              name !== 'generationSeed' || value !== this.seed
+                      ),
+                  }),
+        }
         const body = JSON.stringify(source)
         const revision = createHash('sha256').update(body).digest('hex')
         const asset: MapSummary['asset'] = {
@@ -136,6 +174,12 @@ export class WorldMaps {
             asset,
         })
         this.entries.set(id, { source, body, revision, navigation })
+    }
+
+    public secretDefinitions(
+        locationId: string
+    ): readonly DungeonSecretDefinition[] | undefined {
+        return this.secrets.get(locationId)
     }
 
     public navigation(locationId: string): NavigationService {

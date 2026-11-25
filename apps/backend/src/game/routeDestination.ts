@@ -2,6 +2,10 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 
 import { distance } from './math'
 import type { NavigationService } from './navigation'
+import {
+    isInsideDungeonPassage,
+    outsideUnchosenPassages,
+} from './worldPassages'
 
 export const ROUTE_FALLBACK_CELLS = 2
 
@@ -22,9 +26,23 @@ export function resolveRouteDestination(
         return undefined
     }
     const requestedPosition = navigation.clampWorld(requested)
-    const findPath = throughUnlockedDoors
-        ? (point: Vector2) => navigation.findPathWorld(from, point, true)
-        : (point: Vector2) => navigation.findPathWorld(from, point)
+    const { dungeonPassages } = navigation.grid
+    const stair = dungeonPassages?.find((passage) =>
+        isInsideDungeonPassage(requestedPosition, passage)
+    )
+    const findPath = (point: Vector2) => {
+        if (dungeonPassages !== undefined) {
+            return navigation.findPathWorld(
+                from,
+                point,
+                throughUnlockedDoors,
+                (tile) => outsideUnchosenPassages(navigation, tile, stair)
+            )
+        }
+        return throughUnlockedDoors
+            ? navigation.findPathWorld(from, point, true)
+            : navigation.findPathWorld(from, point)
+    }
     const exact = findPath(requestedPosition)
     if (exact.length > 0) {
         return {

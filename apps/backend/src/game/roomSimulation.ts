@@ -244,6 +244,9 @@ function resolveWorldAttack(
 ): void {
     const { characters, room, world, now, onEvents } = context
     const pending = character.pendingAttack
+    if (pending === undefined || now < pending.hitAt) {
+        return
+    }
     const location = world.get(character.locationId)
     const targets = [...characters.values()].filter(
         (target) =>
@@ -253,6 +256,7 @@ function resolveWorldAttack(
     const hitEvents = resolvePendingAttackHit({
         actor: character,
         graves: context.life.graveRules,
+        secrets: location.secrets,
         now,
         respawnDelayMsFor: resolveRespawnDelayMs,
         targets,
@@ -265,10 +269,7 @@ function resolveWorldAttack(
     if (released !== undefined) {
         recordProjectileNoise(room, character, released.origin, now)
     }
-    if (
-        pending?.actionId !== undefined &&
-        character.pendingAttack !== pending
-    ) {
+    if (pending.actionId !== undefined && character.pendingAttack !== pending) {
         context.observeAttackResolution?.(
             character,
             pending.actionId,

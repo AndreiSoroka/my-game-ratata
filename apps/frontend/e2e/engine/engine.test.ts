@@ -69,6 +69,7 @@ test('renders dungeon darkness, moving lantern light and wall shadows in WebGL2'
     expect(Math.max(...result.moved.old)).toBeLessThan(210)
     expect(Math.min(...result.torches.visible)).toBeGreaterThan(220)
     expect(Math.max(...result.torches.hiddenMarker)).toBeLessThan(15)
+    expect(result.openedMarker[0]).toBeGreaterThan(120)
     expect(result.portal.lit[2]).toBeGreaterThan(120)
     expect(result.portal.lit[2]).toBeGreaterThan(result.portal.lit[0]!)
     expect(Math.max(...result.portal.expired)).toBeLessThan(15)
@@ -184,7 +185,7 @@ test('plays isolated real tracks and restores one music track when visible', asy
     expect(far?.[1]).toBe(1)
 })
 
-test('plays one attenuated portal loop and spaces real forest cues without overlaps', async ({
+test('plays attenuated portal and dungeon loops and spaces real forest cues without overlaps', async ({
     page,
 }) => {
     const result = await page.evaluate(() => window.engineHarness.ambience())
@@ -210,6 +211,14 @@ test('plays one attenuated portal loop and spaces real forest cues without overl
             startsBeforeNextCue: 0,
             nextCue: 1,
         },
+        draft: {
+            beforeWalking: 0,
+            started: 1,
+            loop: true,
+            pitch: -300,
+            heldDuringFade: true,
+            stopped: true,
+        },
         decoded: ['forest-bird-1.mp3', 'forest-bird-2.mp3', 'forest-wind.mp3', 'portal-hum.wav'],
     })
     expect(result.portal.duration).toBeCloseTo(4.5)
@@ -221,6 +230,10 @@ test('plays one attenuated portal loop and spaces real forest cues without overl
     expect(result.wind.attackRatio).toBeLessThan(0.1)
     expect(result.wind.releaseRatio).toBeLessThan(0.1)
     expect(result.wind.fadedGain).toBeLessThan(0.3)
+    expect(result.draft.attackGain).toBeLessThan(0.18)
+    expect(result.draft.audibleGain).toBeGreaterThan(0.045)
+    expect(result.draft.audibleGain).toBeLessThan(0.06)
+    expect(result.draft.fadedGain).toBeLessThan(0.12)
 })
 
 test('keeps forced silent sessions from loading or playing eligible world ambience', async ({

@@ -33,6 +33,12 @@ export class ChestContainers {
         private readonly wallet?: CorpseWallet
     ) {}
 
+    public register(chest: WorldChest): void {
+        if (!this.chests.has(chest.id)) {
+            this.chests.set(chest.id, chest)
+        }
+    }
+
     public ritualChest(id: string): WorldChest | undefined {
         const chest = this.chests.get(id)
         return chest?.kind === undefined || chest.kind === 'chest'

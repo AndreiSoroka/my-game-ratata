@@ -32,9 +32,15 @@ export function findActorPath(
     navigation: NavigationService,
     actor: GameCharacter,
     target: Vector2,
-    from = actor.position
+    from = actor.position,
+    canVisit?: (tile: TileCoordinate) => boolean
 ): Vector2[] {
-    return navigation.findPathWorld(from, target, scriptedDoorControl(actor))
+    return navigation.findPathWorld(
+        from,
+        target,
+        scriptedDoorControl(actor),
+        canVisit
+    )
 }
 
 /** Door permission is attached to the chosen return path and drops when it is replaced. */

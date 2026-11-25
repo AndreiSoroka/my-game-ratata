@@ -15,7 +15,6 @@ import { forwardAttackZones } from './combatGeometry'
 import { constellationModifiers } from './constellationModifiers'
 import { distance, zeroVector } from './math'
 import { visibilityRadius } from './queries'
-import { withWorldSound } from './worldSound'
 
 export function canAimSniperAt(
     context: AttackContext,
@@ -112,51 +111,6 @@ export function arrowPhaseEvent(
             ? {}
             : { abilityId: attack.abilityId }),
         ...(attack.actionId === undefined ? {} : { actionId: attack.actionId }),
-    }
-}
-
-export function arrowReleaseEvents(
-    context: AttackContext,
-    attack: PendingAttackHit,
-    target: { position: Vector2 } | undefined
-): GameEventPayload[] {
-    const { actor, navigation } = context
-    const { arrow } = attack
-    if (arrow === undefined) {
-        return []
-    }
-    const origin = arrow.mobile ? { ...actor.position } : arrow.origin
-    const aim =
-        arrow.abilityId === 'shot'
-            ? quickShotAim(arrow, origin, target?.position)
-            : (target?.position ?? arrow.aim)
-    const endpoint = navigation?.visibleLineEndpoint(origin, aim) ?? aim
-    return [
-        withWorldSound(
-            {
-                ...arrowPhaseEvent(actor, attack, 'completed'),
-                projectile: { origin, endpoint: { ...endpoint } },
-            },
-            'attack',
-            actor.locationId,
-            origin,
-            { sourceActorId: actor.id }
-        ),
-    ]
-}
-
-function quickShotAim(
-    arrow: ArrowAttack,
-    origin: Vector2,
-    target: Vector2 | undefined
-): Vector2 {
-    const { endpoint } = forwardShot(origin, arrow.facing, arrow.range)
-    if (target === undefined) {
-        return endpoint
-    }
-    return {
-        x: endpoint.x === origin.x ? origin.x : target.x,
-        y: endpoint.y === origin.y ? origin.y : target.y,
     }
 }
 

@@ -372,6 +372,80 @@ it('finishes a forest gust fade indoors and stops any remaining gust when the ma
     expect(second?.isStopped).toBe(true)
 })
 
+it('uses one quiet cave wind loop and reverses its fade when the draft returns', async () => {
+    const test = setup()
+    const draft = { ...snapshot(), dungeonDraft: true }
+    test.observe(draft)
+    await test.step()
+    expect(test.loadSound).not.toHaveBeenCalled()
+
+    test.ambience.setMap(locationId, { ...map, underground: true })
+    test.observe(snapshot())
+    await test.step()
+    const wind = test.sounds.get(windFile)!
+    expect(wind.start).not.toHaveBeenCalled()
+    test.observe(draft)
+    await test.step()
+    expect(wind.start).toHaveBeenCalledExactlyOnceWith({
+        loop: true,
+        position: 650,
+        pitch: -300,
+        volume: 0,
+    })
+    const [track] = wind.voices
+    expect(track?.volume).toBe(0.42)
+    expect(wind.sound.volume).toBe(0.13)
+
+    test.observe(snapshot())
+    await test.step()
+    expect(track?.volume).toBe(0)
+    await test.step(399)
+    expect(track?.isStopped).toBe(false)
+    test.observe(draft)
+    await test.step()
+    expect(track?.volume).toBe(0.42)
+    expect(wind.start).toHaveBeenCalledOnce()
+    await test.step(500)
+    expect(track?.volume).toBe(0)
+    await test.step(400)
+    expect(track?.isStopped).toBe(true)
+})
+
+it('does not replay a late draft decode and drops a current gust on disconnect or travel', async () => {
+    const test = setup()
+    const wind = fakeSound()
+    let ready: (sound: Sound) => void = () => undefined
+    test.loadSound.mockImplementationOnce(
+        () =>
+            new Promise((resolve) => {
+                ready = resolve
+            })
+    )
+    test.ambience.setMap(locationId, { ...map, underground: true })
+    const draft = { ...snapshot(), dungeonDraft: true }
+    test.observe(draft)
+    await test.step()
+    test.observe(snapshot())
+    ready(wind.sound)
+    await test.step()
+    expect(wind.start).not.toHaveBeenCalled()
+
+    test.observe(draft)
+    await test.step()
+    const disconnected = {
+        ...draft,
+        characters: [characterFixture('listener', { connected: false })],
+    }
+    test.observe(disconnected)
+    expect(wind.voices[0]?.isStopped).toBe(true)
+    test.observe(draft)
+    await test.step()
+    test.ambience.setMap('next-floor', { ...map, underground: true })
+    expect(wind.voices[1]?.isStopped).toBe(true)
+    await test.step()
+    expect(wind.start).toHaveBeenCalledTimes(2)
+})
+
 it('isolates a rejected clip and never starts a clip that decodes after its owner is gone', async () => {
     const test = setup()
     const delayed = fakeSound()

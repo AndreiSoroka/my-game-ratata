@@ -1,18 +1,20 @@
 import {
     getWorldLocationDefinition,
     type Vector2,
+    WORLD_DIRECTIONS,
+    type WorldDirection,
+    worldLocationNeighbor,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import { sparkBlocksTravel } from './combatMovement'
-import { segmentDistanceSquared } from './constellationGeometry'
 import { available } from './crimeRules'
 import type { DungeonPassage } from './dungeonMapData'
 import { magicBlocksMovement } from './magicState'
 import { distance } from './math'
 import { cancelMovementMode } from './movementActions'
-import type { NavigationService } from './navigation'
+import type { NavigationService, TileCoordinate } from './navigation'
 import { regionalRoute } from './regionalNavigation'
 
 export function isInsideDungeonPassage(
@@ -46,58 +48,144 @@ export function crossedDungeonPassage(
     after: Vector2,
     intent: Vector2
 ): DungeonPassage | undefined {
-    const passage = navigation.grid.dungeonPassage
-    if (
-        passage === undefined ||
-        before === undefined ||
-        (intent.x === 0 && intent.y === 0) ||
-        isInsideDungeonPassage(before, passage) ||
-        segmentDistanceSquared(passage.position, before, after) >
-            passage.triggerRadius ** 2 ||
-        !navigation.hasLineOfSight(before, passage.position)
-    ) {
+    if (before === undefined || (intent.x === 0 && intent.y === 0)) {
         return undefined
     }
-    return passage
+    let first: DungeonPassage | undefined
+    let earliest = Infinity
+    for (const passage of navigation.grid.dungeonPassages ?? []) {
+        const entry = triggerEntry(before, after, passage)
+        if (
+            entry !== undefined &&
+            entry < earliest &&
+            navigation.hasLineOfSight(before, passage.position)
+        ) {
+            first = passage
+            earliest = entry
+        }
+    }
+    return first
 }
 
-export function validateDungeonLink(
-    navigation: NavigationService,
-    to: string
-): void {
-    const passage = navigation.grid.dungeonPassage
-    if (
-        passage?.destinationLocationId !== to ||
-        isInsideDungeonPassage(passage.arrival, passage) ||
-        navigation.isSolidTile(navigation.worldToTile(passage.position)) ||
-        navigation.isSolidTile(navigation.worldToTile(passage.arrival)) ||
-        navigation.findPathWorld(passage.arrival, passage.position).length === 0
-    ) {
-        throw new Error(
-            `Invalid dungeon link from ${navigation.grid.id} to ${to}`
-        )
+/** Earliest entry into the circle along actual collision-resolved movement. */
+function triggerEntry(
+    from: Vector2,
+    to: Vector2,
+    { position, triggerRadius }: DungeonPassage
+): number | undefined {
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const x = from.x - position.x
+    const y = from.y - position.y
+    const a = dx * dx + dy * dy
+    const b = x * dx + y * dy
+    const c = x * x + y * y - triggerRadius * triggerRadius
+    const discriminant = b * b - a * c
+    if (a === 0 || c <= 0 || b >= 0 || discriminant < 0) {
+        return undefined
     }
+    const entry = (-b - Math.sqrt(discriminant)) / a
+    return entry <= 1 ? entry : undefined
+}
+
+export function dungeonPassageApproach(
+    position: Vector2,
+    passage: DungeonPassage
+): Vector2 {
+    return isInsideDungeonPassage(position, passage)
+        ? passage.arrival
+        : passage.position
+}
+
+/** Avoid any unchosen trigger which overlaps the walking tile. */
+export function outsideUnchosenPassages(
+    navigation: NavigationService,
+    tile: TileCoordinate,
+    chosen?: DungeonPassage
+): boolean {
+    const { tileWidth, tileHeight } = navigation.grid
+    const center = navigation.tileToWorld(tile)
+    return (navigation.grid.dungeonPassages ?? []).every((passage) => {
+        if (passage === chosen) {
+            return true
+        }
+        const dx = Math.max(
+            0,
+            Math.abs(center.x - passage.position.x) - tileWidth / 2
+        )
+        const dy = Math.max(
+            0,
+            Math.abs(center.y - passage.position.y) - tileHeight / 2
+        )
+        return Math.hypot(dx, dy) > passage.triggerRadius
+    })
+}
+
+export function dungeonPassageTo(
+    navigation: NavigationService,
+    locationId: string
+): DungeonPassage | undefined {
+    return navigation.grid.dungeonPassages?.find(
+        ({ destinationLocationId }) => destinationLocationId === locationId
+    )
+}
+
+export function dungeonPassageDestination(
+    passage: DungeonPassage,
+    fromId: string,
+    destination: NavigationService
+): DungeonPassage | undefined {
+    return destination.grid.dungeonPassages?.find(
+        (target) =>
+            target.id === passage.destinationPassageId &&
+            target.destinationPassageId === passage.id &&
+            target.destinationLocationId === fromId &&
+            target.direction !== passage.direction
+    )
 }
 
 export function nextLocationToward(
     fromId: string,
     toId: string,
-    passageAt: (id: string) => DungeonPassage | undefined
+    passagesAt: (id: string) => readonly DungeonPassage[] | undefined
 ): string | undefined {
     if (fromId === toId) {
         return undefined
     }
-    if (getWorldLocationDefinition(fromId) === undefined) {
-        return passageAt(fromId)?.destinationLocationId
+    if (
+        getWorldLocationDefinition(fromId) !== undefined &&
+        getWorldLocationDefinition(toId) !== undefined
+    ) {
+        return regionalRoute(fromId, toId)?.[1]
     }
-    const targetSurface =
-        getWorldLocationDefinition(toId) === undefined
-            ? passageAt(toId)?.destinationLocationId
-            : toId
-    if (targetSurface === fromId) {
-        return toId
+    const seen = new Set([fromId])
+    const pending: Array<{ id: string; first?: string }> = [{ id: fromId }]
+    for (const { id, first } of pending) {
+        if (id === toId) {
+            return first
+        }
+        for (const neighbor of neighboringLocations(id, passagesAt(id))) {
+            if (!seen.has(neighbor)) {
+                seen.add(neighbor)
+                pending.push({ id: neighbor, first: first ?? neighbor })
+            }
+        }
     }
-    return targetSurface === undefined
-        ? undefined
-        : regionalRoute(fromId, targetSurface)?.[1]
+    return undefined
+}
+
+function neighboringLocations(
+    id: string,
+    passages: readonly DungeonPassage[] | undefined
+): string[] {
+    const neighbors = (passages ?? []).map(
+        ({ destinationLocationId }) => destinationLocationId
+    )
+    for (const direction of Object.keys(WORLD_DIRECTIONS) as WorldDirection[]) {
+        const neighbor = worldLocationNeighbor(id, direction)
+        if (neighbor !== undefined) {
+            neighbors.push(neighbor.id)
+        }
+    }
+    return neighbors
 }

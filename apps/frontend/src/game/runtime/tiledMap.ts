@@ -1,5 +1,6 @@
 import {
     CENTER_LOCATION_ID,
+    type DungeonRevealSnapshot,
     readTrainingMapData,
     type TrainingMapData,
 } from '@my-game-ratata/contracts'
@@ -8,11 +9,11 @@ import { type AmbientTerrain, readAmbientTerrain } from './mapAmbientTerrain'
 import { type MapBuilding, readMapBuildings } from './mapBuildings'
 import { type MapDepthProp, readDepthProps } from './mapDepthProps'
 import { type DungeonLight, readDungeonLights } from './mapDungeonLights'
+import { createDungeonRevealUpdater } from './mapDungeonReveals'
 import type { TiledLandmark } from './mapLandmarks'
-import { type FootstepMap, readFootstepMap } from './mapSurfaces'
+import { type FootstepMap, readFootstepLegend, readFootstepMap } from './mapSurfaces'
 import { type MapVisibility, readMapVisibility } from './mapVisibility'
 import { type AnimatedWater, readWaterAnimation } from './mapWaterAnimation'
-import { drawConnectedTerrain } from './terrainAutotile'
 import {
     fetchJson,
     findTileset,
@@ -20,6 +21,7 @@ import {
     loadTileset,
     type TiledTilesetRef,
 } from './tiledMapAssets'
+import { redrawDungeonTiles, renderDepthProp, renderMap } from './tiledMapRendering'
 
 interface TiledLayer {
     data?: number[]
@@ -51,6 +53,7 @@ export interface RenderedTiledMap {
     buildings: MapBuilding[]
     depthProps: MapDepthProp[]
     dungeonLights?: DungeonLight[]
+    applyDungeonReveals?: (reveals: readonly DungeonRevealSnapshot[]) => boolean
     harvestGraphics: HarvestGraphics
     footsteps: FootstepMap
     visibility: MapVisibility
@@ -111,10 +114,8 @@ export async function loadRenderedTiledMap(
             map.layers.find((layer) => layer.name === 'Depth props')?.objects ?? [],
             (canvas, tiles, columns) => renderDepthProp(canvas, tiles, columns, map, tilesets)
         ),
-        dungeonLights: readDungeonLights(map),
         harvestGraphics: readHarvestGraphics(map, tilesets),
-        footsteps: readFootstepMap(map),
-        visibility: readMapVisibility(map),
+        ...readTerrain(map, bitmap, tilesets),
         height: map.height,
         tileHeight: map.tileheight,
         tileWidth: map.tilewidth,
@@ -122,6 +123,49 @@ export async function loadRenderedTiledMap(
         worldHeight: map.height * map.tileheight,
         worldWidth: map.width * map.tilewidth,
     }
+}
+
+function readTerrain(map: TiledMap, bitmap: HTMLCanvasElement, tilesets: LoadedTileset[]) {
+    const dungeonLights = readDungeonLights(map)
+    const footsteps = readFootstepMap(map)
+    const visibility = readMapVisibility(map)
+    const applyDungeonReveals =
+        dungeonLights === undefined
+            ? undefined
+            : dungeonUpdater(map, bitmap, tilesets, visibility, footsteps)
+    return {
+        dungeonLights,
+        footsteps,
+        visibility,
+        ...(applyDungeonReveals === undefined ? {} : { applyDungeonReveals }),
+    }
+}
+
+function dungeonUpdater(
+    map: TiledMap,
+    bitmap: HTMLCanvasElement,
+    tilesets: LoadedTileset[],
+    visibility: MapVisibility,
+    footsteps: FootstepMap
+) {
+    const floor = map.layers.find(({ name }) => name === 'Stone floor')?.data
+    const walls = map.layers.find(({ name }) => name === 'Dungeon walls')?.data
+    if (!floor || !walls) return undefined
+    const surfaces = map.layers.find(({ name }) => name === 'Footstep surfaces')?.properties
+    return createDungeonRevealUpdater({
+        floor,
+        walls,
+        visibility,
+        footsteps,
+        surfaceLegend: readFootstepLegend(surfaces),
+        hasTile: (gid) => {
+            const atlas = findTileset(gid, tilesets)
+            return (
+                atlas !== undefined && gid - atlas.firstgid < (atlas.tileset.tilecount ?? Infinity)
+            )
+        },
+        redraw: (indices) => redrawDungeonTiles(bitmap, map, tilesets, indices),
+    })
 }
 
 function readHarvestGraphics(map: TiledMap, tilesets: LoadedTileset[]): HarvestGraphics {
@@ -179,122 +223,4 @@ function pineBitmap(map: TiledMap, tilesets: LoadedTileset[]): HTMLCanvasElement
     canvas.height = 32
     renderDepthProp(canvas, [town + 4, town + 16], 1, map, tilesets)
     return canvas
-}
-
-function renderMap(
-    map: TiledMap,
-    tilesets: LoadedTileset[],
-    onlyCovers = false
-): HTMLCanvasElement {
-    const canvas = document.createElement('canvas')
-    canvas.width = map.width * map.tilewidth
-    canvas.height = map.height * map.tileheight
-    const context = canvas.getContext('2d')
-
-    if (context === null) {
-        throw new Error('Canvas 2D is not available')
-    }
-
-    context.imageSmoothingEnabled = false
-
-    for (const layer of map.layers) {
-        if ((layer.name === 'Building covers') !== onlyCovers) continue
-        renderLayer(context, map, layer, tilesets)
-    }
-
-    return canvas
-}
-
-function renderLayer(
-    context: CanvasRenderingContext2D,
-    map: TiledMap,
-    layer: TiledLayer,
-    tilesets: LoadedTileset[]
-): void {
-    if (layer.type !== 'tilelayer' || layer.data === undefined || !layer.visible) {
-        return
-    }
-
-    context.globalAlpha = layer.opacity ?? 1
-
-    for (let index = 0; index < layer.data.length; index += 1) {
-        const gid = layer.data[index] ?? 0
-
-        if (gid !== 0) {
-            drawTile(
-                context,
-                map,
-                gid,
-                index,
-                tilesets,
-                layer.name === 'Paths and ponds' ? layer.data : undefined
-            )
-        }
-    }
-
-    context.globalAlpha = 1
-}
-
-function drawTile(
-    context: CanvasRenderingContext2D,
-    map: TiledMap,
-    gid: number,
-    index: number,
-    tilesets: LoadedTileset[],
-    terrain?: number[]
-): void {
-    const loaded = findTileset(gid, tilesets)
-
-    if (loaded === undefined) {
-        return
-    }
-
-    if (
-        terrain &&
-        drawConnectedTerrain(
-            context,
-            loaded.image,
-            terrain,
-            map.width,
-            map.height,
-            index,
-            map.tilewidth,
-            map.tileheight
-        )
-    )
-        return
-
-    const tileId = gid - loaded.firstgid
-    const sourceX = (tileId % loaded.tileset.columns) * loaded.tileset.tilewidth
-    const sourceY = Math.floor(tileId / loaded.tileset.columns) * loaded.tileset.tileheight
-    const destX = (index % map.width) * map.tilewidth
-    const destY = Math.floor(index / map.width) * map.tileheight
-
-    context.drawImage(
-        loaded.image,
-        sourceX,
-        sourceY,
-        loaded.tileset.tilewidth,
-        loaded.tileset.tileheight,
-        destX,
-        destY,
-        map.tilewidth,
-        map.tileheight
-    )
-}
-
-function renderDepthProp(
-    canvas: HTMLCanvasElement,
-    tiles: number[],
-    columns: number,
-    map: TiledMap,
-    tilesets: LoadedTileset[]
-): void {
-    const context = canvas.getContext('2d')
-    if (!context) return
-    context.imageSmoothingEnabled = false
-    const propMap = { ...map, width: columns }
-    tiles.forEach((gid, index) => {
-        if (gid !== 0) drawTile(context, propMap, gid, index, tilesets)
-    })
 }

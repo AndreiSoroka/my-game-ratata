@@ -1,10 +1,13 @@
 import {
+    type GameEventPayload,
     isItemBroken,
     ITEM_DEFINITIONS,
     itemDurability,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import type { PendingAttackHit } from './characterState'
+import { invalidateWeaponAction } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
 import type { InventoryItemInstance } from './inventoryItems'
 
@@ -73,4 +76,36 @@ export function wearWeapon(character: GameCharacter): boolean {
               item,
               ITEM_DEFINITIONS[item.itemId].durabilityWear?.attack ?? 0
           )
+}
+
+export function usesAttackWeapon(attack: PendingAttackHit): boolean {
+    return (
+        attack.weaponAttack === true ||
+        attack.abilityId === undefined ||
+        attack.abilityId === 'skeleton_strike'
+    )
+}
+export function resolvedWeaponWear(
+    actor: GameCharacter,
+    attack: PendingAttackHit,
+    impact: number,
+    now: number
+): GameEventPayload[] {
+    const weapon = actor.equipment.weapon
+    if (
+        weapon === undefined ||
+        !usesAttackWeapon(attack) ||
+        impact <= 0 ||
+        !wearWeapon(actor)
+    ) {
+        return []
+    }
+    invalidateWeaponAction(actor, now)
+    return [
+        {
+            kind: 'notice',
+            actorId: actor.id,
+            text: `${ITEM_DEFINITIONS[weapon.itemId].name}: предмет сломан. Нужен ремонт у кузнеца.`,
+        },
+    ]
 }

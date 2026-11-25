@@ -1,17 +1,16 @@
 import {
     CENTER_LOCATION_ID,
-    GRID_SIZE,
-    REGION_NAME,
     type Vector2,
     WORLD_LOCATION_DEFINITIONS,
-    type WorldLocation,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { CityPortals, type PortalPassage } from './cityPortals'
 import { clearCombatTransient } from './combatState'
 import type { CorpseWallet } from './corpseWallet'
-import { loadNavigationService, NavigationService } from './navigation'
+import { validateDungeonLinks } from './dungeonLinks'
+import type { DungeonPassage } from './dungeonMapData'
+import type { NavigationService } from './navigation'
 import { npcModelRole } from './npcRoster'
 import { markPositionDiscontinuity } from './positionDiscontinuity'
 import { returnFromPursuit } from './pursuitState'
@@ -22,26 +21,21 @@ import {
     recordPursuitPortalEntry,
 } from './pursuitTravel'
 import { edgeExitDirection } from './regionalNavigation'
-import { WorldInventory } from './worldInventory'
+import { createLocationState, type LocationState } from './worldLocationState'
+export type { LocationState } from './worldLocationState'
 import type { WorldMaps } from './worldMaps'
 import {
     canUsePassage,
     crossedDungeonPassage,
+    dungeonPassageDestination,
     nextLocationToward,
     stopForPassage,
-    validateDungeonLink,
 } from './worldPassages'
 
 export const centerLocationId = CENTER_LOCATION_ID
 export const dragonBoundaryMessage = 'А там дальше живут драконы'
 export const cityEntryMessage =
     'Стража Новогорода не пропускает враждебных существ.'
-
-export interface LocationState {
-    description: WorldLocation
-    inventory: WorldInventory
-    navigation: NavigationService
-}
 
 export class WorldLocations {
     public readonly serverEpoch: string | undefined
@@ -59,39 +53,25 @@ export class WorldLocations {
             ...WORLD_LOCATION_DEFINITIONS,
             ...(maps?.dungeons ?? []),
         ]) {
-            const { id } = definition
-            const navigation =
-                id === CENTER_LOCATION_ID
-                    ? center
-                    : maps !== undefined
-                      ? maps.navigation(id)
-                      : center.grid.id === 'map1' ||
-                          center.grid.id === CENTER_LOCATION_ID
-                        ? loadNavigationService(id)
-                        : new NavigationService({ ...center.grid, id })
-            this.locations.set(id, {
-                description: {
-                    ...definition,
-                    columns: GRID_SIZE,
-                    rows: GRID_SIZE,
-                    regionName: REGION_NAME,
-                    map: { ...navigation.summary, id },
-                },
-                inventory: new WorldInventory(navigation, id, wallet),
-                navigation,
-            })
+            this.locations.set(
+                definition.id,
+                createLocationState(definition, center, wallet, maps)
+            )
         }
-        for (const dungeon of maps?.dungeons ?? []) {
-            validateDungeonLink(
-                this.get(dungeon.id).navigation,
-                dungeon.surfaceLocationId
-            )
-            validateDungeonLink(
-                this.get(dungeon.surfaceLocationId).navigation,
-                dungeon.id
-            )
+        if (maps !== undefined && maps.dungeons.length > 0) {
+            validateDungeonLinks(this.locations)
         }
     }
+
+    public readonly nextLocationToward = (from: string, to: string) =>
+        nextLocationToward(
+            from,
+            to,
+            (id) => this.locations.get(id)?.navigation.grid.dungeonPassages
+        )
+
+    public readonly scoutingLocationId = (locationId: string) =>
+        this.locations.get(locationId)?.description.dungeonId ?? locationId
 
     public get(id = centerLocationId): LocationState {
         const location = this.locations.get(id)
@@ -147,11 +127,7 @@ export class WorldLocations {
             intent
         )
         if (passage !== undefined) {
-            return this.useDungeonPassage(
-                character,
-                passage.destinationLocationId,
-                now
-            )
+            return this.useDungeonPassage(character, passage, now)
         }
         return current.description.biome === 'dungeon'
             ? undefined
@@ -216,24 +192,28 @@ export class WorldLocations {
         now: number
     ): boolean {
         return canPursuitTravel(character, to, now, (home) =>
-            nextLocationToward(
-                character.locationId,
-                home,
-                (id) => this.locations.get(id)?.navigation.grid.dungeonPassage
-            )
+            this.nextLocationToward(character.locationId, home)
         )
     }
 
     private useDungeonPassage(
         character: GameCharacter,
-        destination: string,
+        passage: DungeonPassage,
         now: number
     ): string | undefined {
+        const destination = passage.destinationLocationId
         const next = this.locations.get(destination)
-        const target = next?.navigation.grid.dungeonPassage
+        const target =
+            next === undefined
+                ? undefined
+                : dungeonPassageDestination(
+                      passage,
+                      character.locationId,
+                      next.navigation
+                  )
         if (
             next === undefined ||
-            target?.destinationLocationId !== character.locationId ||
+            target === undefined ||
             !canUsePassage(character, now) ||
             npcModelRole(character.id) === 'city_coordinator' ||
             forbiddenCityEntry(character, next) ||
@@ -300,7 +280,10 @@ export class WorldLocations {
         character.attackZoneUntil = 0
         character.velocity = { x: 0, y: 0 }
         this.blockedEdges.delete(character.id)
-        return `Локация: ${next.description.name}`
+        const { floor, floorCount, name } = next.description
+        return floor === undefined || floorCount === undefined
+            ? `Локация: ${name}`
+            : `${name} · этаж ${String(floor)} из ${String(floorCount)}`
     }
 }
 

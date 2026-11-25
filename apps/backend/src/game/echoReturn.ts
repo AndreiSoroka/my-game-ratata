@@ -6,13 +6,19 @@ import {
 
 import type { GameCharacter } from './character'
 import { pathForEchoReturn } from './doorNavigation'
-import type { DungeonPassage } from './dungeonMapData'
 import { advanceEchoInn, type EchoInn } from './echoInn'
 import { distance } from './math'
-import type { NavigationService, TileCoordinate } from './navigation'
-import { type RegionalExit, regionalExit } from './regionalNavigation'
+import type { NavigationService } from './navigation'
+import {
+    type RegionalExit,
+    regionalExit,
+    regionalRoute,
+} from './regionalNavigation'
 import type { GameRoom } from './room'
-import { isInsideDungeonPassage, nextLocationToward } from './worldPassages'
+import {
+    dungeonPassageApproach,
+    outsideUnchosenPassages,
+} from './worldPassages'
 
 export interface EchoReturn {
     locationId?: string
@@ -40,7 +46,7 @@ export function advanceEchoReturn(
     const navigation = world.navigationFor(actor)
     const surfacePath = (point: Vector2) =>
         pathForEchoReturn(navigation, actor, point, (tile) =>
-            outsidePassage(tile, navigation)
+            outsideUnchosenPassages(navigation, tile)
         )
     if (actor.locationId === CENTER_LOCATION_ID) {
         advanceEchoInn(
@@ -75,22 +81,24 @@ function advanceEchoLeg(
     }
     state.retryAt = now + 500
 
-    const passage = navigation.grid.dungeonPassage
-    const next = nextLocationToward(
-        actor.locationId,
-        CENTER_LOCATION_ID,
-        (id) => (id === actor.locationId ? passage : undefined)
+    const up = navigation.grid.dungeonPassages?.find(
+        ({ direction }) => direction === 'up'
     )
-    if (next === undefined) {
-        return
-    }
-    if (passage?.destinationLocationId === next) {
+    if (up !== undefined) {
         actor.setPath(
-            pathForEchoReturn(navigation, actor, stairTarget(actor, passage))
+            pathForEchoReturn(
+                navigation,
+                actor,
+                dungeonPassageApproach(actor.position, up),
+                (tile) => outsideUnchosenPassages(navigation, tile, up)
+            )
         )
         return
     }
-
+    const next = regionalRoute(actor.locationId, CENTER_LOCATION_ID)?.[1]
+    if (next === undefined) {
+        return
+    }
     const edge = regionalExit(
         actor.position,
         actor.locationId,
@@ -103,30 +111,4 @@ function advanceEchoLeg(
         state.edge = edge
         actor.setPath(surfacePath(edge.point))
     }
-}
-
-function stairTarget(actor: GameCharacter, passage: DungeonPassage): Vector2 {
-    // Walking out of the trigger first lets an Echo that begins on it cross normally.
-    return isInsideDungeonPassage(actor.position, passage)
-        ? passage.arrival
-        : passage.position
-}
-
-function outsidePassage(
-    tile: TileCoordinate,
-    navigation: NavigationService
-): boolean {
-    const passage = navigation.grid.dungeonPassage
-    if (passage === undefined) {
-        return true
-    }
-    const center = navigation.tileToWorld(tile)
-    const offsetX =
-        Math.abs(center.x - passage.position.x) - navigation.grid.tileWidth / 2
-    const offsetY =
-        Math.abs(center.y - passage.position.y) - navigation.grid.tileHeight / 2
-    return (
-        Math.hypot(Math.max(0, offsetX), Math.max(0, offsetY)) >
-        passage.triggerRadius
-    )
 }

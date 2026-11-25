@@ -91,11 +91,10 @@ function leavesLocation(
     if (surface && edgeExitDirection(to, direction, navigation) !== undefined) {
         return true
     }
-    const { dungeonPassage } = navigation.grid
-    return (
-        dungeonPassage !== undefined &&
-        !isInsideDungeonPassage(from, dungeonPassage) &&
-        segmentDistanceSquared(dungeonPassage.position, from, to) <=
-            dungeonPassage.triggerRadius ** 2
+    return (navigation.grid.dungeonPassages ?? []).some(
+        (passage) =>
+            !isInsideDungeonPassage(from, passage) &&
+            segmentDistanceSquared(passage.position, from, to) <=
+                passage.triggerRadius ** 2
     )
 }

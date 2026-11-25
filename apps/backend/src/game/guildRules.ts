@@ -234,7 +234,8 @@ export function createGuildParticipants(
 export function advanceExploration(
     job: GuildJob,
     members: Set<string>,
-    characters: Map<string, GameCharacter>
+    characters: Map<string, GameCharacter>,
+    scoutingLocationId?: (locationId: string) => string
 ): void {
     for (const [id, participant] of job.participants) {
         const character = characters.get(id)
@@ -245,15 +246,17 @@ export function advanceExploration(
         ) {
             continue
         }
+        const locationId =
+            scoutingLocationId?.(character.locationId) ?? character.locationId
         if (
-            character.locationId === CENTER_LOCATION_ID ||
-            participant.visited.has(character.locationId)
+            locationId === CENTER_LOCATION_ID ||
+            participant.visited.has(locationId)
         ) {
             continue
         }
-        participant.visited.add(character.locationId)
+        participant.visited.add(locationId)
         participant.contribution += 1
-        job.visited.add(character.locationId)
+        job.visited.add(locationId)
         job.progress = Math.min(job.definition.goal, job.visited.size)
     }
 }

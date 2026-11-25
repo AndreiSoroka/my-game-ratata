@@ -1,4 +1,8 @@
 import { recordProp } from './generate-depth.mjs'
+import {
+    createSecretLayerObjects,
+    secretReserveRows,
+} from './generate-dungeons-secrets.mjs'
 import { pavingGid } from './generate-ground.mjs'
 
 const tileSize = 16
@@ -6,6 +10,7 @@ const originalGid = 2048
 const propGid = 3072
 const towerGid = 3074
 const connectedWallsGid = 3101
+const stairGid = 3149
 const originalTileset = {
     firstgid: originalGid,
     source: 'tilesets/0x72Dungeon/dungeon.json',
@@ -17,6 +22,10 @@ const propTileset = {
 const connectedWallsTileset = {
     firstgid: connectedWallsGid,
     source: 'tilesets/0x72Dungeon/low-walls.json',
+}
+const stairTileset = {
+    firstgid: stairGid,
+    source: 'tilesets/Novogorod/dungeon-stairs.json',
 }
 export const towerTileset = {
     firstgid: towerGid,
@@ -31,7 +40,7 @@ const profiles = {
         cellHeight: 13,
         minimum: 3,
         maximum: 9,
-        roomCount: 4,
+        maximumRooms: 5,
     },
     medium: {
         columns: 3,
@@ -40,7 +49,7 @@ const profiles = {
         cellHeight: 19,
         minimum: 5,
         maximum: 15,
-        roomCount: 6,
+        maximumRooms: 7,
     },
     large: {
         columns: 3,
@@ -49,7 +58,7 @@ const profiles = {
         cellHeight: 35,
         minimum: 8,
         maximum: 30,
-        roomCount: 8,
+        maximumRooms: 9,
     },
 }
 const dungeonTypes = [
@@ -58,6 +67,7 @@ const dungeonTypes = [
     ['medium-1', 'Подземелье дозорных'],
     ['medium-2', 'Залы под руинами'],
 ]
+const floorCountThresholds = [30, 55, 80, 92, 100]
 
 function seededRoll(seed) {
     let state = 2166136261
@@ -77,15 +87,35 @@ export function generateDungeonRegion(seed, surfaceLocations) {
     const firstTowerVariant = roll(3)
     return dungeonTypes.slice(0, count).map(([id, name], index) => {
         const [surface] = locations.splice(roll(locations.length), 1)
+        const dungeonId = `dungeon-${id}`
+        const depthRoll = seededRoll(`${seed}:${dungeonId}:depth`)(100)
         return {
-            id: `dungeon-${id}`,
+            id: dungeonId,
             name,
             size: id.startsWith('medium') ? 'medium' : id,
             surfaceLocationId: surface.id,
             dangerLevel: surface.dangerLevel,
             towerVariant: (firstTowerVariant + index) % 3,
+            floorCount:
+                1 +
+                floorCountThresholds.findIndex(
+                    (threshold) => depthRoll < threshold
+                ),
         }
     })
+}
+
+function dungeonFloorId(dungeonId, floor) {
+    return floor === 1 ? dungeonId : `${dungeonId}-floor-${floor}`
+}
+
+export function generateDungeonFloors(dungeon) {
+    return Array.from({ length: dungeon.floorCount }, (_, index) => ({
+        ...dungeon,
+        id: dungeonFloorId(dungeon.id, index + 1),
+        dungeonId: dungeon.id,
+        floor: index + 1,
+    }))
 }
 
 const prop = (name, type, value) => ({ name, type, value })
@@ -127,27 +157,23 @@ function objectLayer(id, name, objects) {
     }
 }
 
-function passage(id, definition, isEntrance, x, y, arrivalY) {
+function passage(id, link, x, y, arrivalY) {
     return point(
         id,
-        isEntrance ? 'Вход в подземелье' : 'Выход на поверхность',
+        link.name,
         'dungeon_passage',
         tileCenter(x),
         tileCenter(y),
         [
-            prop(
-                'id',
-                'string',
-                `${definition.id}:${isEntrance ? 'entrance' : 'exit'}`
-            ),
-            prop(
-                'destinationLocationId',
-                'string',
-                isEntrance ? definition.id : definition.surfaceLocationId
-            ),
+            prop('id', 'string', link.id),
+            prop('destinationLocationId', 'string', link.destinationLocationId),
+            prop('destinationPassageId', 'string', link.destinationPassageId),
+            prop('direction', 'string', link.direction),
             prop('arrivalX', 'int', tileCenter(x)),
             prop('arrivalY', 'int', tileCenter(arrivalY)),
-            ...(isEntrance ? [] : [prop('triggerRadius', 'int', 12)]),
+            ...(link.radius === undefined
+                ? []
+                : [prop('triggerRadius', 'int', link.radius)]),
         ]
     )
 }
@@ -295,24 +321,27 @@ export function addDungeonTower(
     }
     recordProp(ctx, x - 1, y - 2, 3, 3, tiles, 'dungeon tower')
     return objectLayer(22, 'Dungeon passages', [
-        passage(70000, definition, true, x, y, y + 1),
+        passage(
+            70000,
+            {
+                id: `${definition.id}:entrance`,
+                name: 'Вход в подземелье',
+                destinationLocationId: definition.id,
+                destinationPassageId: `${definition.id}:exit`,
+                direction: 'down',
+            },
+            x,
+            y,
+            y + 1
+        ),
     ])
 }
 
-function createRooms(profile, roll, size) {
-    const {
-        columns,
-        rows,
-        cellWidth,
-        cellHeight,
-        minimum,
-        maximum,
-        roomCount,
-    } = profile
+function createRooms(profile, roll, size, totalRooms, needsSecondLanding) {
+    const { columns, rows, cellWidth, cellHeight, minimum, maximum } = profile
     const slots = Array.from({ length: columns * rows }, (_, index) => index)
     const entrySlot = slots.splice(columns * (rows - 1) + roll(columns), 1)[0]
     const selected = [entrySlot]
-    const totalRooms = roomCount + roll(2)
     while (selected.length < totalRooms)
         selected.push(slots.splice(roll(slots.length), 1)[0])
     if (size === 'large') {
@@ -323,12 +352,13 @@ function createRooms(profile, roll, size) {
     return selected.map((slot, index) => {
         const widthRoll = minimum + roll(maximum - minimum + 1)
         const heightRoll = minimum + roll(maximum - minimum + 1)
+        const landing = index === 0 || (index === 2 && needsSecondLanding)
         const width =
             index === 1 && size === 'large'
                 ? 30
                 : index === 1 && size === 'small'
                   ? 3
-                  : index === 0
+                  : landing
                     ? Math.max(5, widthRoll)
                     : widthRoll
         const height =
@@ -336,11 +366,12 @@ function createRooms(profile, roll, size) {
                 ? 30
                 : index === 1 && size === 'small'
                   ? 3
-                  : index === 0
+                  : landing
                     ? Math.max(5, heightRoll)
                     : heightRoll
         const x = 5 + (slot % columns) * cellWidth + roll(cellWidth - width - 3)
         const y =
+            secretReserveRows +
             5 +
             Math.floor(slot / columns) * cellHeight +
             roll(cellHeight - height - 3)
@@ -396,9 +427,9 @@ function wallTile(open, x, y) {
     return open(x, y + 2) ? originalTile(2, 0) : 0
 }
 
-function northDoorway(room, grid) {
+function roomDoorway(room, grid, outward) {
     const { at, solid } = grid
-    const y = room.y - 1
+    const y = outward < 0 ? room.y - 1 : room.y + room.height
     const open = (x, row) => solid[at(x, row)] === 0
     const openCells = (x, row) =>
         Number(open(x, row)) + Number(open(x + 1, row))
@@ -407,8 +438,8 @@ function northDoorway(room, grid) {
         return {
             x,
             openFlanks: Number(open(x - 1, y)) + Number(open(x + 2, y)),
-            wallOverlap: openCells(x, y - 2),
-            archOverlap: openCells(x, y - 1) + openCells(x, y),
+            wallOverlap: openCells(x, y + 2 * outward),
+            archOverlap: openCells(x, y + outward) + openCells(x, y),
             distance: Math.abs(x + 0.5 - room.centerX),
         }
     })
@@ -420,8 +451,13 @@ function northDoorway(room, grid) {
             a.distance - b.distance
     )
     for (const { x, openFlanks } of candidates) {
-        const arch = [at(x, y - 1), at(x + 1, y - 1), at(x, y), at(x + 1, y)]
-        const backing = [at(x, y - 2), at(x + 1, y - 2)]
+        const arch = [
+            at(x, y + outward),
+            at(x + 1, y + outward),
+            at(x, y),
+            at(x + 1, y),
+        ]
+        const backing = [at(x, y + 2 * outward), at(x + 1, y + 2 * outward)]
         const flanks =
             openFlanks === 2 ? [at(x - 1, y), at(x + 2, y)] : [undefined]
         for (const flank of flanks) {
@@ -430,11 +466,11 @@ function northDoorway(room, grid) {
                 wall.every((cell) => solid[cell]) ||
                 doorwayKeepsRoutes(grid, room, arch, wall)
             ) {
-                return { x, y, arch, backing, wall }
+                return { x, y, arrivalY: y - outward, arch, backing, wall }
             }
         }
     }
-    throw new Error('Dungeon entrance room has no connected northern doorway')
+    throw new Error('Dungeon entrance room has no connected doorway')
 }
 
 function doorwayKeepsRoutes(grid, room, arch, wall) {
@@ -447,17 +483,107 @@ function doorwayKeepsRoutes(grid, room, arch, wall) {
     return solid.every((blocked, cell) => blocked || distances[cell] >= 0)
 }
 
+function roomDistance(a, b) {
+    return Math.abs(a.centerX - b.centerX) + Math.abs(a.centerY - b.centerY)
+}
+
+function floorLinks(definition) {
+    const { id, dungeonId = id, floor = 1, floorCount } = definition
+    const up = {
+        id: `${id}:${floor === 1 ? 'exit' : 'up'}`,
+        destinationLocationId:
+            floor === 1
+                ? definition.surfaceLocationId
+                : dungeonFloorId(dungeonId, floor - 1),
+        destinationPassageId:
+            floor === 1
+                ? `${dungeonId}:entrance`
+                : `${dungeonFloorId(dungeonId, floor - 1)}:down`,
+        direction: 'up',
+        name: floor === 1 ? 'Выход на поверхность' : 'Лестница наверх',
+        radius: 12,
+        surfaceExit: floor === 1,
+    }
+    if (floor >= floorCount) return [up]
+    const lowerFloorId = dungeonFloorId(dungeonId, floor + 1)
+    return [
+        up,
+        {
+            id: `${id}:down`,
+            destinationLocationId: lowerFloorId,
+            destinationPassageId: `${lowerFloorId}:up`,
+            direction: 'down',
+            name: 'Лестница вниз',
+            radius: 12,
+        },
+    ]
+}
+
+function carvePassages(links, rooms, grid) {
+    const entry = rooms[0]
+    const landings = [entry]
+    if (links.length > 1) {
+        const distant = rooms
+            .slice(1)
+            .filter(({ width, height }) => width >= 5 && height >= 5)
+            .sort((a, b) => roomDistance(b, entry) - roomDistance(a, entry))[0]
+        landings.push(distant ?? rooms[1] ?? entry)
+    }
+    return links.map((link, index) => {
+        const room = landings[index]
+        const doorway = roomDoorway(
+            room,
+            grid,
+            link.direction === 'up' ? -1 : 1
+        )
+        for (const cell of doorway.arch) grid.solid[cell] = 0
+        for (const cell of doorway.wall) grid.solid[cell] = 1
+        return { ...doorway, room, link }
+    })
+}
+
+function passageTiles(link) {
+    if (link.surfaceExit) {
+        return [
+            originalTile(5, 15),
+            originalTile(6, 15),
+            originalTile(5, 16),
+            originalTile(6, 16),
+        ]
+    }
+    return link.direction === 'up'
+        ? [stairGid, stairGid + 1, stairGid + 4, stairGid + 5]
+        : [stairGid + 6, stairGid + 7, stairGid + 2, stairGid + 3]
+}
+
+function wallGids({ width, height, at, solid }) {
+    const walls = Array(solid.length).fill(0)
+    const open = (x, y) => solid[at(x, y)] === 0
+    for (let y = 1; y < height - 1; y++)
+        for (let x = 1; x < width - 1; x++)
+            if (!open(x, y)) walls[at(x, y)] = wallTile(open, x, y)
+    return walls
+}
+
 export function generateDungeonMap(definition, seed, regionName) {
-    const { id, size } = definition
-    const roll = seededRoll(`${id}:${seed}`)
+    const {
+        id,
+        size,
+        dungeonId = id,
+        floor: floorNumber = 1,
+        floorCount,
+    } = definition
+    const stream = `${seed}:${dungeonId}:${floorNumber}`
+    const roll = seededRoll(`${stream}:layout`)
     const profile = profiles[size]
-    const rooms = createRooms(profile, roll, size)
+    const links = floorLinks(definition)
+    const roomCount = 1 + seededRoll(`${stream}:rooms`)(profile.maximumRooms)
+    const rooms = createRooms(profile, roll, size, roomCount, links.length > 1)
     const width = profile.columns * profile.cellWidth + 6
-    const height = profile.rows * profile.cellHeight + 6
+    const height = profile.rows * profile.cellHeight + 6 + secretReserveRows
     const at = (x, y) => y * width + x
     const solid = Array(width * height).fill(1)
     const floor = Array(solid.length).fill(0)
-    const walls = Array(solid.length).fill(0)
     const furnishings = Array(solid.length).fill(0)
     const carve = (x, y) => {
         solid[at(x, y)] = 0
@@ -467,21 +593,10 @@ export function generateDungeonMap(definition, seed, regionName) {
         for (let y = room.y; y < room.y + room.height; y++)
             for (let x = room.x; x < room.x + room.width; x++) carve(x, y)
     connectRooms(rooms, carve, roll)
+    const grid = { width, height, at, solid }
     const entry = rooms[0]
-    const {
-        x: exitLeft,
-        y: exitY,
-        arch,
-        backing,
-        wall,
-    } = northDoorway(entry, {
-        at,
-        height,
-        solid,
-        width,
-    })
-    const exitX = exitLeft + 0.5
-    const arrivalY = exitY + 1
+    const entrances = carvePassages(links, rooms, grid)
+    const walls = wallGids(grid)
     const floorVariants = [
         [1, 4],
         [2, 4],
@@ -503,24 +618,6 @@ export function generateDungeonMap(definition, seed, regionName) {
                 )
         }
     }
-    const archTiles = [
-        originalTile(5, 15),
-        originalTile(6, 15),
-        originalTile(5, 16),
-        originalTile(6, 16),
-    ]
-    // Put the opaque wall behind the arch so light can reach all of its artwork.
-    for (const cell of arch) {
-        solid[cell] = 0
-        floor[cell] = 0
-    }
-    for (const cell of wall) {
-        solid[cell] = 1
-        floor[cell] = 0
-    }
-    for (let y = 1; y < height - 1; y++)
-        for (let x = 1; x < width - 1; x++)
-            if (!open(x, y)) walls[at(x, y)] = wallTile(open, x, y)
     const entrySouthY = entry.y + entry.height - 1
     const distanceFromEntrySouth = (room) =>
         Math.abs(room.centerX - entry.centerX) +
@@ -542,11 +639,13 @@ export function generateDungeonMap(definition, seed, regionName) {
         const lightY = y * tileSize + 3
         const lit =
             index % 2 === 0 &&
-            Math.abs(x - exitX) + Math.abs(y - exitY) > 7 &&
-            Math.hypot(
-                lightX - tileCenter(exitX),
-                lightY - tileCenter(arrivalY)
-            ) > wallTorchRadius
+            entrances.every(
+                (entrance) =>
+                    Math.hypot(
+                        lightX - tileCenter(entrance.x + 0.5),
+                        lightY - tileCenter(entrance.arrivalY)
+                    ) > wallTorchRadius
+            )
         furnishings[at(x, y - 1)] = propGid + (lit ? 1 : 0)
         if (lit)
             lights.push(
@@ -561,20 +660,31 @@ export function generateDungeonMap(definition, seed, regionName) {
     )
     if (nearEntryTorch !== undefined)
         furnishings[at(nearEntryTorch, entry.y - 1)] = propGid
-    for (const [index, cell] of arch.entries())
-        furnishings[cell] = archTiles[index]
-    for (const cell of backing) walls[cell] = 0
-    const spawnCount = size === 'large' ? 4 : size === 'medium' ? 3 : 2
-    const spawnRooms = [distantRooms[0]]
-    const distance = (a, b) =>
-        Math.abs(a.centerX - b.centerX) + Math.abs(a.centerY - b.centerY)
+    for (const { arch, backing, link } of entrances) {
+        const tiles = passageTiles(link)
+        for (const [index, cell] of arch.entries()) {
+            floor[cell] = 0
+            furnishings[cell] = tiles[index]
+        }
+        // Draw the stair or arch before its opaque backing, not as a hole in a floor.
+        for (const cell of backing) walls[cell] = 0
+    }
+    const guardRooms = distantRooms.filter(
+        (room) => !entrances.some((entrance) => entrance.room === room)
+    )
+    const spawnCount = Math.min(
+        guardRooms.length,
+        size === 'large' ? 4 : size === 'medium' ? 3 : 2
+    )
+    const spawnRooms = guardRooms.slice(0, 1)
     while (spawnRooms.length < spawnCount) {
-        const options = distantRooms.filter(
-            (room) => !spawnRooms.includes(room)
-        )
+        const options = guardRooms.filter((room) => !spawnRooms.includes(room))
         const separation = (room) =>
             Math.min(
-                ...[entry, ...spawnRooms].map((other) => distance(room, other))
+                ...[
+                    ...entrances.map((entrance) => entrance.room),
+                    ...spawnRooms,
+                ].map((other) => roomDistance(room, other))
             )
         spawnRooms.push(
             options.sort((a, b) => separation(b) - separation(a))[0]
@@ -589,6 +699,25 @@ export function generateDungeonMap(definition, seed, regionName) {
             tileCenter(room.centerY)
         )
     )
+    const stoneSurface = originalTile(1, 4)
+    const surfaces = solid.map((blocked) => (blocked ? 0 : stoneSurface))
+    const passages = entrances.map(({ link, x, y, arrivalY }, index) =>
+        passage(10 + index, link, x + 0.5, y, arrivalY)
+    )
+    const secrets = createSecretLayerObjects({
+        id,
+        grid,
+        floor,
+        walls,
+        surfaces,
+        stoneSurface,
+        floorVariantCount: floorVariants.length,
+        roll: seededRoll(`${stream}:secret`),
+        floorGid: (choice) => originalTile(...floorVariants[choice]),
+        wallGids,
+        point,
+        prop,
+    })
     const tileLayer = (
         layerId,
         name,
@@ -619,16 +748,10 @@ export function generateDungeonMap(definition, seed, regionName) {
             tileLayer(4, 'Collision', solid, false, [
                 prop('solid', 'bool', true),
             ]),
-            tileLayer(
-                5,
-                'Footstep surfaces',
-                solid.map((blocked) => (blocked ? 0 : originalTile(1, 4))),
-                false,
-                [prop(`surface.${originalTile(1, 4)}`, 'string', 'stone')]
-            ),
-            objectLayer(6, 'Dungeon passages', [
-                passage(10, definition, false, exitX, exitY, arrivalY),
+            tileLayer(5, 'Footstep surfaces', surfaces, false, [
+                prop(`surface.${stoneSurface}`, 'string', 'stone'),
             ]),
+            objectLayer(6, 'Dungeon passages', passages),
             objectLayer(7, 'Dungeon lights', lights),
             objectLayer(
                 8,
@@ -647,9 +770,12 @@ export function generateDungeonMap(definition, seed, regionName) {
                 }))
             ),
             objectLayer(9, 'Dungeon spawns', spawns),
+            ...(secrets.length === 0
+                ? []
+                : [objectLayer(10, 'Dungeon secrets', secrets)]),
         ],
-        nextlayerid: 10,
-        nextobjectid: 100,
+        nextlayerid: 11,
+        nextobjectid: 103,
         orientation: 'orthogonal',
         properties: [
             prop('locationName', 'string', definition.name),
@@ -657,9 +783,12 @@ export function generateDungeonMap(definition, seed, regionName) {
             prop('regionName', 'string', regionName),
             prop('dungeon', 'bool', true),
             prop('dungeonSize', 'string', size),
+            prop('dungeonId', 'string', dungeonId),
+            prop('dungeonFloor', 'int', floorNumber),
+            prop('dungeonFloorCount', 'int', floorCount),
             prop('dangerLevel', 'int', definition.dangerLevel),
             prop('generationSeed', 'string', String(seed)),
-            prop('generationVersion', 'int', 1),
+            prop('generationVersion', 'int', 2),
         ],
         renderorder: 'right-down',
         tiledversion: '1.11.2',
@@ -669,6 +798,9 @@ export function generateDungeonMap(definition, seed, regionName) {
             originalTileset,
             propTileset,
             connectedWallsTileset,
+            ...(entrances.some(({ link }) => !link.surfaceExit)
+                ? [stairTileset]
+                : []),
         ],
         tilewidth: tileSize,
         type: 'map',

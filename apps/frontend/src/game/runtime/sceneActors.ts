@@ -233,6 +233,7 @@ export class SceneActors {
     public readonly cancelStop = () => this.characters.cancelStop()
 
     private updateResourceViews(snapshot: WorldSnapshot): void {
+        const terrainChanged = this.mapView.revealDungeon(snapshot.dungeonReveals)
         this.gravePositions = new Map(
             (snapshot.graves ?? []).map((grave) => [grave.id, grave.position])
         )
@@ -246,6 +247,7 @@ export class SceneActors {
                 snapshot.viewBounds,
                 snapshot.adventure?.worldObjects
             )
+        if (terrainChanged) this.mapView.refreshDungeonOcclusion()
     }
 
     private updateObserver(player: CharacterSnapshot | undefined, snapshot: WorldSnapshot): void {

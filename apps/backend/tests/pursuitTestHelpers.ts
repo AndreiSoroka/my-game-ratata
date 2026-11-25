@@ -88,6 +88,7 @@ export function pursuitFixture(
             ),
         navigationFor: (character: GameCharacter) =>
             world.get(character.locationId).navigation,
+        nextLocationToward: world.nextLocationToward,
         ...portalRequests(world, characters),
         findVisibleTarget: (observer: GameCharacter, radius: number) =>
             findVisibleTarget(

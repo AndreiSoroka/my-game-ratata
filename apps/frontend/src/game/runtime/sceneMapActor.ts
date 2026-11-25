@@ -1,4 +1,4 @@
-import type { CharacterSnapshot, Vector2 } from '@my-game-ratata/contracts'
+import type { CharacterSnapshot, DungeonRevealSnapshot, Vector2 } from '@my-game-ratata/contracts'
 import { Actor, Canvas, type Engine, vec } from 'excalibur'
 
 import { MapBackdrop } from './mapBackdrop'
@@ -12,6 +12,7 @@ export class SceneMapView {
     private readonly water: SceneWaterAnimation
     private readonly lighting: SceneDungeonLighting
     private actor: Actor | undefined
+    private applyReveals: RenderedTiledMap['applyDungeonReveals']
     private cameraStrategy: ReturnType<typeof mapCameraStrategy> | undefined
     private followedActor: Actor | undefined
 
@@ -31,10 +32,22 @@ export class SceneMapView {
         else this.backdrop.dispose()
         this.cameraStrategy = mapCameraStrategy(map)
         this.followedActor = undefined
+        this.applyReveals = map.applyDungeonReveals
         this.actor = createSceneMapActor(map)
         this.engine.add(this.actor)
         this.water.setMap(this.actor, map.animatedWater)
         this.lighting.setMap(map.dungeonLights, map.visibility)
+    }
+
+    public revealDungeon(reveals: readonly DungeonRevealSnapshot[] = []): boolean {
+        if (!this.applyReveals?.(reveals)) return false
+        const graphic = this.actor?.graphics.current
+        if (graphic instanceof Canvas) graphic.flagDirty()
+        return true
+    }
+
+    public refreshDungeonOcclusion(): void {
+        this.lighting.refreshOcclusion()
     }
 
     public updateLighting(characters: CharacterSnapshot[], playerId: string | undefined): void {
@@ -56,6 +69,7 @@ export class SceneMapView {
         this.lighting.dispose()
         this.actor?.kill()
         this.actor = undefined
+        this.applyReveals = undefined
         this.backdrop.dispose()
         this.engine.currentScene.camera.clearAllStrategies()
         this.followedActor = this.cameraStrategy = undefined

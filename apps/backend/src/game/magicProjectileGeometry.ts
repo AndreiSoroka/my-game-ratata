@@ -3,28 +3,21 @@ import type { Vector2 } from '@my-game-ratata/contracts'
 import type { AbilityContext } from './abilityContext'
 import type { GameCharacter } from './character'
 import type { ProjectileFlight } from './magicProjectiles'
+import { firstSolidImpact } from './tileRay'
 
 export function clearFlightDistance(
     projectile: ProjectileFlight,
     length: number,
     navigation: AbilityContext['navigation']
 ): number {
-    const samples = Math.ceil(
-        length /
-            Math.min(
-                2,
-                navigation.grid.tileWidth / 4,
-                navigation.grid.tileHeight / 4
-            )
+    const impact = firstSolidImpact(
+        navigation.grid,
+        projectile.position,
+        positionAlong(projectile, length)
     )
-    for (let index = 1; index <= samples; index += 1) {
-        const sample = (index * length) / samples
-        const position = positionAlong(projectile, sample)
-        if (navigation.isSolidTile(navigation.worldToTile(position))) {
-            return ((index - 1) * length) / samples
-        }
-    }
-    return length
+    return impact === undefined
+        ? length
+        : Math.max(0, impact.fraction * length - 0.000001)
 }
 
 export function firstContactDistance(

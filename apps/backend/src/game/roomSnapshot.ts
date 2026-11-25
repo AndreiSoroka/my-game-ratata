@@ -19,7 +19,7 @@ import type { RoomSocial } from './roomSocial'
 import { serverEpoch } from './serverEpoch'
 import type { TheftService } from './theft'
 import type { WorldLocations } from './worldLocations'
-import { centerLocationId } from './worldLocations'
+import { centerLocationId, type LocationState } from './worldLocations'
 
 export interface SnapshotContext {
     social?: RoomSocial
@@ -96,6 +96,7 @@ export function roomSnapshot(
         ),
         location: location.description,
         ...(portals.length === 0 ? {} : { portals }),
+        ...dungeonView(location, observer, now),
         ...(playerId === undefined
             ? {}
             : {
@@ -156,4 +157,41 @@ function adventureForObserver(
             entries: context.social.questBoardEntries(observer, now),
         },
     }
+}
+
+function dungeonView(
+    location: LocationState,
+    observer: GameCharacter | undefined,
+    now: number
+): Pick<WorldSnapshot, 'dungeonReveals' | 'dungeonDraft'> {
+    const secrets = location.secrets
+    if (secrets === undefined) {
+        return {}
+    }
+    const dungeonReveals = secrets.snapshot
+    return {
+        ...(dungeonReveals.length === 0 ? {} : { dungeonReveals }),
+        ...(isDraftListener(location.description.id, observer, now) &&
+        secrets.draftAt(
+            observer.position,
+            Math.hypot(observer.velocity.x, observer.velocity.y) > 0.0001
+        )
+            ? { dungeonDraft: true }
+            : {}),
+    }
+}
+
+function isDraftListener(
+    locationId: string,
+    observer: GameCharacter | undefined,
+    now: number
+): observer is GameCharacter {
+    return (
+        observer?.locationId === locationId &&
+        observer.alive &&
+        observer.connected &&
+        !observer.tags.has('offline') &&
+        observer.movement.dashUntil <= now &&
+        observer.combat.lunge === undefined
+    )
 }

@@ -29,7 +29,7 @@ The packed atlas is copied unchanged. The twelve active wheat beds have stable s
 
 The generated dungeons use the original floor, masonry and stair tiles from **16x16 DungeonTileset II v1.7** by **0x72**. The original atlases and their source record live in `apps/frontend/public/game/map/assets/0x72Dungeon/`. The author releases the artwork under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). [Official itch.io download](https://0x72.itch.io/dungeontileset-ii)
 
-The three above-ground tower designs and both wall-torch sprites are original pixel-style SVG artwork drawn for «Ратата». Their tile definitions live alongside the other Novogorod tilesets.
+The three above-ground tower designs and both wall-torch sprites are original pixel-style SVG artwork drawn for «Ратата». The two stair sprites used between floors are original pixel art in `assets/Novogorod/dungeon-stairs.png`. Their tile definitions live alongside the other Novogorod tilesets.
 
 ## Existing artwork
 

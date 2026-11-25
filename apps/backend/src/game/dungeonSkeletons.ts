@@ -1,4 +1,4 @@
-import type { DungeonSize } from '@my-game-ratata/contracts'
+import type { DungeonSize, Vector2 } from '@my-game-ratata/contracts'
 
 import { reconcileConstellationLevels } from './constellations'
 import { effectiveMaxEnergy } from './effectiveResources'
@@ -13,10 +13,11 @@ const masteryBySize = {
 
 export function createDungeonSkeletons(
     navigation: NavigationService,
-    size: DungeonSize
+    size: DungeonSize,
+    positions: readonly Vector2[] = navigation.grid.dungeonSkeletons ?? [],
+    id = navigation.grid.id
 ): SpawnedCharacter[] {
-    const id = navigation.grid.id
-    return (navigation.grid.dungeonSkeletons ?? []).map((position, index) => {
+    return positions.map((position, index) => {
         const tile = navigation.worldToTile(position)
         if (navigation.isSolidTile(tile)) {
             throw new Error(`Dungeon skeleton inside a wall in ${id}`)

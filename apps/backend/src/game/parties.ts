@@ -57,6 +57,7 @@ export class PartyService {
             workers?: WorkerGuildGateway
             questRewards?: GuildRewardEnvironment
             canContact?: (actor: GameCharacter, npc: GameCharacter) => boolean
+            scoutingLocationId?: (locationId: string) => string
         } = {}
     ) {
         this.guild = new GuildService(
@@ -179,7 +180,12 @@ export class PartyService {
             }
         }
         for (const party of this.parties.values()) {
-            this.guild.update(party.id, party.members, this.characters)
+            this.guild.update(
+                party.id,
+                party.members,
+                this.characters,
+                this.options.scoutingLocationId
+            )
         }
         for (const character of this.characters.values()) {
             if (
@@ -189,7 +195,8 @@ export class PartyService {
                 this.guild.update(
                     `solo:${character.id}`,
                     new Set([character.id]),
-                    this.characters
+                    this.characters,
+                    this.options.scoutingLocationId
                 )
             }
         }

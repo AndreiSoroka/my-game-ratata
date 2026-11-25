@@ -48,8 +48,10 @@ it('loads reciprocal passages on the same generated maps and only crosses during
         dungeonSize: 'small',
         surfaceLocationId: CENTER_LOCATION_ID,
     })
-    const tower = world.get().navigation.grid.dungeonPassage
-    const exit = dungeon.navigation.grid.dungeonPassage
+    const tower = world.get().navigation.grid.dungeonPassages?.[0]
+    const exit = dungeon.navigation.grid.dungeonPassages?.find(
+        ({ direction }) => direction === 'up'
+    )
     assert(tower !== undefined && exit !== undefined)
     expect(tower.triggerRadius).toBe(7)
     expect(exit.triggerRadius).toBe(12)
@@ -110,10 +112,13 @@ it('lets an agreeing Bran re-enter the tower threshold and follow back through t
         undefined,
         maps
     )
-    const tower = world.get().navigation.grid.dungeonPassage
+    const tower = world.get().navigation.grid.dungeonPassages?.[0]
     assert(tower !== undefined)
-    const exit = world.get(tower.destinationLocationId).navigation.grid
-        .dungeonPassage
+    const exit = world
+        .get(tower.destinationLocationId)
+        .navigation.grid.dungeonPassages?.find(
+            ({ direction }) => direction === 'up'
+        )
     assert(exit !== undefined)
 
     const player = chestHero('explorer', tower.arrival)
@@ -133,6 +138,7 @@ it('lets an agreeing Bran re-enter the tower threshold and follow back through t
     const companionWorld: CompanionWorld = {
         getCharacter: (id) => actors.get(id),
         navigationFor: (actor) => world.get(actor.locationId).navigation,
+        nextLocationToward: world.nextLocationToward,
         findVisibleTarget: () => undefined,
         requestAttack: () => undefined,
     }
@@ -253,7 +259,7 @@ it('casts a two-way city portal underground and lets a pursuing skeleton cross',
             nextLocationToward(
                 CENTER_LOCATION_ID,
                 dungeonId,
-                (id) => maps.navigation(id).grid.dungeonPassage
+                (id) => maps.navigation(id).grid.dungeonPassages
             )
         ).toBe(dungeonId)
         expect(

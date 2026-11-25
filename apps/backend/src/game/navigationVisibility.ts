@@ -1,4 +1,4 @@
-import type { Vector2 } from '@my-game-ratata/contracts'
+import type { Vector2, WorldObjectBounds } from '@my-game-ratata/contracts'
 
 import type { MapGrid, TileCoordinate } from './navigation'
 import type { NavigationDoors } from './navigationDoors'
@@ -52,4 +52,28 @@ export function passesSpeech(
 
 function inBounds(grid: MapGrid, { x, y }: TileCoordinate): boolean {
     return x >= 0 && x < grid.width && y >= 0 && y < grid.height
+}
+
+export function cellsInBounds(
+    grid: MapGrid,
+    bounds: WorldObjectBounds
+): number[] {
+    const cells: number[] = []
+    const { tileWidth, tileHeight, width, height } = grid
+    for (
+        let y = Math.floor(bounds.y / tileHeight);
+        y < Math.ceil((bounds.y + bounds.height) / tileHeight);
+        y++
+    ) {
+        for (
+            let x = Math.floor(bounds.x / tileWidth);
+            x < Math.ceil((bounds.x + bounds.width) / tileWidth);
+            x++
+        ) {
+            if (x >= 0 && y >= 0 && x < width && y < height) {
+                cells.push(y * width + x)
+            }
+        }
+    }
+    return cells
 }

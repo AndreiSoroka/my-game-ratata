@@ -189,7 +189,7 @@ function spawnPosition(
 function spawnLocationId(navigation: NavigationService): string {
     return (
         getWorldLocationDefinition(navigation.grid.id)?.id ??
-        (navigation.grid.dungeonPassage === undefined
+        ((navigation.grid.dungeonPassages?.length ?? 0) === 0
             ? CENTER_LOCATION_ID
             : navigation.grid.id)
     )

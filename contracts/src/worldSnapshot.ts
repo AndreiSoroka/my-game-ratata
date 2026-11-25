@@ -27,6 +27,19 @@ export type FootstepSourceSnapshot = Pick<
     'id' | 'alive' | 'position' | 'velocity' | 'archetype' | 'movement'
 >
 
+export interface DungeonRevealCell {
+    index: number
+    floorGid: number
+    wallGid: number
+    surfaceGid: number
+    solid: boolean
+}
+
+export interface DungeonRevealSnapshot {
+    id: string
+    cells: DungeonRevealCell[]
+}
+
 export interface WorldSnapshot {
     /** Resolved simulation interval in milliseconds; zero disables motion continuation. */
     stepMs?: number
@@ -42,6 +55,10 @@ export interface WorldSnapshot {
     magicEffects?: MagicEffectSnapshot[]
     heardFootsteps?: HeardFootstepSnapshot[]
     portals?: PortalEndpointSnapshot[]
+    /** Permanent openings on this floor, in the order they were revealed. */
+    dungeonReveals?: DungeonRevealSnapshot[]
+    /** The local player hears a closed wall's draft. No source coordinates. */
+    dungeonDraft?: boolean
     chest?: ChestContainerSnapshot | null
     party?: PartySnapshot
     location?: WorldLocation

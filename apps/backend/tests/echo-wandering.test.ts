@@ -165,13 +165,17 @@ it('rejects a surface edge even if it is the only walkable neighbor', () => {
 it('avoids a dungeon passage even when both ends of the wander step are outside its trigger', () => {
     const navigation = map({
         id: 'dungeon-small',
-        dungeonPassage: {
-            id: 'exit',
-            position: { x: 80, y: 88 },
-            arrival: { x: 72, y: 88 },
-            destinationLocationId: CENTER_LOCATION_ID,
-            triggerRadius: 4,
-        },
+        dungeonPassages: [
+            {
+                id: 'exit',
+                destinationPassageId: 'tower-entry',
+                direction: 'up',
+                position: { x: 80, y: 88 },
+                arrival: { x: 72, y: 88 },
+                destinationLocationId: CENTER_LOCATION_ID,
+                triggerRadius: 4,
+            },
+        ],
     })
     const origin = { x: 72, y: 88 }
     const echo = character('Echo', origin, { locationId: navigation.grid.id })

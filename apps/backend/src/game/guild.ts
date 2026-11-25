@@ -233,7 +233,8 @@ export class GuildService {
     public update(
         key: string,
         members: Set<string>,
-        characters: Map<string, GameCharacter>
+        characters: Map<string, GameCharacter>,
+        scoutingLocationId?: (locationId: string) => string
     ): void {
         this.refreshGroup(key, members)
         this.lifecycle.reconcile(key)
@@ -242,7 +243,7 @@ export class GuildService {
                 job.definition.id === 'survey_frontier' &&
                 job.progress < job.definition.goal
             ) {
-                advanceExploration(job, members, characters)
+                advanceExploration(job, members, characters, scoutingLocationId)
             }
         }
     }
@@ -278,9 +279,8 @@ export class GuildService {
         return 'Договор оставлен. Награда не выдана.'
     }
 
-    public release(key: string, now: number): void {
+    public readonly release = (key: string, now: number) =>
         this.lifecycle.release(key, now)
-    }
 
     public readonly stop = () => this.lifecycle.stop()
 

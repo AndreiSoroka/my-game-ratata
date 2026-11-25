@@ -21,12 +21,7 @@ interface SurfaceMapSource {
 }
 export function readFootstepMap(map: SurfaceMapSource): FootstepMap {
     const layer = map.layers.find((candidate) => candidate.name === 'Footstep surfaces')
-    const legend = new Map<number, FootstepSurface>()
-    for (const property of layer?.properties ?? []) {
-        if (property.name.startsWith('surface.') && isSurface(property.value)) {
-            legend.set(Number(property.name.slice(8)), property.value)
-        }
-    }
+    const legend = readFootstepLegend(layer?.properties)
     return {
         width: map.width,
         height: map.height,
@@ -37,6 +32,17 @@ export function readFootstepMap(map: SurfaceMapSource): FootstepMap {
             (_, index) => legend.get(layer?.data?.[index] ?? 0) ?? 'grass'
         ),
     }
+}
+export function readFootstepLegend(
+    properties: readonly { name: string; value: unknown }[] = []
+): Map<number, FootstepSurface> {
+    const legend = new Map<number, FootstepSurface>()
+    for (const property of properties) {
+        if (property.name.startsWith('surface.') && isSurface(property.value)) {
+            legend.set(Number(property.name.slice(8)), property.value)
+        }
+    }
+    return legend
 }
 export function surfaceAt(map: FootstepMap, point: Vector2): FootstepSurface {
     const x = Math.floor(point.x / map.tileWidth)

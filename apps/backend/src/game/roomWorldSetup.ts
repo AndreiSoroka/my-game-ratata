@@ -7,6 +7,7 @@ import type { NavigationService } from './navigation'
 import { resolveNpcIdentitySeed } from './npcIdentityProfiles'
 import { resolveNpcSpeechSeed } from './npcSpeechProfiles'
 import { bindCityActivationSpawns } from './roomCityActivationSpawns'
+import { bindDungeonSecretGuards } from './roomDungeonSecrets'
 import { spawnRoomCharacters } from './roomSpawns'
 import { WorldLocations } from './worldLocations'
 
@@ -70,6 +71,7 @@ export function initializeRoomCharacters(environment: SpawnEnvironment) {
         character.lifeStartedAt = spawnedAt
         character.animationStartedAt = spawnedAt
     }
+    bindDungeonSecretGuards(world, environment)
     bindCityActivationSpawns({ ...environment, speechSeed, identitySeed })
     return graves
 }

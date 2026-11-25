@@ -1,7 +1,4 @@
-import {
-    type GameEventPayload,
-    ITEM_DEFINITIONS,
-} from '@my-game-ratata/contracts'
+import type { GameEventPayload } from '@my-game-ratata/contracts'
 
 import { type DamageResolution, resolveCharacterDamage } from './abilityDamage'
 import {
@@ -26,10 +23,10 @@ import {
     defendContact,
 } from './combatDefense'
 import { rewardCharacterHit } from './combatMastery'
-import { invalidateWeaponAction } from './combatState'
+import { resolveWallContact } from './combatSecretWalls'
 import { damageGrave } from './graveCombat'
 import type { GraveCombatTarget } from './graveRules'
-import { wearWeapon } from './itemDurability'
+import { resolvedWeaponWear } from './itemDurability'
 import { prayerAuraEffects, prayerStunImmune } from './prayerAuras'
 import {
     confirmCombatResourceSpend,
@@ -54,7 +51,10 @@ export function resolveContactBatch(
     attack: PendingAttackHit,
     targets: readonly GameCharacter[],
     graves: readonly GraveCombatTarget[] = [],
-    allowCounters = true
+    {
+        allowCounters = true,
+        wallId,
+    }: { allowCounters?: boolean; wallId?: string | undefined } = {}
 ): GameEventPayload[] {
     const { actor, now } = context
     const factors = captureMasteryFactors(actor)
@@ -82,7 +82,11 @@ export function resolveContactBatch(
             )
         )
     }
-    events.push(...resolvedWeaponWear(actor, attack, impact, now))
+    const wall = resolveWallContact(context, attack, wallId)
+    events.push(
+        ...wall.events,
+        ...resolvedWeaponWear(actor, attack, impact + wall.impact, now)
+    )
     if (allowCounters) {
         for (const { contact } of contacts) {
             if (contact.counter !== undefined) {
@@ -208,38 +212,6 @@ function drainHitEnergy(
         recordUsefulResourceSpend(target, 'energy', drained)
     }
 }
-export function usesAttackWeapon(attack: PendingAttackHit): boolean {
-    return (
-        attack.weaponAttack === true ||
-        attack.abilityId === undefined ||
-        attack.abilityId === 'skeleton_strike'
-    )
-}
-function resolvedWeaponWear(
-    actor: GameCharacter,
-    attack: PendingAttackHit,
-    impact: number,
-    now: number
-): GameEventPayload[] {
-    const weapon = actor.equipment.weapon
-    if (
-        weapon === undefined ||
-        !usesAttackWeapon(attack) ||
-        impact <= 0 ||
-        !wearWeapon(actor)
-    ) {
-        return []
-    }
-    invalidateWeaponAction(actor, now)
-    return [
-        {
-            kind: 'notice',
-            actorId: actor.id,
-            text: `${ITEM_DEFINITIONS[weapon.itemId].name}: предмет сломан. Нужен ремонт у кузнеца.`,
-        },
-    ]
-}
-
 function resolveGraveContacts(
     context: AttackContext,
     attack: PendingAttackHit,

@@ -34,6 +34,9 @@ export interface WorldLocation extends WorldLocationDefinition {
     map: MapSummary
     surfaceLocationId?: string
     dungeonSize?: DungeonSize
+    dungeonId?: string
+    floor?: number
+    floorCount?: number
 }
 
 const locationNames = [

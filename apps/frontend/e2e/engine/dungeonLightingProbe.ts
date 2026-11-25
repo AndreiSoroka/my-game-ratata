@@ -47,6 +47,7 @@ export async function verifyDungeonLighting() {
         )
         lighting.sync([traveler], traveler.id)
         const torches = await capture(run, 16)
+        const opened = await captureOpening(run, lighting, visibility)
 
         engine.currentScene.camera.zoom = 3
         position = { x: 55, y: 48 }
@@ -83,10 +84,24 @@ export async function verifyDungeonLighting() {
             lantern: { feet: pixel(lantern, 52, 60), hiddenMarker: pixel(lantern, 104, 60) },
             moved: { feet: pixel(moved, 20, 28), old: pixel(moved, 52, 60) },
             torches: { visible: pixel(torches, 70, 48), hiddenMarker: pixel(torches, 104, 60) },
+            openedMarker: pixel(opened, 104, 60),
             portal: { lit: litPortal, expired: expiredPortal },
             surface: { ground: pixel(surface, 52, 60), marker: pixel(surface, 104, 60) },
         }
     } finally {
         await run.owner.cancel()
     }
+}
+
+async function captureOpening(
+    run: ReturnType<typeof mountEngine>,
+    lighting: SceneDungeonLighting,
+    visibility: MapVisibility
+) {
+    const opening = 3 * visibility.width + 5
+    visibility.solid[opening] = false
+    lighting.refreshOcclusion()
+    const opened = await capture(run, 16)
+    visibility.solid[opening] = true
+    return opened
 }

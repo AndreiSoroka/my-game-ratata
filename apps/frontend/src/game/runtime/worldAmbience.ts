@@ -2,6 +2,7 @@ import type { Vector2, WorldSnapshot } from '@my-game-ratata/contracts'
 import { AudioContextFactory, type Engine, type SoundTrack } from 'excalibur'
 
 import { isAudioMuted } from './audioPreference'
+import { DungeonDraftAmbience } from './dungeonDraftAmbience'
 import { distanceInTiles } from './mapAmbientTerrain'
 import { type AmbienceMap, setAmbienceGain, TerrainAmbience } from './terrainAmbience'
 import { type LoadAmbienceSound, WorldAmbienceSounds } from './worldAmbienceSounds'
@@ -48,6 +49,7 @@ export class WorldAmbience {
     private readonly sounds: WorldAmbienceSounds
     private readonly ownsSounds: boolean
     private readonly terrain: TerrainAmbience
+    private readonly dungeonDraft: DungeonDraftAmbience
     private readonly now: () => number
     private readonly audioContext: NonNullable<WorldAmbienceOptions['audioContext']>
     private active = false
@@ -65,6 +67,7 @@ export class WorldAmbience {
         this.sounds = options.sounds ?? new WorldAmbienceSounds(options.loadSound)
         this.ownsSounds = options.sounds === undefined
         this.terrain = new TerrainAmbience(this.sounds, options.random ?? Math.random)
+        this.dungeonDraft = new DungeonDraftAmbience(this.sounds)
         this.now = options.now ?? (() => performance.now())
         this.audioContext = options.audioContext ?? (() => AudioContextFactory.create())
     }
@@ -94,6 +97,7 @@ export class WorldAmbience {
             !map ||
             snapshot.location?.id !== map.locationId ||
             !listener?.alive ||
+            !listener.connected ||
             listener.tags.includes('offline') ||
             document.hidden ||
             isAudioMuted()
@@ -115,6 +119,7 @@ export class WorldAmbience {
             return [{ id: portal.id, expiresAt: portal.expiresAt, distance }]
         })
         this.terrain.observe(snapshot, listener.position, map, now)
+        this.observeDungeonDraft(map, snapshot, now)
     }
 
     /** Invalidate observations and voices while keeping the applied map available for resume. */
@@ -123,6 +128,7 @@ export class WorldAmbience {
         this.stopPortal()
         this.failedPortalStart = undefined
         this.terrain.clear()
+        this.dungeonDraft.clear()
     }
 
     public dispose(): void {
@@ -147,7 +153,13 @@ export class WorldAmbience {
     }
 
     private readonly update = (): void => {
-        if (!this.terrain.hasWork && this.portals.length === 0 && !this.portalVoice) return
+        if (
+            !this.terrain.hasWork &&
+            !this.dungeonDraft.hasWork &&
+            this.portals.length === 0 &&
+            !this.portalVoice
+        )
+            return
         if (this.audioContext().state !== 'running') {
             this.clearPlayback()
             return
@@ -155,6 +167,14 @@ export class WorldAmbience {
         const now = this.now()
         this.updatePortal(now)
         this.terrain.update(now)
+        this.dungeonDraft.update(now)
+    }
+
+    private observeDungeonDraft(map: AmbienceMap, snapshot: WorldSnapshot, now: number): void {
+        if (!map.underground) return
+        this.dungeonDraft.observe(snapshot.dungeonDraft === true, now)
+        // Cache the clip before a short pass, once audio can play on this floor.
+        if (this.audioContext().state === 'running') this.sounds.request('wind')
     }
 
     private updatePortal(now: number): void {
@@ -209,6 +229,7 @@ export class WorldAmbience {
         this.stopPortal()
         this.failedPortalStart = undefined
         this.terrain.stopPlayback()
+        this.dungeonDraft.stopPlayback()
     }
 
     private stopPortal(): void {

@@ -52,10 +52,17 @@ export class SceneDungeonLighting {
         this.wallLights = lights.map((light) => ({
             ...light,
             strength: 0.98,
-            path: dungeonLightPath(visibility, light, light.radius),
         }))
+        this.refreshOcclusion()
         this.mask = new Canvas({ width: 1, height: 1, cache: true, draw: this.rasterize })
         this.engine.on('postdraw', this.draw)
+    }
+
+    public refreshOcclusion(): void {
+        if (!this.visibility) return
+        for (const light of this.wallLights)
+            light.path = dungeonLightPath(this.visibility, light, light.radius)
+        this.signature = undefined
     }
 
     public sync(characters: readonly CharacterSnapshot[], playerId: string | undefined): void {

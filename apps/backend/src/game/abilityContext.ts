@@ -9,6 +9,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import type { DungeonSecrets } from './dungeonSecrets'
 import type { GraveCombatContext } from './graveRules'
 import type { MagicCombat } from './magicCombat'
 import type { NavigationService } from './navigation'
@@ -27,6 +28,7 @@ export interface AbilityContext {
           ) => GameEventPayload[])
         | undefined
     graves?: GraveCombatContext | undefined
+    secrets?: DungeonSecrets | undefined
     characters: readonly GameCharacter[]
     navigation: NavigationService
     now: number

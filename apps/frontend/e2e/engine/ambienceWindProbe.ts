@@ -41,6 +41,43 @@ export async function checkWind(probe: AmbienceProbe) {
     }
 }
 
+export async function checkDungeonDraft(probe: AmbienceProbe) {
+    const sound = probe.sounds.get('forest-wind.mp3')
+    if (!sound) throw new Error('Wind clip did not decode')
+    probe.setUnderground(true)
+    const before = probe.gains.size
+    const underground = { wooded: true, portal: false }
+    probe.observe(underground)
+    probe.advance(15_000)
+    const beforeWalking = probe.gains.size - before
+
+    probe.observe({ ...underground, dungeonDraft: true })
+    const track = sound.instances.find(({ isPlaying }) => isPlaying)
+    const gain = track && probe.gains.get(track)
+    if (!track || !gain) throw new Error('Dungeon draft did not start')
+    const attackGain = gain.value
+    await waitForEngine(probe.run, () => gain.value > 0.36)
+    const audibleGain = gain.value * sound.volume
+    probe.observe(underground)
+    await waitForEngine(probe.run, () => gain.value < 0.12)
+    const fadedGain = gain.value
+    probe.advance(399)
+    const heldDuringFade = track.isPlaying
+    probe.advance(1)
+
+    return {
+        beforeWalking,
+        started: probe.gains.size - before,
+        loop: track.loop,
+        pitch: track.pitch,
+        attackGain,
+        audibleGain,
+        fadedGain,
+        heldDuringFade,
+        stopped: track.isStopped,
+    }
+}
+
 function soundRms(buffer: AudioBuffer, from: number, to: number): number {
     const samples = buffer.getChannelData(0)
     const start = Math.round(buffer.sampleRate * from)

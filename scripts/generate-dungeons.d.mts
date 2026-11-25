@@ -5,6 +5,12 @@ export interface DungeonDefinition {
     surfaceLocationId: string
     dangerLevel: number
     towerVariant: number
+    floorCount: number
+}
+
+export interface DungeonFloorDefinition extends DungeonDefinition {
+    dungeonId: string
+    floor: number
 }
 
 export function generateDungeonRegion(
@@ -12,8 +18,12 @@ export function generateDungeonRegion(
     surfaceLocations: readonly { id: string; dangerLevel: number }[]
 ): DungeonDefinition[]
 
+export function generateDungeonFloors(
+    dungeon: DungeonDefinition
+): DungeonFloorDefinition[]
+
 export function generateDungeonMap(
-    definition: DungeonDefinition,
+    definition: DungeonDefinition | DungeonFloorDefinition,
     seed: string | number,
     regionName: string
 ): unknown

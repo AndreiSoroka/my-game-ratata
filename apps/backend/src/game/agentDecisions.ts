@@ -104,6 +104,7 @@ export interface CompanionWorld {
     ): GameCharacter | undefined
     getCharacter(id: string): GameCharacter | undefined
     navigationFor(character: GameCharacter): NavigationService
+    nextLocationToward?(from: string, to: string): string | undefined
     requestAttack(
         character: GameCharacter,
         now?: number,

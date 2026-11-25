@@ -9,7 +9,7 @@ import type { GameCharacter } from './character'
 import { portalReach } from './cityPortals'
 import { lastHeardCombatNoise } from './hearing'
 import { distance } from './math'
-import type { NavigationService } from './navigation'
+import type { NavigationService, TileCoordinate } from './navigation'
 import {
     insideTerritory,
     type ObservedExit,
@@ -17,20 +17,27 @@ import {
 } from './pursuitState'
 import { regionalExit } from './regionalNavigation'
 import type { GameRoom } from './room'
-import { nextLocationToward } from './worldPassages'
+import {
+    dungeonPassageApproach,
+    dungeonPassageTo,
+    outsideUnchosenPassages,
+} from './worldPassages'
 
 export function planPursuit(
     actor: GameCharacter,
     point: Vector2,
     state: PursuitState,
     navigation: NavigationService,
-    now: number
+    now: number,
+    canVisit?: (tile: TileCoordinate) => boolean
 ): void {
     if (actor.hasPath() && now - state.lastPlanAt < PURSUIT_RULES.replanMs) {
         return
     }
     state.lastPlanAt = now
-    actor.setPath(navigation.findPathWorld(actor.position, point))
+    actor.setPath(
+        navigation.findPathWorld(actor.position, point, false, canVisit)
+    )
 }
 
 export function investigateCombatNoise(
@@ -187,10 +194,9 @@ export function approachRegionalHome(
     room: GameRoom,
     now: number
 ): void {
-    const next = nextLocationToward(
+    const next = room.nextLocationToward(
         actor.locationId,
-        state.home.locationId,
-        (locationId) => room.navigationFor({ locationId }).grid.dungeonPassage
+        state.home.locationId
     )
     if (
         next === undefined ||
@@ -199,9 +205,16 @@ export function approachRegionalHome(
         return
     }
     const navigation = room.navigationFor(actor)
-    const passage = navigation.grid.dungeonPassage
-    if (passage?.destinationLocationId === next) {
-        planPursuit(actor, passage.position, state, navigation, now)
+    const passage = dungeonPassageTo(navigation, next)
+    if (passage !== undefined) {
+        planPursuit(
+            actor,
+            dungeonPassageApproach(actor.position, passage),
+            state,
+            navigation,
+            now,
+            (tile) => outsideUnchosenPassages(navigation, tile, passage)
+        )
         return
     }
     const exit = regionalExit(

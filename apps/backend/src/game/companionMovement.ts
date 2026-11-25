@@ -49,14 +49,7 @@ export function advanceCompanionIntent(
         return []
     }
     if (leader !== undefined && needsCrossing(character, leader, state)) {
-        advanceCompanionTravel(
-            character,
-            leader.locationId,
-            state,
-            world,
-            now,
-            world.navigationFor(leader).grid.dungeonPassage
-        )
+        advanceCompanionTravel(character, leader.locationId, state, world, now)
         return []
     }
     const target = state.profile.canFight

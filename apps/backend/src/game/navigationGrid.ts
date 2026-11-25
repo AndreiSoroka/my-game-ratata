@@ -31,6 +31,7 @@ interface TiledLayer {
 export interface TiledMap {
     height: number
     layers: TiledLayer[]
+    properties?: TiledProperty[]
     tileheight: number
     tilewidth: number
     width: number

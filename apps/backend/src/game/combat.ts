@@ -13,19 +13,22 @@ import type { PendingAttackHit } from './characterState'
 import {
     arrowAttackGeometry,
     arrowPhaseEvent,
-    arrowReleaseEvents,
     canAimSniperAt,
 } from './combatArchery'
-import { resolveContactBatch, usesAttackWeapon } from './combatContacts'
+import { resolveContactBatch } from './combatContacts'
 import {
     buildAttackZones,
     isInAttackGeometry,
     isInZones,
 } from './combatGeometry'
 import { sparkPhaseEvent } from './combatInterruption'
+import { releaseAttackProjectiles } from './combatProjectileRelease'
+import { pendingWallContact } from './combatSecretWalls'
 import { canAttackCharacter } from './combatTargets'
+import type { DungeonSecrets } from './dungeonSecrets'
 import { findGraveHit, legalGraveTarget } from './graveCombat'
 import type { GraveCombatContext } from './graveRules'
+import { usesAttackWeapon } from './itemDurability'
 import { activeMagicChannel, magicAttackWindingUp } from './magicState'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
@@ -36,6 +39,7 @@ export interface AttackContext {
     actor: GameCharacter
     target?: WorldCombatTarget | undefined
     graves?: GraveCombatContext | undefined
+    secrets?: DungeonSecrets | undefined
     now: number
     respawnDelayMsFor: (target: GameCharacter) => number
     targets: readonly GameCharacter[]
@@ -64,12 +68,16 @@ export function resolvePendingAttackHit(
     if (graves.length > 0 && !area) {
         targets.length = 0
     }
-    const release = releaseEvents(context, attack, targets[0] ?? graves[0])
-    if (targets.length === 0 && graves.length === 0) {
-        return [...release, missedAttack(actor, attack)]
-    }
-    const contacts = resolveContactBatch(context, attack, targets, graves)
-    return [...release, ...contacts]
+    const contact = targets[0] ?? graves[0]
+    const wallId = pendingWallContact(context, attack, geometry, contact, area)
+    const release = releaseAttackProjectiles(context, attack, contact)
+    const contacts =
+        contact === undefined && wallId === undefined
+            ? []
+            : resolveContactBatch(context, attack, targets, graves, { wallId })
+    return contact === undefined && contacts.length === 0
+        ? [...release, missedAttack(actor, attack)]
+        : [...release, ...contacts]
 }
 function interruptedAttack(
     actor: GameCharacter,
@@ -81,28 +89,6 @@ function interruptedAttack(
     return attack.arrow !== undefined
         ? [arrowPhaseEvent(actor, attack, 'interrupted')]
         : []
-}
-function releaseEvents(
-    context: AttackContext,
-    attack: PendingAttackHit,
-    contact: { position: Vector2 } | undefined
-): GameEventPayload[] {
-    return attack.sparkPath === undefined
-        ? arrowReleaseEvents(context, attack, contact)
-        : [releaseSpark(context, attack, attack.sparkPath, contact?.position)]
-}
-function releaseSpark(
-    { actor, navigation }: AttackContext,
-    attack: PendingAttackHit,
-    path: NonNullable<PendingAttackHit['sparkPath']>,
-    contact: Vector2 | undefined
-): GameEventPayload {
-    const aim = contact ?? path.endpoint
-    const endpoint = navigation?.visibleLineEndpoint(path.origin, aim) ?? aim
-    return {
-        ...sparkPhaseEvent(actor, attack, 'completed'),
-        projectile: { ...path, endpoint: { ...endpoint } },
-    }
 }
 function isAreaAttack(attack: PendingAttackHit): boolean {
     return (

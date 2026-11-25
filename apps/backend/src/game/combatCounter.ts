@@ -89,7 +89,9 @@ export function resolveCounterAttack(
             actor.position,
             { sourceActorId: actor.id }
         ),
-        ...resolveContactBatch(context, attack, [target], [], false),
+        ...resolveContactBatch(context, attack, [target], [], {
+            allowCounters: false,
+        }),
     ]
 }
 function counterActorReady(

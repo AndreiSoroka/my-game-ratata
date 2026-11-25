@@ -1,5 +1,6 @@
 import type {
     AuthoredContainerDefinition,
+    DungeonRevealCell,
     GroundSurface,
     MapSummary,
     TrainingMapData,
@@ -16,6 +17,7 @@ import { clamp } from './math'
 import { type NavigationDoor, NavigationDoors } from './navigationDoors'
 export { loadNavigationService } from './navigationLoader'
 import {
+    cellsInBounds,
     isSolidTile,
     passesSpeech,
     visibleLineFraction,
@@ -38,10 +40,10 @@ export interface MapGrid {
     containers?: AuthoredContainerDefinition[]
     doors?: AuthoredDoor[]
     encounters?: AuthoredEncounters
-    dungeonPassage?: DungeonPassage
+    dungeonPassages?: readonly DungeonPassage[]
     dungeonSkeletons?: readonly Vector2[]
     training?: TrainingMapData
-    /** Immutable terrain/walls, excluding authored harvestable obstacles. */
+    /** Terrain and walls, excluding authored harvestable obstacles. */
     baseSolid?: boolean[]
     speechTransparent?: ReadonlySet<number>
     /** Authored safe soil: independent of footstep sound and atlas tiles. */
@@ -100,6 +102,23 @@ export class NavigationService {
         this.grid.solid = this.doors.withCollision(solid)
     }
 
+    public applyDungeonReveal(cells: readonly DungeonRevealCell[]): void {
+        for (const { index, solid, surfaceGid } of cells) {
+            if (this.resourceBase !== undefined) {
+                this.resourceBase[index] = solid
+            }
+            if (this.grid.baseSolid !== undefined) {
+                this.grid.baseSolid[index] = solid
+            }
+            this.solidsWithoutDoors[index] =
+                solid || this.resourceObstacleCells.has(index)
+            if (this.grid.surfaces !== undefined) {
+                this.grid.surfaces[index] = surfaceGid === 0 ? 'grass' : 'stone'
+            }
+        }
+        this.grid.solid = this.doors.withCollision(this.solidsWithoutDoors)
+    }
+
     public door(id: string): Readonly<NavigationDoor> | undefined {
         return this.doors.get(id)
     }
@@ -117,24 +136,7 @@ export class NavigationService {
     }
 
     public cellsInBounds(bounds: WorldObjectBounds): number[] {
-        const cells: number[] = []
-        const { tileWidth, tileHeight, width, height } = this.grid
-        for (
-            let y = Math.floor(bounds.y / tileHeight);
-            y < Math.ceil((bounds.y + bounds.height) / tileHeight);
-            y++
-        ) {
-            for (
-                let x = Math.floor(bounds.x / tileWidth);
-                x < Math.ceil((bounds.x + bounds.width) / tileWidth);
-                x++
-            ) {
-                if (x >= 0 && y >= 0 && x < width && y < height) {
-                    cells.push(y * width + x)
-                }
-            }
-        }
-        return cells
+        return cellsInBounds(this.grid, bounds)
     }
 
     public worldToTile(point: Vector2): TileCoordinate {

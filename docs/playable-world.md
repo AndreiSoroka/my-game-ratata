@@ -85,13 +85,21 @@ remain in their windows. Gold and item condition are shown in the inventory.
 
 ## Dungeons
 
-Walk through a stone tower's open doorway to descend. The stone arch in the
-north wall of the entrance room leads back to that tower. Each world seed
-places at least one small crypt and one large dungeon, with up to two medium
-dungeons. Rooms use connected corridors and range from 3×3 to 30×30 tiles.
+Walk through a stone tower's open doorway to reach the first floor. The stone
+arch leads back to that tower. Walk onto the stone stairs to move between floors.
+Each dungeon has one to five floors, with a separate room count and layout on
+each floor. Each world seed places at least one small crypt and one large dungeon,
+with up to two medium dungeons. Rooms range from 3×3 to 30×30 tiles and connect
+via corridors.
 
-A few trained skeletons patrol the rooms. A defeated dungeon skeleton stays
-dead for that world session. General merchants in Novogorod sell torches for 3
+Some floors hide extra rooms behind ordinary-looking masonry. Listen for a
+quiet draft as you walk nearby or stand right against the wall. Melee strikes,
+arrows and damaging spells can open a passage. A secret room may hide another
+wall. Two skeletons guard a shared chest in the last room. Opened passages,
+remaining loot and defeated dungeon skeletons persist for the world session,
+including when you leave a floor or refresh the browser.
+
+General merchants in Novogorod sell torches for 3
 gold and lanterns for 10. Equip one in the inventory's Light slot. Torches
 illuminate four tiles and lanterns six. Wall torches light pockets of the dungeon,
 and the exit arch and floor immediately underfoot are faintly visible in the dark.

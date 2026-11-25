@@ -102,5 +102,6 @@ export function createRoomParties(
         },
         workers: createWorkerGuildGateway(room.workerRequests, () => room),
         canContact: (actor, npc) => canContactGuild(actor, npc, room),
+        scoutingLocationId: room.scoutingLocationId,
     })
 }

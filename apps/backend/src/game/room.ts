@@ -190,6 +190,12 @@ export class GameRoom {
     public readonly hasLocation = (locationId: string): boolean =>
         this.world.locations.has(locationId)
 
+    public readonly nextLocationToward = (from: string, to: string) =>
+        this.world.nextLocationToward(from, to)
+
+    public readonly scoutingLocationId = (locationId: string) =>
+        this.world.scoutingLocationId(locationId)
+
     public readonly worldMapAsset = (epoch: string, locationId: string) =>
         this.world.mapAsset(epoch, locationId)
 

@@ -17,7 +17,7 @@ import {
     characterFixture,
     worldFixture,
 } from '../../src/game/testing/characterFixture'
-import { checkWind } from './ambienceWindProbe'
+import { checkDungeonDraft, checkWind } from './ambienceWindProbe'
 import { mountEngine, startEngine, stepUntil, waitForEngine } from './engineSupport'
 
 const listenerId = 'listener'
@@ -42,12 +42,14 @@ export async function verifyAmbience(context: AudioContext) {
         const portal = await checkPortal(probe)
         const forest = await checkForest(probe)
         const wind = await checkWind(probe)
+        const draft = await checkDungeonDraft(probe)
         return {
             startedWhileMuted,
             startedWithoutFreshSnapshot,
             portal,
             forest,
             wind,
+            draft,
             decoded: [...probe.sounds.keys()].sort(),
         }
     } finally {
@@ -64,6 +66,8 @@ export async function verifyForcedSilentAmbience(context: AudioContext) {
         setAudioMuted(false)
         probe.observe({ wooded: true })
         probe.advance(40_000)
+        probe.setUnderground(true)
+        probe.observe({ portal: false, dungeonDraft: true })
         return { requests: probe.loadRequests, tracks: probe.gains.size }
     } finally {
         probe.releasePortal.resolve()
@@ -145,6 +149,10 @@ function createProbe(context: AudioContext) {
         },
         async start() {
             await startEngine(run)
+            this.setUnderground(false)
+            audio.startWorldAmbience()
+        },
+        setUnderground(underground: boolean) {
             audio.setMap(
                 {
                     footsteps: {
@@ -155,10 +163,10 @@ function createProbe(context: AudioContext) {
                         surfaces: [],
                     },
                     buildings: [],
+                    ...(underground ? { dungeonLights: [] } : {}),
                 },
                 locationId
             )
-            audio.startWorldAmbience()
         },
         advance,
         setCueRandom(value: number) {
@@ -241,6 +249,7 @@ interface SnapshotOptions {
     portal?: boolean
     secondPortal?: boolean
     expiresIn?: number
+    dungeonDraft?: boolean
 }
 
 function snapshot(
@@ -251,6 +260,7 @@ function snapshot(
         portal = true,
         secondPortal = false,
         expiresIn = 60_000,
+        dungeonDraft = false,
     }: SnapshotOptions = {}
 ): WorldSnapshot {
     const definition = getWorldLocationDefinition(locationId)
@@ -291,6 +301,7 @@ function snapshot(
         ...world,
         location,
         adventure,
+        dungeonDraft,
         portals: portal
             ? (secondPortal ? [32, 160] : [32]).map((portalX) => ({
                   id: `portal-${portalX}`,

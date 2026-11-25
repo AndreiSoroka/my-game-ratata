@@ -53,14 +53,23 @@ it('walks from the neighboring region to a side of the authored inn', () => {
     expect(actor.position.x).not.toBe(tavern.entry.x)
 })
 
-it('steps out of a dungeon trigger and re-enters it using the ordinary stairs', () => {
+it.each([
+    ['dungeon-small', ['dungeon-small']],
+    [
+        'dungeon-small-floor-3',
+        ['dungeon-small-floor-3', 'dungeon-small-floor-2', 'dungeon-small'],
+    ],
+])('returns an Echo from the occupied upward trigger in %s', (from, floors) => {
     const world = generatedWorld()
-    const from = 'dungeon-small'
-    const stairs = world.get(from).navigation.grid.dungeonPassage
+    const stairs = world
+        .get(from)
+        .navigation.grid.dungeonPassages?.find(
+            ({ direction }) => direction === 'up'
+        )
     assert(stairs !== undefined)
     const actor = echo('underground', stairs.position, from)
 
-    expect(runHome(actor, world)).toEqual([from, CENTER_LOCATION_ID])
+    expect(runHome(actor, world)).toEqual([...floors, CENTER_LOCATION_ID])
     expect(actor.hasPath()).toBe(false)
 })
 
@@ -76,13 +85,17 @@ it('takes the road around a tower trigger when returning across a surface map', 
         tileHeight: 16,
         solidLayerNames: [],
         solid: Array<boolean>(14 * 9).fill(false),
-        dungeonPassage: {
-            id: 'surface-stairs',
-            destinationLocationId: 'dungeon-small',
-            position: passage,
-            arrival: { x: 104, y: 88 },
-            triggerRadius: 7,
-        },
+        dungeonPassages: [
+            {
+                id: 'surface-stairs',
+                destinationPassageId: 'crypt-up',
+                direction: 'down',
+                destinationLocationId: 'dungeon-small',
+                position: passage,
+                arrival: { x: 104, y: 88 },
+                triggerRadius: 7,
+            },
+        ],
     })
     const east = { x: 216, y: 72 }
     expect(navigation.findPathWorld(actor.position, east)).toContainEqual(
@@ -189,7 +202,7 @@ function echo(
 }
 
 function generatedWorld(): WorldLocations {
-    const maps = new WorldMaps({ seed: 'dungeon-9' })
+    const maps = new WorldMaps({ seed: 'dungeon-832' })
     return new WorldLocations(
         maps.navigation(CENTER_LOCATION_ID),
         undefined,

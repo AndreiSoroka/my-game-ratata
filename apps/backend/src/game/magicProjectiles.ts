@@ -12,6 +12,7 @@ import { resolveCharacterDamage } from './abilityDamage'
 import { resolveAshExhaustionImpact } from './ashExhaustionImpact'
 import type { GameCharacter } from './character'
 import { availableToAttack } from './combat'
+import { damageWallInArea } from './combatSecretWalls'
 import { recordRunicContact } from './constellations'
 import { damageGrave } from './graveCombat'
 import {
@@ -150,6 +151,9 @@ function explode(
     if (firstHostile !== undefined) {
         contacts.push(...rewardSpell(projectile, firstHostile, now))
     }
+    contacts.push(
+        ...damageWallInArea(context, projectile.actor, position, radius, amount)
+    )
     return {
         events: contacts,
         effect: impactEffect(projectile, now),
