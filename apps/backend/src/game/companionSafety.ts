@@ -2,10 +2,8 @@ import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
-import {
-    advanceCompanionTravel,
-    type CompanionRuntime,
-} from './companionMovement'
+import type { CompanionRuntime } from './companionMovement'
+import { advanceCompanionTravel } from './companionNavigation'
 import { availableLeader, release } from './companionState'
 import { distance } from './math'
 import type { GameRoom } from './room'

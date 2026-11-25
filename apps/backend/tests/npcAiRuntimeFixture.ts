@@ -35,6 +35,7 @@ export function npcReply(
 export function npcRuntimeFixture(
     decide: NpcAiProvider['decide'],
     limits: {
+        actorId?: string
         maxDecisionsPerTask?: number
         maxCallsPerMinute?: number
         maxCallsPer10Minutes?: number
@@ -43,6 +44,7 @@ export function npcRuntimeFixture(
         includeMira?: boolean
     } = {}
 ) {
+    const actorId = limits.actorId ?? kaplyaId
     const lines: string[] = []
     const diagnostics = new NpcAiDiagnostics({
         sink: (line) => {
@@ -63,7 +65,7 @@ export function npcRuntimeFixture(
                 reviewIntervalMs: 60_000,
             },
             npcs: [
-                { actorId: kaplyaId, role: 'companion' },
+                { actorId, role: 'companion' },
                 ...(limits.includeMira === true
                     ? [{ actorId: miraId, role: 'city_coordinator' }]
                     : []),
@@ -76,9 +78,9 @@ export function npcRuntimeFixture(
     })
     room.start()
     const alice = joinScenarioRoom(room, 'AI runtime Alice')
-    const actor = room.getCharacter(kaplyaId)
+    const actor = room.getCharacter(actorId)
     if (actor === undefined) {
-        throw new Error('Missing Kaplya fixture')
+        throw new Error(`Missing NPC fixture ${actorId}`)
     }
     // Arrange initial contact at the first reachable tile of the ordinary approach.
     // Each test still submits its conversation, follow, guide or travel commands through the socket.
@@ -91,7 +93,7 @@ export function npcRuntimeFixture(
                 navigation.hasLineOfSight(point, actor.position)
         )
     if (contact === undefined) {
-        throw new Error('Kaplya fixture has no reachable conversation point')
+        throw new Error(`${actorId} has no reachable conversation point`)
     }
     alice.actor.position = { ...contact }
     return {
@@ -104,7 +106,7 @@ export function npcRuntimeFixture(
             alice.send({
                 type: 'companion_request',
                 request: 'talk',
-                targetId: kaplyaId,
+                targetId: actorId,
                 text,
             })
         },
