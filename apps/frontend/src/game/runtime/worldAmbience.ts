@@ -77,10 +77,6 @@ export class WorldAmbience {
         document.addEventListener('keydown', this.resumeOnGesture, true)
     }
 
-    public get inWoodland(): boolean {
-        return this.terrain.inWoodland
-    }
-
     public setMap(locationId: string, map: AmbienceMap): void {
         this.clear()
         this.map = { ...map, locationId }

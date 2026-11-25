@@ -54,10 +54,6 @@ export class TerrainAmbience {
         )
     }
 
-    public get inWoodland(): boolean {
-        return this.woodland
-    }
-
     public observe(
         snapshot: WorldSnapshot,
         listener: Vector2,

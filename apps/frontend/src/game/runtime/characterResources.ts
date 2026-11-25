@@ -8,7 +8,7 @@ import {
 } from '../assets/characterCatalog'
 import { itemAssetCatalog } from '../assets/itemCatalog'
 import { prayerAreaSources } from '../assets/prayerAreaAssets'
-import { type GameSoundId, gameSoundIds, musicCatalog, soundCatalog } from '../assets/soundCatalog'
+import { type GameSoundId, gameSoundIds, soundCatalog } from '../assets/soundCatalog'
 import type { BellImages } from './bellViews'
 import { EngineAssetLoader } from './engineRun'
 import type { PrayerAreaImages } from './prayerAreaViews'
@@ -20,9 +20,6 @@ export interface CharacterResources {
     fireImage: ImageSource
     itemImages: Map<ItemId, ImageSource>
     loader: DefaultLoader
-    music: {
-        adventureBegins: Sound
-    }
     prayerAreaImages: PrayerAreaImages
     sheets: Map<CharacterId, SpriteSheet>
     sounds: Map<GameSoundId, Sound>
@@ -47,9 +44,6 @@ export function createCharacterResources(): CharacterResources {
             (_, index) =>
                 new ImageSource(`/game/assets/world/memory-bell/swing-${String(index)}.png`)
         ),
-    }
-    const music = {
-        adventureBegins: createMusic(),
     }
     const prayerAreaImages = new Map(
         prayerActionIds.map((id) => [
@@ -92,10 +86,8 @@ export function createCharacterResources(): CharacterResources {
                 ...bellImages.swing,
                 ...prayerAreaImages.values(),
                 ...sounds.values(),
-                music.adventureBegins,
             ],
         }),
-        music,
         prayerAreaImages,
         sheets,
         sounds,
@@ -112,12 +104,4 @@ function createSheet(definition: CharacterDefinition, image: ImageSource): Sprit
         },
         image,
     })
-}
-
-function createMusic(): Sound {
-    const music = new Sound(musicCatalog.adventureBegins.src)
-    music.loop = musicCatalog.adventureBegins.loop
-    music.volume = musicCatalog.adventureBegins.volume
-
-    return music
 }

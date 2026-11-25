@@ -126,7 +126,7 @@ function createProbe(context: AudioContext) {
             return sound
         },
     })
-    const audio = new GameAudio(new Map(), new Sound(), ambience)
+    const audio = new GameAudio(new Map(), undefined, ambience)
     run.owner.addCleanup(() => audio.stop())
 
     function advance(ms = 0): void {

@@ -281,21 +281,28 @@ test('plays Spark, Ash curse, prayer and death cues and the shoreline loop', asy
     })
 })
 
-test('crossfades the real forest battle soundtrack and keeps its position through a retreat', async ({
+test('crossfades the battle soundtrack as enemies approach and uses location exploration themes', async ({
     page,
 }) => {
     const result = await page.evaluate(() => window.engineHarness.battleMusic())
     expect(result).toMatchObject({
-        beforeFight: 1,
+        cityLoop: true,
+        leftCity: true,
+        silentAfterLateDecode: true,
+        keptExplorationTrack: true,
+        beforeEnemy: 1,
         whileLoading: 1,
-        duringFight: { pausedDefault: true, loop: true },
+        nearEnemy: { pausedExploration: true, loop: true },
         returnedBeforeFade: true,
         heldAfterDeath: true,
         reusedBattle: true,
-        afterFight: { battleStopped: true, resumedDefault: true, defaultGain: 1 },
-        noRestartFromSight: true,
+        afterRetreat: { battleStopped: true, resumedExploration: true, explorationGain: 1 },
+        restartedFromProximity: true,
         tracksBeforeMute: 2,
         tracksAfterMute: 0,
+        dungeonWithEnemy: { exploration: 0, battle: 1 },
+        dungeonAfterRetreat: 0,
+        cityAfterDungeon: { city: 1, battle: 0 },
     })
     for (const gain of [...result.fadeIn, ...result.fadingOut]) {
         expect(gain).toBeGreaterThan(0)
@@ -303,7 +310,8 @@ test('crossfades the real forest battle soundtrack and keeps its position throug
     }
     expect(result.reversed[0]).toBeLessThan(result.fadingOut[0])
     expect(result.reversed[1]).toBeGreaterThan(result.fadingOut[1])
-    expect(result.duration).toBeCloseTo(177.76, 0)
+    expect(result.battleDuration).toBeCloseTo(177.76, 0)
+    expect(result.explorationDuration).toBeCloseTo(178.23, 0)
 })
 
 test('resumes a suspended audio context from a trusted gesture and plays the latest portal', async ({

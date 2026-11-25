@@ -1,5 +1,7 @@
-import { AudioContextFactory, type Sound, type SoundTrack } from 'excalibur'
+import { AudioContextFactory, type SoundTrack } from 'excalibur'
 
+import type { MusicProfile } from '../assets/musicProfiles'
+import { musicCatalog, type MusicId } from '../assets/soundCatalog'
 import { isAudioMuted } from './audioPreference'
 import type { WorldAmbienceSounds } from './worldAmbienceSounds'
 
@@ -14,38 +16,51 @@ export class GameMusic {
     private suspended = false
     private disposed = false
     private inBattle = false
+    private profile: MusicProfile = { exploration: null, battle: null }
     private explorationTrack: SoundTrack | undefined
     private battleTrack: SoundTrack | undefined
+    private explorationStartFailed = false
     private battleStartFailed = false
     private mix = 0
     private settledForMs = 0
 
     public constructor(
-        private readonly explorationSound: Sound,
-        private readonly battleBank?: Pick<WorldAmbienceSounds, 'request' | 'isReady' | 'play'>,
+        private readonly bank?: Pick<WorldAmbienceSounds, 'request' | 'isReady' | 'play'>,
         private readonly audioRunning = () => AudioContextFactory.create().state === 'running'
     ) {}
-
-    public get hasBattleTrack(): boolean {
-        return this.battleTrack !== undefined && !this.battleTrack.isStopped
-    }
 
     public start(): void {
         this.requested = true
         this.resume()
     }
 
-    public prepareBattle(): void {
-        if (this.disposed || document.hidden || isAudioMuted()) return
-        this.battleBank?.request('forestBattle')
+    public setProfile(profile: MusicProfile): void {
+        if (
+            this.disposed ||
+            (this.profile.exploration === profile.exploration &&
+                this.profile.battle === profile.battle)
+        )
+            return
+        if (this.profile.exploration !== profile.exploration) {
+            this.stopExplorationTrack()
+            this.explorationStartFailed = false
+        }
+        this.profile = profile
+        this.prepareMusic()
+        this.resetBattle()
     }
 
     public setBattle(active: boolean): void {
-        if (this.disposed || active === this.inBattle) return
+        if (
+            this.disposed ||
+            active === this.inBattle ||
+            this.profile.exploration === this.profile.battle
+        )
+            return
         this.inBattle = active
+        this.explorationStartFailed = false
         this.battleStartFailed = false
         this.settledForMs = 0
-        if (active) this.prepareBattle()
         this.syncPlayback()
     }
 
@@ -60,10 +75,15 @@ export class GameMusic {
     }
 
     public update(elapsedMs: number): void {
-        if (!this.canPlay() || (!this.inBattle && !this.battleTrack)) return
+        if (!this.canPlay()) return
         this.syncPlayback()
-        if (!this.battleTrack) return
-        if (this.inBattle && (!this.battleTrack.isPlaying || !this.audioRunning())) return
+        if (!this.inBattle && !this.battleTrack && this.mix === 0) return
+        if (
+            this.inBattle &&
+            this.profile.battle !== null &&
+            (!this.battleTrack?.isPlaying || !this.audioRunning())
+        )
+            return
         this.advanceMix(Math.max(0, elapsedMs))
     }
 
@@ -75,14 +95,16 @@ export class GameMusic {
 
     public resume(): void {
         this.suspended = false
+        this.explorationStartFailed = false
+        this.battleStartFailed = false
+        this.prepareMusic()
         this.syncPlayback()
     }
 
     public stop(): void {
         if (this.disposed) return
         this.suspended = true
-        this.explorationTrack?.stop()
-        this.explorationTrack = undefined
+        this.stopExplorationTrack()
         this.resetBattle()
     }
 
@@ -101,6 +123,13 @@ export class GameMusic {
         )
     }
 
+    private prepareMusic(): void {
+        if (!this.canPlay()) return
+        const { exploration, battle } = this.profile
+        if (exploration !== null) this.bank?.request(exploration)
+        if (battle !== null && battle !== exploration) this.bank?.request(battle)
+    }
+
     private syncPlayback(): void {
         if (!this.canPlay()) return
         if (this.battleTrack?.isStopped) {
@@ -109,35 +138,49 @@ export class GameMusic {
             this.setMix(0)
         }
         if (this.inBattle || this.battleTrack) this.playBattle()
-        if (this.mix < 1 || !this.inBattle || !this.battleTrack?.isPlaying) this.playExploration()
+        if (this.mix < 1 || !this.inBattle) this.playExploration()
     }
 
     private playBattle(): void {
-        if (this.battleTrack?.isPlaying || this.battleStartFailed) return
-        const bank = this.battleBank
-        if (!bank?.isReady('forestBattle')) return
-
-        try {
-            if (!this.audioRunning()) return
-            if (this.battleTrack?.isPaused) void this.battleTrack.play().catch(() => {})
-            else this.battleTrack = bank.play('forestBattle', { loop: true, volume: 0 })
-        } catch {
-            // Playback failures leave exploration available.
-        }
-
+        const id = this.profile.battle
+        if (this.battleStartFailed || !this.canStartTrack(id, this.battleTrack)) return
+        this.battleTrack = this.playTrack(id, this.battleTrack, equalPowerGain(this.mix))
         this.battleStartFailed = !this.battleTrack?.isPlaying
     }
 
     private playExploration(): void {
-        if (this.explorationTrack?.isPlaying) return
+        const id = this.profile.exploration
+        if (this.explorationStartFailed || !this.canStartTrack(id, this.explorationTrack)) return
+        this.explorationTrack = this.playTrack(
+            id,
+            this.explorationTrack,
+            equalPowerGain(1 - this.mix)
+        )
+        this.explorationStartFailed = !this.explorationTrack?.isPlaying
+    }
+
+    private canStartTrack(id: MusicId | null, track: SoundTrack | undefined): id is MusicId {
+        return (
+            id !== null &&
+            !track?.isPlaying &&
+            this.bank?.isReady(id) === true &&
+            this.audioRunning()
+        )
+    }
+
+    private playTrack(
+        id: MusicId,
+        track: SoundTrack | undefined,
+        volume: number
+    ): SoundTrack | undefined {
         try {
-            if (this.explorationTrack?.isPaused) void this.explorationTrack.play().catch(() => {})
-            else
-                this.explorationTrack =
-                    this.explorationSound.start({ volume: equalPowerGain(1 - this.mix) }) ??
-                    undefined
+            if (track?.isPaused) {
+                void track.play().catch(() => {})
+                return track
+            }
+            return this.bank?.play(id, { loop: musicCatalog[id].loop, volume })
         } catch {
-            // Playback can be retried when the user enables audio or returns to the tab.
+            return track
         }
     }
 
@@ -165,6 +208,11 @@ export class GameMusic {
     private stopBattleTrack(): void {
         this.battleTrack?.stop()
         this.battleTrack = undefined
+    }
+
+    private stopExplorationTrack(): void {
+        this.explorationTrack?.stop()
+        this.explorationTrack = undefined
     }
 }
 

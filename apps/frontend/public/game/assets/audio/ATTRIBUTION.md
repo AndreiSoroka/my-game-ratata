@@ -16,8 +16,13 @@
 
 ## Kingslayer at the Clockwork Gate
 
-- Project-supplied audio file, used unchanged for forest combat.
+- Project-supplied audio file, used unchanged as the default combat theme.
 - Used file: `music/Kingslayer_at_the_Clockwork_Gate.mp3`.
+
+## Unseen Eyes in the Grove
+
+- Project-supplied audio file, used unchanged as the default exploration theme outside Novogorod and dungeons.
+- Used file: `music/Unseen_Eyes_in_the_Grove.mp3`.
 
 ## Kenney Interface Sounds
 

@@ -13,7 +13,7 @@ const assets = {
     sparkFlight: { src: `${root}/spark-flight.mp3`, volume: 0.24 },
     prayerWhisper: { src: `${root}/prayer-whisper.mp3`, volume: 0.096 },
     humanDeath: { src: `${root}/human-death.mp3`, volume: 0.22 },
-    forestBattle: musicCatalog.forestBattle,
+    ...musicCatalog,
 } as const
 
 export type AmbienceSoundId = keyof typeof assets

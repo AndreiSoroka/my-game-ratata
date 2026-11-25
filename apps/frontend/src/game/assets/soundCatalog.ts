@@ -99,12 +99,19 @@ export const musicCatalog = {
         src: `${musicRoot}/adventure-begins.ogg`,
         volume: 0.108,
     },
+    forestExploration: {
+        loop: true,
+        src: `${musicRoot}/Unseen_Eyes_in_the_Grove.mp3`,
+        volume: 0.044,
+    },
     forestBattle: {
         loop: true,
         src: `${musicRoot}/Kingslayer_at_the_Clockwork_Gate.mp3`,
         volume: 0.04,
     },
 } as const satisfies Record<string, MusicAssetDefinition>
+
+export type MusicId = keyof typeof musicCatalog
 
 function sfx(fileName: string, volume: number): SoundAssetDefinition {
     return {

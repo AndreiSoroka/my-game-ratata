@@ -56,7 +56,7 @@ export async function verifyCastAndWaterAudio(context: AudioContext) {
         audioRunning: () => context.state === 'running',
     })
     const deaths = new HumanDeathAudio(bank, () => context.state === 'running')
-    const audio = new GameAudio(new Map(), new Sound(), ambience, { casts, deaths })
+    const audio = new GameAudio(new Map(), undefined, ambience, { casts, deaths })
     const updateCasts = () => casts.update()
     run.engine.on('postupdate', updateCasts)
     run.owner.addCleanup(() => {

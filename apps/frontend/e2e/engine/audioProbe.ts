@@ -4,15 +4,16 @@ import {
     WORLD_SOUND_RADII,
     type WorldLocation,
 } from '@my-game-ratata/contracts'
-import { DefaultLoader, type Sound, type SoundTrack } from 'excalibur'
+import { DefaultLoader, Sound, type SoundTrack } from 'excalibur'
 
-import { type GameSoundId, soundCatalog } from '../../src/game/assets/soundCatalog'
+import { type GameSoundId, musicCatalog, soundCatalog } from '../../src/game/assets/soundCatalog'
 import { isAudioMuteForced, setAudioMuted } from '../../src/game/runtime/audioPreference'
 import { createCharacterResources } from '../../src/game/runtime/characterResources'
 import { FootstepAudio } from '../../src/game/runtime/footstepAudio'
 import { GameAudio } from '../../src/game/runtime/gameAudio'
+import { WorldAmbienceSounds } from '../../src/game/runtime/worldAmbienceSounds'
 import { characterFixture, worldFixture } from '../../src/game/testing/characterFixture'
-import { mountEngine, startEngine } from './engineSupport'
+import { mountEngine, startEngine, waitForEngine } from './engineSupport'
 
 const step = { actorId: 'walker', surface: 'grass', volume: 0.8, variant: 0, slime: false } as const
 const map = { footsteps: { width: 32, height: 32, tileWidth: 16, tileHeight: 16, surfaces: [] } }
@@ -39,7 +40,7 @@ export async function verifyAudio(context: AudioContext) {
     if (!menuOpen || !bookClose || !slotSelect || !equipment)
         throw new Error('Interface sample is missing')
     if (!chest || !bell || !knock) throw new Error('World sample is missing')
-    const music = resources.music.adventureBegins
+    const music = new Sound(musicCatalog.adventureBegins.src)
     const loader = new DefaultLoader({
         loadables: [sample, menuOpen, bookClose, slotSelect, equipment, chest, bell, knock, music],
     })
@@ -47,17 +48,26 @@ export async function verifyAudio(context: AudioContext) {
     loader.on('beforeload', () => {
         audioBeforeLoad = context.state
     })
-    const gameAudio = new GameAudio(resources.sounds, music)
+    const bank = new WorldAmbienceSounds((src, signal) => {
+        if (src === musicCatalog.adventureBegins.src) return Promise.resolve(music)
+        return Promise.reject(signal.reason ?? new Error(`Unexpected probe soundtrack ${src}`))
+    })
+    const gameAudio = new GameAudio(resources.sounds, bank)
+    run.owner.addCleanup(() => bank.dispose())
     run.owner.addCleanup(() => gameAudio.stop())
     try {
         await startEngine(run, loader)
         gameAudio.setMap(map, CENTER_LOCATION_ID)
         gameAudio.observeWorld(world, listener.id, () => false)
+        const worldSounds = checkWorldSounds(gameAudio, chest, bell, knock)
+        gameAudio.setMap(map, CENTER_LOCATION_ID)
+        gameAudio.observeWorld(world, listener.id, () => false)
+        gameAudio.playMusic()
+        await waitForEngine(run, () => bank.isReady('adventureBegins'))
         return {
             audioBeforeLoad,
             forcedMute: isAudioMuteForced(),
-            independentSounds:
-                sample !== other.sounds.get('stepGrass0') && music !== other.music.adventureBegins,
+            independentSounds: sample !== other.sounds.get('stepGrass0'),
             sampleVolume: sample.output.gain.value,
             catalogVolume: soundCatalog.stepGrass0.volume,
             musicVolume: music.output.gain.value,
@@ -70,7 +80,7 @@ export async function verifyAudio(context: AudioContext) {
                     world.serverTime
                 )
             ),
-            worldSounds: checkWorldSounds(gameAudio, chest, bell, knock),
+            worldSounds,
             footsteps: await checkFootsteps(sample),
             music: checkMusic(gameAudio, music),
         }

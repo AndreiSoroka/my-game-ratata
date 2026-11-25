@@ -8,9 +8,11 @@ import { BattleMusicState } from './battleMusicState'
 const forestId = worldLocationId(1, 1)
 const otherMap = worldLocationId(1, 0)
 const hero = characterFixture('hero')
-const wolf = characterFixture('wolf', { relationship: 'hostile' })
+const wolf = characterFixture('wolf', { position: { x: 112, y: 0 }, relationship: 'hostile' })
+const distantWolf = { ...wolf, position: { x: 112, y: 1 } }
 const slime = characterFixture('slime', { faction: 'monsters' })
 const attack = { kind: 'attack', actorId: hero.id, targetId: wolf.id } as const
+const visible = () => true
 
 function snapshot(serverTime: number, characters: CharacterSnapshot[], locationId = forestId) {
     return {
@@ -19,22 +21,21 @@ function snapshot(serverTime: number, characters: CharacterSnapshot[], locationI
     }
 }
 
-it('requires a new combat event in woodland and keeps playing after a short retreat', () => {
+it('starts at 112 pixels when the hostile appears and holds after a retreat', () => {
     let now = 0
     const battle = new BattleMusicState(() => now)
-    battle.observe(snapshot(100_000, [hero, wolf]), hero.id, false)
+    battle.observe(snapshot(100_000, [hero, distantWolf]), hero.id)
     now = 100
     battle.receive(attack, 100_100)
-    expect(battle.update(() => true)).toBe(false)
+    expect(battle.update(visible)).toBe(false)
 
     now = 200
-    battle.observe(snapshot(100_200, [hero, wolf]), hero.id, true)
-    expect(battle.update(() => true)).toBe(false)
-    battle.receive(attack, 100_200)
-    expect(battle.update()).toBe(true)
+    battle.observe(snapshot(100_200, [hero, wolf]), hero.id)
+    expect(battle.update(() => false)).toBe(false)
+    expect(battle.update(visible)).toBe(true)
 
     now = 300
-    battle.observe(snapshot(100_300, [hero, wolf]), hero.id, false)
+    battle.observe(snapshot(100_300, [hero, distantWolf]), hero.id)
     expect(battle.update()).toBe(true)
 
     now = 8199
@@ -43,7 +44,7 @@ it('requires a new combat event in woodland and keeps playing after a short retr
     expect(battle.update()).toBe(false)
 })
 
-it('uses a visible hostile who did not fight to extend the hold outside woodland', () => {
+it('lets only eligible nearby hostiles start or extend playback', () => {
     let now = 0
     const battle = new BattleMusicState(() => now)
     const friendly = characterFixture('friend', { faction: 'monsters', relationship: 'friendly' })
@@ -57,15 +58,15 @@ it('uses a visible hostile who did not fight to extend the hold outside woodland
         tags: ['state.retired'],
         relationship: 'hostile',
     })
-    battle.observe(snapshot(100_000, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 100_000)
+    const distant = { ...distantWolf, id: 'distant' }
+    const others = [friendly, training, dead, offline, retired, distant]
+    battle.observe(snapshot(100_000, [hero, ...others]), hero.id)
+    expect(battle.update(visible)).toBe(false)
+    battle.observe(snapshot(100_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
 
     now = 1500
-    battle.observe(
-        snapshot(101_500, [hero, friendly, training, dead, offline, retired, wolf, slime]),
-        hero.id,
-        false
-    )
+    battle.observe(snapshot(101_500, [hero, ...others, wolf, slime]), hero.id)
     const queried: string[] = []
     expect(
         battle.update((id) => {
@@ -87,75 +88,78 @@ it.each([
 ])('uses the snapshot timestamp for visibility at age $snapshotAge', ({ snapshotAge, holdEnd }) => {
     let now = 0
     const battle = new BattleMusicState(() => now)
-    battle.observe(snapshot(100_000, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 100_000)
+    battle.observe(snapshot(100_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
 
     now = 100
-    battle.observe(snapshot(100_100, [hero, wolf]), hero.id, true)
+    battle.observe(snapshot(100_100, [hero, wolf]), hero.id)
     now += snapshotAge
-    expect(battle.update(() => true)).toBe(true)
+    expect(battle.update(visible)).toBe(true)
 
     now = holdEnd - 1
-    expect(battle.update(() => true)).toBe(true)
+    expect(battle.update(visible)).toBe(true)
     now = holdEnd
-    expect(battle.update(() => true)).toBe(false)
+    expect(battle.update(visible)).toBe(false)
 })
 
-it('reverses for a newly visible hostile during fade and requires new combat once the track ends', () => {
+it('requires a fresh snapshot to start', () => {
     let now = 0
     const battle = new BattleMusicState(() => now)
-    battle.observe(snapshot(100_000, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 100_000)
+    battle.observe(snapshot(100_000, [hero, wolf]), hero.id)
+    now = 1001
+    expect(battle.update(visible)).toBe(false)
+    battle.observe(snapshot(101_001, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
+})
+
+it('restarts from proximity after the hold expires and ignores renewed combat during the fade', () => {
+    let now = 0
+    const battle = new BattleMusicState(() => now)
+    battle.observe(snapshot(100_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
 
     now = 8000
-    expect(battle.update(undefined, true)).toBe(false)
+    expect(battle.update()).toBe(false)
     now = 8100
-    battle.observe(snapshot(108_100, [hero, slime]), hero.id, false)
-    expect(battle.update((id) => id === slime.id, true)).toBe(true)
+    battle.receive(attack, 108_100)
+    expect(battle.update()).toBe(false)
+    battle.observe(snapshot(108_100, [hero, slime]), hero.id)
+    expect(battle.update((id) => id === slime.id)).toBe(true)
     now = 16100
-    expect(battle.update(undefined, true)).toBe(false)
+    expect(battle.update()).toBe(false)
 
-    now = 16200
-    battle.observe(snapshot(116_200, [hero, wolf, slime]), hero.id, false)
-    battle.receive(attack, 116_200)
-    expect(battle.update(() => true)).toBe(false)
-
-    now = 16300
-    battle.observe(snapshot(116_300, [hero, wolf, slime]), hero.id, true)
-    expect(battle.update(() => true)).toBe(false)
-    battle.receive(attack, 116_300)
-    expect(battle.update(() => true)).toBe(true)
-})
-
-it('reverses for renewed combat outside woodland while the battle track remains available', () => {
-    let now = 0
-    const battle = new BattleMusicState(() => now)
-    battle.observe(snapshot(100_000, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 100_000)
-
-    now = 8000
-    battle.observe(snapshot(108_000, [hero, wolf]), hero.id, false)
-    expect(battle.update(undefined, true)).toBe(false)
-
-    now = 8100
-    battle.receive(attack, 108_100, true)
-    expect(battle.update(undefined, true)).toBe(true)
+    now = 20_000
+    battle.observe(snapshot(120_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
 })
 
 it.each<GameEventPayload['kind']>(['attack', 'damage', 'miss', 'parry', 'absorb'])(
-    'accepts a confirmed local %s from a newly projected source',
+    'lets a confirmed local %s from an unseen source extend an active encounter',
     (kind) => {
-        const battle = new BattleMusicState(() => 0)
-        battle.observe(snapshot(100_000, [hero]), hero.id, true)
-        battle.receive({ kind, actorId: wolf.id, targetId: hero.id }, 100_001)
+        let now = 0
+        const battle = new BattleMusicState(() => now)
+        battle.observe(snapshot(100_000, [hero, wolf]), hero.id)
+        const event = { kind, actorId: wolf.id, targetId: hero.id }
+        battle.receive(event, 100_000)
+        expect(battle.update()).toBe(false)
+        expect(battle.update(visible)).toBe(true)
+
+        now = 500
+        battle.observe(snapshot(100_500, [hero]), hero.id)
+        battle.receive(event, 100_500)
+        now = 8499
         expect(battle.update()).toBe(true)
+        now = 8500
+        expect(battle.update()).toBe(false)
     }
 )
 
 it('ignores unrelated, untargeted, interrupted and training attacks and accepts redacted incoming damage', () => {
-    const battle = new BattleMusicState(() => 0)
+    let now = 0
+    const battle = new BattleMusicState(() => now)
     const dummy = characterFixture('dummy', { trainingTarget: { areaId: 'training' } })
-    battle.observe(snapshot(100_000, [hero, wolf, slime, dummy]), hero.id, true)
+    battle.observe(snapshot(100_000, [hero, wolf, slime, dummy]), hero.id)
+    expect(battle.update(visible)).toBe(true)
     const unrelated: GameEventPayload[] = [
         { kind: 'damage', actorId: wolf.id, targetId: slime.id },
         { kind: 'attack', actorId: hero.id },
@@ -167,19 +171,26 @@ it('ignores unrelated, untargeted, interrupted and training attacks and accepts 
         { ...attack, targetId: dummy.id },
         { ...attack, kind: 'cast', phase: 'completed' },
     ]
-    for (const event of unrelated) {
-        battle.receive(event, 100_001)
-        expect(battle.update()).toBe(false)
-    }
+    now = 500
+    for (const event of unrelated) battle.receive(event, 100_500)
+    now = 8000
+    expect(battle.update()).toBe(false)
 
-    battle.receive({ kind: 'damage', targetId: hero.id }, 100_002)
+    battle.observe(snapshot(108_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
+    now = 8100
+    battle.receive({ kind: 'damage', targetId: hero.id }, 108_100)
+    now = 16099
     expect(battle.update()).toBe(true)
+    now = 16100
+    expect(battle.update()).toBe(false)
 })
 
 it('keeps the hold after defeat or departure and rejects stale or terminal contacts', () => {
     let now = 0
     const battle = new BattleMusicState(() => now)
-    battle.observe(snapshot(100_000, [hero, wolf, slime]), hero.id, true)
+    battle.observe(snapshot(100_000, [hero, wolf, slime]), hero.id)
+    expect(battle.update(visible)).toBe(true)
     now = 1
     battle.receive(attack, 100_001)
     now = 2
@@ -189,10 +200,10 @@ it('keeps the hold after defeat or departure and rejects stale or terminal conta
     now = 4
     battle.receive({ kind: 'leave', actorId: slime.id, locationId: otherMap }, 100_004)
     battle.receive({ kind: 'leave', actorId: slime.id }, 100_004)
-    expect(battle.update(() => true)).toBe(true)
+    expect(battle.update(visible)).toBe(true)
 
     const queried: string[] = []
-    battle.observe(snapshot(100_004, [hero, { ...wolf, alive: false }, slime]), hero.id, true)
+    battle.observe(snapshot(100_004, [hero, { ...wolf, alive: false }, slime]), hero.id)
     battle.update((id) => {
         queried.push(id)
         return true
@@ -210,49 +221,45 @@ it('keeps the hold after defeat or departure and rejects stale or terminal conta
 it('uses observed deaths and ignores a stale snapshot without treating viewport exit as death', () => {
     let now = 0
     const battle = new BattleMusicState(() => now)
-    battle.observe(snapshot(100_000, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 100_000)
+    battle.observe(snapshot(100_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
     now = 1000
-    battle.observe(snapshot(101_000, [hero]), hero.id, true)
+    battle.observe(snapshot(101_000, [hero]), hero.id)
     expect(battle.update()).toBe(true)
 
     now = 2000
-    battle.observe(snapshot(102_000, [hero, { ...wolf, alive: false }]), hero.id, true)
-    battle.observe(snapshot(101_999, [hero, wolf]), hero.id, true)
+    battle.observe(snapshot(102_000, [hero, { ...wolf, alive: false }]), hero.id)
+    battle.observe(snapshot(101_999, [hero, wolf]), hero.id)
     battle.receive(attack, 102_001)
-    expect(battle.update(() => true)).toBe(true)
+    expect(battle.update(visible)).toBe(true)
     now = 8000
     expect(battle.update()).toBe(false)
 
-    battle.observe(snapshot(108_000, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 108_001)
-    expect(battle.update()).toBe(true)
+    battle.observe(snapshot(108_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
 })
 
 it('requires a fresh living listener after death and drops combat on map, identity or world reset', () => {
     const battle = new BattleMusicState(() => 0)
-    battle.observe(snapshot(100_000, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 100_001)
+    battle.observe(snapshot(100_000, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
     battle.receive({ kind: 'death', targetId: hero.id }, 100_002)
-    battle.observe(snapshot(100_002, [hero, wolf]), hero.id, true)
+    battle.observe(snapshot(100_002, [hero, wolf]), hero.id)
     battle.receive(attack, 100_003)
-    expect(battle.update(undefined, true)).toBe(false)
+    expect(battle.update(visible)).toBe(false)
 
-    battle.observe(snapshot(100_004, [hero, wolf]), hero.id, true)
-    battle.receive(attack, 100_005)
-    expect(battle.update()).toBe(true)
-    battle.observe(snapshot(100_006, [hero, wolf], otherMap), hero.id, true)
+    battle.observe(snapshot(100_004, [hero, wolf]), hero.id)
+    expect(battle.update(visible)).toBe(true)
+    battle.observe(snapshot(100_006, [hero, wolf], otherMap), hero.id)
     battle.receive(attack, 100_005)
     battle.receive({ ...attack, locationId: forestId }, 100_006)
-    expect(battle.update(undefined, true)).toBe(false)
+    expect(battle.update()).toBe(false)
 
-    battle.receive(attack, 100_007)
-    expect(battle.update()).toBe(true)
-    battle.observe(snapshot(100_008, [hero, slime, wolf], otherMap), slime.id, true)
-    expect(battle.update(undefined, true)).toBe(false)
-    battle.receive({ ...attack, actorId: slime.id }, 100_009)
-    expect(battle.update()).toBe(true)
+    expect(battle.update(visible)).toBe(true)
+    battle.observe(snapshot(100_008, [hero, slime, wolf], otherMap), slime.id)
+    expect(battle.update()).toBe(false)
+    expect(battle.update(visible)).toBe(true)
     battle.clear()
     battle.receive({ ...attack, actorId: slime.id }, 100_010)
-    expect(battle.update(undefined, true)).toBe(false)
+    expect(battle.update(visible)).toBe(false)
 })

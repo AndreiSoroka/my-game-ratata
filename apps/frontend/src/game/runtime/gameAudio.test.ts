@@ -3,7 +3,6 @@ import type {
     FootstepSourceSnapshot,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import type { Sound } from 'excalibur'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Footstep } from './footsteps'
@@ -39,11 +38,7 @@ function snapshot(x: number, alive = true, present = true): WorldSnapshot {
     return { characters: present ? [character] : [] } as unknown as WorldSnapshot
 }
 function setup(): GameAudio {
-    const music = {
-        play: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
-        stop: vi.fn<() => void>(),
-    } as unknown as Sound
-    const player = new GameAudio(new Map(), music)
+    const player = new GameAudio(new Map())
     player.setMap({ footsteps: map })
     audio.stop.mockClear()
     return player

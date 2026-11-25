@@ -33,10 +33,9 @@ export function createRuntimePresentation(
         const casts = new CastAudio(sounds)
         const audio = new GameAudio(
             resources.sounds,
-            resources.music.adventureBegins,
+            sounds,
             new WorldAmbience(engine, { sounds }),
-            { casts, deaths: new HumanDeathAudio(sounds) },
-            sounds
+            { casts, deaths: new HumanDeathAudio(sounds) }
         )
         run.addCleanup(() => audio.stop())
         audio.setMap(map, locationId)

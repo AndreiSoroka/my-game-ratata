@@ -6,6 +6,7 @@ import {
 } from '@my-game-ratata/contracts'
 import type { Sound } from 'excalibur'
 
+import { resolveMusicProfile } from '../assets/musicProfiles'
 import type { GameSoundId } from '../assets/soundCatalog'
 import { isAudioMuted, subscribeAudioMute } from './audioPreference'
 import { BattleMusicState } from './battleMusicState'
@@ -59,13 +60,12 @@ export class GameAudio {
 
     public constructor(
         sounds: Map<GameSoundId, Sound>,
-        music: Sound,
+        soundtrackBank?: Pick<WorldAmbienceSounds, 'request' | 'isReady' | 'play'>,
         private readonly ambience?: WorldAmbience,
-        private readonly characterAudio?: CharacterAudio,
-        battleBank?: Pick<WorldAmbienceSounds, 'request' | 'isReady' | 'play'>
+        private readonly characterAudio?: CharacterAudio
     ) {
         this.sounds = sounds
-        this.music = new GameMusic(music, battleBank)
+        this.music = new GameMusic(soundtrackBank)
         this.footstepAudio = new FootstepAudio(sounds)
         this.eventAudio = new WorldEventAudio(sounds)
         let wasMuted = isAudioMuted()
@@ -89,9 +89,7 @@ export class GameAudio {
     }
 
     public updateMusic(elapsed: number, isBattleEnemyVisible?: (id: string) => boolean): void {
-        this.music.setBattle(
-            this.battleMusic.update(isBattleEnemyVisible, this.music.hasBattleTrack)
-        )
+        this.music.setBattle(this.battleMusic.update(isBattleEnemyVisible))
         this.music.update(elapsed)
     }
 
@@ -152,6 +150,8 @@ export class GameAudio {
         locationId?: string
     ): void {
         if (this.stopped) return
+        const underground = dungeonLights !== undefined
+        this.music.setProfile(resolveMusicProfile(locationId, underground))
         this.invalidateWorld()
         this.characterAudio?.casts.reset()
         this.characterAudio?.deaths.reset()
@@ -163,7 +163,7 @@ export class GameAudio {
                 tileWidth: footsteps.tileWidth,
                 tileHeight: footsteps.tileHeight,
                 ambientTerrain,
-                underground: dungeonLights !== undefined,
+                underground,
             })
         }
         this.resumeWorld()
@@ -249,7 +249,7 @@ export class GameAudio {
     }
 
     private receiveWorldCue(event: GameEventPayload, serverTime: number): void {
-        this.battleMusic.receive(event, serverTime, this.music.hasBattleTrack)
+        this.battleMusic.receive(event, serverTime)
         if (!this.characterAudio) return
         const { casts, deaths } = this.characterAudio
         if (document.hidden || isAudioMuted()) {
@@ -286,10 +286,9 @@ export class GameAudio {
         this.observeFootsteps(snapshot, listener.id, map)
     }
 
-    private observeBattle(snapshot: WorldSnapshot, localPlayerId: string): void {
-        const forest = this.ambience?.inWoodland ?? false
-        if (forest) this.music.prepareBattle()
-        this.battleMusic.observe(snapshot, localPlayerId, forest)
+    private observeBattle(snapshot: WorldSnapshot, listenerId: string): void {
+        if (snapshot.location?.id === this.locationId)
+            this.battleMusic.observe(snapshot, listenerId)
     }
 
     private observeFootsteps(
