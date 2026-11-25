@@ -71,6 +71,8 @@ test('walks through a tower and back with Bran and a working viewport', async ({
     expect(await page.evaluate(() => window.__ratataTest!.observe().exits)).toEqual([])
     await expectBranInLocation(page, dungeonId)
     const exit = await currentPassage(page)
+    const arrivalY = await page.evaluate(() => window.__ratataTest!.getState().player!.position.y)
+    expect(arrivalY).toBeGreaterThan(exit.y)
     await cross(page, exit)
     await expectViewportFor(page, nearest.id)
     await expectBranInLocation(page, nearest.id)

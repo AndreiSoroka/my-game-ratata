@@ -72,10 +72,10 @@ remain in their windows. Gold and item condition are shown in the inventory.
 
 ## Dungeons
 
-Walk through a stone tower's open doorway to descend. The stone arch where you
-arrive leads back to that tower. Each world seed places at least one small crypt
-and one large dungeon, with up to two medium dungeons. Rooms use connected
-corridors and range from 3×3 to 30×30 tiles.
+Walk through a stone tower's open doorway to descend. The stone arch in the
+north wall of the entrance room leads back to that tower. Each world seed
+places at least one small crypt and one large dungeon, with up to two medium
+dungeons. Rooms use connected corridors and range from 3×3 to 30×30 tiles.
 
 A few trained skeletons patrol the rooms. A defeated dungeon skeleton stays
 dead for that world session. General merchants in Novogorod sell torches for 3

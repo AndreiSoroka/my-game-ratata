@@ -53,6 +53,10 @@ it('loads reciprocal passages on the same generated maps and only crosses during
     assert(tower !== undefined && exit !== undefined)
     expect(tower.triggerRadius).toBe(7)
     expect(exit.triggerRadius).toBe(12)
+    expect(exit.arrival.y - exit.position.y).toBe(
+        dungeon.navigation.grid.tileHeight
+    )
+    const north = { x: 0, y: -1 }
     for (const side of [-1, 1]) {
         const offset = (side * dungeon.navigation.grid.tileWidth) / 2
         expect(
@@ -60,7 +64,7 @@ it('loads reciprocal passages on the same generated maps and only crosses during
                 dungeon.navigation,
                 { x: exit.arrival.x + offset, y: exit.arrival.y },
                 { x: exit.position.x + offset, y: exit.position.y },
-                { x: 0, y: 1 }
+                north
             )
         ).toBe(exit)
     }
@@ -68,34 +72,29 @@ it('loads reciprocal passages on the same generated maps and only crosses during
     player.inventory.push(createItemInstance('food'))
     const inventory = [...player.inventory]
     player.position = { ...tower.position }
-    const intent = { x: 0, y: -1 }
-    expect(world.travel(player, intent, 10_000, tower.position)).toBeUndefined()
+    expect(world.travel(player, north, 10_000, tower.position)).toBeUndefined()
     player.connected = false
     player.tags.add('offline')
-    expect(world.travel(player, intent, 10_000, tower.arrival)).toBeUndefined()
+    expect(world.travel(player, north, 10_000, tower.arrival)).toBeUndefined()
     player.tags.delete('offline')
     player.connected = true
-    player.setMoveInput(intent)
-    expect(world.travel(player, intent, 10_000, tower.arrival)).toBeDefined()
+    player.setMoveInput(north)
+    expect(world.travel(player, north, 10_000, tower.arrival)).toBeDefined()
     expect(player).toMatchObject({
         locationId: dungeon.description.id,
         position: exit.arrival,
         inventory,
     })
     expect(player.getMoveInput()).toEqual({ x: 0, y: 0 })
-    expect(world.travel(player, intent, 10_001, exit.arrival)).toBeUndefined()
+    expect(world.travel(player, north, 10_001, exit.arrival)).toBeUndefined()
     expect(world.mapAsset('dungeons', dungeon.description.id)).toBeDefined()
     expect(world.mapAsset('stale', dungeon.description.id)).toBeUndefined()
 
     player.position = { ...exit.position }
     player.alive = false
-    expect(
-        world.travel(player, { x: 0, y: 1 }, 11_000, exit.arrival)
-    ).toBeUndefined()
+    expect(world.travel(player, north, 11_000, exit.arrival)).toBeUndefined()
     player.alive = true
-    expect(
-        world.travel(player, { x: 0, y: 1 }, 12_000, exit.arrival)
-    ).toBeDefined()
+    expect(world.travel(player, north, 12_000, exit.arrival)).toBeDefined()
     expect(player).toMatchObject({
         locationId: CENTER_LOCATION_ID,
         position: tower.arrival,
