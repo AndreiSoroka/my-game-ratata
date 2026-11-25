@@ -3,6 +3,7 @@ import type { QuestRewardMode } from '@my-game-ratata/contracts'
 import { useId } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
+import { navigationDirection } from '@/shared/lib/input'
 import { FantasyBorder } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
@@ -24,11 +25,25 @@ const options: Array<{ value: QuestRewardMode; label: string }> = [
     },
 ]
 
-function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
-    if (event.code !== 'KeyF') return
+function handleKey(event: KeyboardEvent, value: QuestRewardMode): void {
+    if (event.code === 'KeyF') {
+        event.preventDefault()
+        event.stopPropagation()
+        if (!event.repeat) mode.value = value
+        return
+    }
+    if (!event.code.startsWith('Key') || !navigationDirection(event)) return
+    const radio = event.currentTarget
+    const next = options.find((option) => option.value !== value)
+    if (!(radio instanceof HTMLInputElement) || !next) return
+    const target = radio
+        .closest('fieldset')
+        ?.querySelector<HTMLInputElement>(`input[value="${next.value}"]:not(:disabled)`)
+    if (!target) return
     event.preventDefault()
     event.stopPropagation()
-    if (!event.repeat) mode.value = value
+    mode.value = next.value
+    target.focus()
 }
 </script>
 
@@ -62,7 +77,7 @@ function confirm(event: KeyboardEvent, value: QuestRewardMode): void {
                         :name="name"
                         :value="option.value"
                         :aria-label="option.label"
-                        @keydown="confirm($event, option.value)"
+                        @keydown="handleKey($event, option.value)"
                     />
                     <svg
                         class="quest-reward-option__icon"

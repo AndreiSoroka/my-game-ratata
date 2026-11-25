@@ -9,6 +9,7 @@ import {
 import { computed, ref, useId, useTemplateRef } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
+import { navigationDirection } from '@/shared/lib/input'
 import { itemAssetCatalog } from '@/shared/lib/item-assets'
 import {
     darkPanelButtonColors,
@@ -42,20 +43,13 @@ function tabId(direction: MarketSide): string {
 }
 
 function tabKey(event: KeyboardEvent): void {
-    switch (event.key) {
-        case 'Home':
-            side.value = 'buy'
-            break
-        case 'End':
-            side.value = 'sell'
-            break
-        case 'ArrowLeft':
-        case 'ArrowRight':
-            side.value = side.value === 'buy' ? 'sell' : 'buy'
-            break
-        default:
-            return
-    }
+    const key = event.code || event.key
+    const direction = navigationDirection(event)
+    if (key === 'Home') side.value = 'buy'
+    else if (key === 'End') side.value = 'sell'
+    else if (direction === 'left' || direction === 'right')
+        side.value = side.value === 'buy' ? 'sell' : 'buy'
+    else return
     event.preventDefault()
     event.stopPropagation()
     tabs.value?.querySelector<HTMLElement>(`[id="${tabId(side.value)}"]`)?.focus()

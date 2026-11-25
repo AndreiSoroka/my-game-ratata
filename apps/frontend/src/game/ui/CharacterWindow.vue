@@ -11,9 +11,10 @@ import CharacterCrafting from './CharacterCrafting.vue'
 import CharacterDevelopment from './CharacterDevelopment.vue'
 import CharacterQuests from './CharacterQuests.vue'
 import CharacterStats from './CharacterStats.vue'
-import { isConfirmationKey, isTextEntry, permitsWorldMovement } from './keyboardOwnership'
+import { isTextEntry } from './keyboardOwnership'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
+import { activateFocusedButton, navigatePanelFocus } from './uiKeyboard'
 
 defineProps<{
     player: CharacterSnapshot
@@ -46,15 +47,8 @@ function toggleKey(event: KeyboardEvent): void {
     event.stopImmediatePropagation()
     if (!event.repeat) emit('close')
 }
-function panelEvent(event: KeyboardEvent): void {
-    if (
-        event.repeat &&
-        isConfirmationKey(event) &&
-        event.target instanceof HTMLElement &&
-        event.target.closest('button')
-    )
-        event.preventDefault()
-    if (!permitsWorldMovement(event)) event.stopPropagation()
+function panelKey(event: KeyboardEvent): void {
+    if (!activateFocusedButton(event, panel.value)) navigatePanelFocus(event, panel.value)
 }
 onMounted(() => window.addEventListener('keydown', toggleKey, true))
 onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
@@ -66,10 +60,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
         v-model:tab="tab"
         class="rpg-panel game-frame-host"
         :nickname="player.nickname"
-        :data-world-movement="tab === 'quests' ? 'wasd' : undefined"
         @close="emit('close')"
-        @keydown="panelEvent"
-        @keyup="panelEvent"
+        @keydown.stop="panelKey"
+        @keyup.stop
     >
         <template #frame>
             <GameFrame variant="window" />
@@ -98,9 +91,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', toggleKey, true))
             <p v-else>{{ tGame('game.character.craftingDataIsUnavailable') }}</p>
         </template>
         <template #footer>
-            {{ tGame('game.character.worldKeepsMoving') }}
-            <template v-if="tab === 'quests'">{{ tGame('game.character.wasdMove') }} </template
-            >{{ tGame('game.character.pOrEscReturn') }}
+            {{ tGame('game.character.wasdNavigate') }} {{ tGame('game.character.pOrEscReturn') }}
         </template>
     </CharacterWindowView>
 </template>

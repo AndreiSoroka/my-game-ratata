@@ -244,8 +244,8 @@ export const worldMessages = {
     stump: ['Пень', 'Stump'],
     switchNearbyCharacter: ['←→ / A D — персонаж', '←→ / A D to switch character'],
     switchSidesWSSelect: [
-        '←→ — сторона · ↑↓ / W S — выбор · F / Enter — переложить · Esc — закрыть. Стопки переносятся целиком. Непоместившиеся останутся',
-        '←→ to switch sides · ↑↓ / W S to select · F / Enter to move · Esc to close. Stacks move together. Items that do not fit stay here.',
+        '←→ / A D — сторона · ↑↓ / W S — выбор · F / Enter — переложить · Esc — закрыть. Стопки переносятся целиком. Непоместившиеся останутся',
+        '←→ / A D to switch sides · ↑↓ / W S to select · F / Enter to move · Esc to close. Stacks move together. Items that do not fit stay here.',
     ],
     sWithoutMovingEscInterrupt: [
         'с без движения. Esc — прервать.',

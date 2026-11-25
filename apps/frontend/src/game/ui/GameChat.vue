@@ -2,10 +2,11 @@
 import { ref } from 'vue'
 
 import type { ChatHistoryEntry } from '@/entities/chats'
+import { navigationDirection } from '@/shared/lib/input'
 import { ChatWidget } from '@/widgets/chats'
 
 import type { ChatInputState } from '../runtime/chatInput'
-import { isWorldHudButton, permitsWorldMovement, publicChatOwnsKey } from './keyboardOwnership'
+import { isWorldHudButton, publicChatOwnsKey } from './keyboardOwnership'
 import { useEscapeOwner } from './uiEscapeOwners'
 import { worldHudButtonAttrs } from './uiKeyboard'
 
@@ -33,12 +34,23 @@ function handleHistoryKey(event: KeyboardEvent): void {
         target.closest('button') === null
     )
         return
-    if (!permitsWorldMovement(event)) event.stopPropagation()
+    event.stopPropagation()
+    scrollHistory(event, collapsed.value)
+}
+
+function scrollHistory(event: KeyboardEvent, hidden: boolean): void {
+    if (hidden || event.type !== 'keydown' || !(event.currentTarget instanceof HTMLElement)) return
+    if (event.code !== 'KeyW' && event.code !== 'KeyS') return
+    const direction = navigationDirection(event)
+    if (direction !== 'up' && direction !== 'down') return
+    const history = event.currentTarget.querySelector('ol')
+    if (!history) return
+    event.preventDefault()
+    history.scrollTop += direction === 'up' ? -40 : 40
 }
 
 const historyAttrs = {
     'data-game-input-owner': '',
-    'data-world-movement': 'wasd',
     'data-public-chat-reader': '',
     onKeydown: handleHistoryKey,
     onKeyup: handleHistoryKey,

@@ -1,4 +1,9 @@
+import type { WorldSnapshot } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
+
+import { captureInitialSnapshot } from './world-navigation'
+
+const appleChestId = 'chest_forest_1'
 
 test.describe('inventory food quick slots', () => {
     test.setTimeout(60_000)
@@ -7,6 +12,7 @@ test.describe('inventory food quick slots', () => {
         test(`assigns the focused or selected apple without using it (${mobile ? 'mobile' : 'desktop'})`, async ({
             page,
         }, info) => {
+            const initialSnapshot = captureInitialSnapshot(page)
             await page.setViewportSize(
                 mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 }
             )
@@ -17,12 +23,13 @@ test.describe('inventory food quick slots', () => {
                     .getByRole('button', { name: /^[1-4]:/ })
                     .nth(3)
             ).toHaveAccessibleName(/4: Пусто/)
-            await acquireApple(page)
+            const appleId = await takeApple(page, initialSnapshot())
             try {
+                await closeAppleChest(page)
+                await page.locator('canvas[data-game-canvas=true]').focus()
                 await checkAssignment(page)
             } finally {
-                // The shared starter chest is finite. Return the real apple for the next case.
-                await dropApple(page)
+                await returnApple(page, appleId)
             }
         })
     }
@@ -35,74 +42,77 @@ async function join(page: Page, name: string) {
     await expect(page.locator('canvas[data-game-canvas=true]')).toBeVisible()
 }
 
-async function moveTo(page: Page, target: { x: number; y: number }) {
-    await page.evaluate((target) => window.__ratataTest!.send({ type: 'move_to', target }), target)
-    await expect
-        .poll(
-            () =>
-                page.evaluate((target) => {
-                    const player = window.__ratataTest!.getState().player
-                    return Boolean(
-                        player &&
-                        player.path.length === 0 &&
-                        Math.hypot(player.position.x - target.x, player.position.y - target.y) < 24
-                    )
-                }, target),
-            { timeout: 20_000 }
-        )
-        .toBe(true)
+async function takeApple(page: Page, initial: WorldSnapshot | undefined): Promise<string> {
+    const chest = initial?.chests.find(({ id }) => id === appleChestId)
+    expect(chest, 'The starter chest was disclosed at join').toBeDefined()
+    const arrival = await page.evaluate(
+        (position) => window.__ratataTest!.navigate(position, { tolerance: 20, timeoutMs: 25_000 }),
+        chest!.position
+    )
+    expect(arrival.status, arrival.reason).toBe('arrived')
+    await openAppleChest(page)
+    const apple = await page.evaluate(() =>
+        window
+            .__ratataTest!.getState()
+            .snapshot!.chest!.items.find(({ itemId }) => itemId === 'food')
+    )
+    expect(apple, 'The starter chest contains an apple').toBeDefined()
+    const taken = await page.evaluate(
+        ({ chestId, itemInstanceId }) =>
+            window.__ratataTest!.act(
+                { type: 'take_chest_item', chestId, itemInstanceId },
+                { until: { type: 'inventory', itemId: 'food', atLeast: 1 } }
+            ),
+        { chestId: appleChestId, itemInstanceId: apple!.instanceId }
+    )
+    expect(taken.status, taken.reason).toBe('condition_met')
+    return apple!.instanceId
 }
 
-async function acquireApple(page: Page) {
-    const groundApple = await page.evaluate(() =>
-        window.__ratataTest!.getState().snapshot?.items.find((item) => item.itemId === 'food')
+async function openAppleChest(page: Page) {
+    const result = await page.evaluate(
+        (chestId) =>
+            window.__ratataTest!.act(
+                { type: 'open_chest', chestId },
+                { until: { type: 'chest', chestId } }
+            ),
+        appleChestId
     )
-    if (groundApple) {
-        await moveTo(page, groundApple.position)
-        await page.evaluate(
-            (worldItemId) => window.__ratataTest!.send({ type: 'pickup_item', worldItemId }),
-            groundApple.id
-        )
-    } else {
-        const chest = await page.evaluate(
-            () => window.__ratataTest!.getState().snapshot!.chests[0]!
-        )
-        await moveTo(page, chest.position)
-        await page.evaluate(
-            (chestId) => window.__ratataTest!.send({ type: 'open_chest', chestId }),
-            chest.id
-        )
-        await expect
-            .poll(() =>
-                page.evaluate(() =>
-                    window
-                        .__ratataTest!.getState()
-                        .snapshot?.chest?.items.some((item) => item.itemId === 'food')
-                )
-            )
-            .toBe(true)
-        await page.evaluate(() => {
-            const chest = window.__ratataTest!.getState().snapshot!.chest!
-            const apple = chest.items.find((item) => item.itemId === 'food')!
-            window.__ratataTest!.send({
-                type: 'take_chest_item',
-                chestId: chest.chestId,
-                itemInstanceId: apple.instanceId,
-            })
-            window.__ratataTest!.send({ type: 'close_chest', chestId: chest.chestId })
-        })
-    }
+    expect(result.status, result.reason).toBe('condition_met')
+}
+
+async function closeAppleChest(page: Page) {
+    const result = await page.evaluate(
+        (chestId) =>
+            window.__ratataTest!.act(
+                { type: 'close_chest', chestId },
+                { until: { type: 'chest', chestId: null } }
+            ),
+        appleChestId
+    )
+    expect(result.status, result.reason).toBe('condition_met')
+    await expect(page.getByRole('dialog', { name: 'Рюкзак и сундук' })).toHaveCount(0)
+}
+
+async function returnApple(page: Page, itemInstanceId: string) {
+    await openAppleChest(page)
+    await page.evaluate(
+        ({ chestId, itemInstanceId }) =>
+            window.__ratataTest!.send({ type: 'put_chest_item', chestId, itemInstanceId }),
+        { chestId: appleChestId, itemInstanceId }
+    )
     await expect
         .poll(() =>
-            page.evaluate(() =>
-                window
-                    .__ratataTest!.getState()
-                    .player?.inventory.some((item) => item.itemId === 'food')
+            page.evaluate(
+                (id) =>
+                    window
+                        .__ratataTest!.getState()
+                        .snapshot?.chest?.items.some(({ instanceId }) => instanceId === id),
+                itemInstanceId
             )
         )
         .toBe(true)
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.locator('canvas[data-game-canvas=true]').focus()
+    await closeAppleChest(page)
 }
 
 async function checkAssignment(page: Page) {
@@ -197,29 +207,4 @@ async function inventoryAndPosition(page: Page) {
         const player = window.__ratataTest!.getState().player!
         return { inventory: player.inventory, position: player.position }
     })
-}
-
-async function dropApple(page: Page) {
-    await page.evaluate(() => {
-        const apple = window
-            .__ratataTest!.getState()
-            .player?.inventory.find((item) => item.itemId === 'food')
-        if (apple)
-            window.__ratataTest!.send({
-                type: 'inventory_action',
-                action: 'drop',
-                itemInstanceId: apple.instanceId,
-            })
-    })
-    await expect
-        .poll(() =>
-            page.evaluate(() => {
-                const state = window.__ratataTest!.getState()
-                return (
-                    !state.player?.inventory.some((item) => item.itemId === 'food') &&
-                    state.snapshot?.items.some((item) => item.itemId === 'food')
-                )
-            })
-        )
-        .toBe(true)
 }

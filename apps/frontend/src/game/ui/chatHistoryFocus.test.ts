@@ -33,7 +33,7 @@ function pointerClick(target: Element): Promise<void> {
     return nextTick()
 }
 
-it('passes only WASD from history and lets HUD buttons pass world shortcuts', async () => {
+it('scrolls history with physical W/S and lets pointer-only HUD buttons pass world shortcuts', async () => {
     const wrapper = mount(GameChat, {
         props: { entries: [], state: inactiveDraft },
         attachTo: document.body,
@@ -44,10 +44,15 @@ it('passes only WASD from history and lets HUD buttons pass world shortcuts', as
         await pointerClick(wrapper.get('button[aria-expanded]').element)
         const history = wrapper.get('ol').element
         history.focus()
+        history.scrollTop = 80
         expect(key(history, 'ArrowUp').defaultPrevented).toBe(false)
-        key(history, 'KeyW', 'ц')
-        expect(heard).toHaveBeenCalledOnce()
+        expect(key(history, 'KeyW', 'ц').defaultPrevented).toBe(true)
+        expect(history.scrollTop).toBeLessThan(80)
+        expect(key(history, 'KeyS', 'ы').defaultPrevented).toBe(true)
+        expect(history.scrollTop).toBe(80)
         for (const code of [
+            'KeyA',
+            'KeyD',
             'ArrowUp',
             'ArrowDown',
             'PageUp',
@@ -61,17 +66,13 @@ it('passes only WASD from history and lets HUD buttons pass world shortcuts', as
             const event = key(history, code)
             expect(event.defaultPrevented).toBe(false)
         }
-        expect(heard).toHaveBeenCalledOnce()
+        expect(heard).not.toHaveBeenCalled()
         const tab = wrapper.get('button').element
         tab.focus()
         key(tab, 'KeyD', 'в')
         key(tab, 'Enter', 'Enter')
         key(tab, 'KeyF', 'а')
-        expect(heard.mock.calls.slice(1).map(([event]) => event.code)).toEqual([
-            'KeyD',
-            'Enter',
-            'KeyF',
-        ])
+        expect(heard.mock.calls.map(([event]) => event.code)).toEqual(['KeyD', 'Enter', 'KeyF'])
     } finally {
         window.removeEventListener('keydown', heard)
         wrapper.unmount()

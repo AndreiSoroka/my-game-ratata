@@ -52,7 +52,7 @@ it('toggles debug ownership only on non-repeated Space and keeps clicks or Enter
         props: { constellation: constellationFixture(true), enabledStarIds: new Set([root]) },
     })
     view.vm.focusNode(root)
-    await view.get(`[data-node-id="${root}"]`).trigger('keydown', { code: 'ArrowDown' })
+    await view.get(`[data-node-id="${root}"]`).trigger('keydown', { code: 'KeyS', key: 'ы' })
     await view.get('[aria-label="Показать весь небосвод"]').trigger('click')
     expect(view.emitted('activate')).toBeUndefined()
     await view.get(`[data-node-id="${root}"]`).trigger('keydown', { code: 'Enter' })

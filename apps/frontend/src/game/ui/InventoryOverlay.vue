@@ -107,7 +107,15 @@ function onKey(event: KeyboardEvent): void {
         assignHotbar(Number(digit[1]) - 1, item)
         return
     }
-    inventoryKey(event, panel.value, () => emit('close'), playSlotSound)
+    inventoryKey(
+        event,
+        panel.value,
+        () => emit('close'),
+        (fromActions) => {
+            if (fromActions) selectedItemId.value = undefined
+            playSlotSound()
+        }
+    )
 }
 
 watch(

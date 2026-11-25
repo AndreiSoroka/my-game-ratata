@@ -1,4 +1,4 @@
-import { computed, nextTick, ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import type { CharacterTab } from '@/entities/character-window'
 
@@ -41,7 +41,6 @@ export function useCharacterWindow(options: {
     }
     return {
         characterOpen,
-        characterModal: computed(() => characterOpen.value && characterTab.value !== 'quests'),
         characterTab,
         openCharacter,
         closeCharacter,

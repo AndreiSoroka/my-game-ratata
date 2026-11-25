@@ -37,7 +37,9 @@ describe('city economy panels', () => {
         await wrapper.get('input').setValue(2)
         expect(button.attributes('disabled')).toBeDefined()
         expect(wrapper.find('.market-row__tax--included').exists()).toBe(false)
-        await wrapper.get('[role="tab"][aria-selected="false"]').trigger('click')
+        await wrapper
+            .get('[role="tab"][aria-selected="true"]')
+            .trigger('keydown', { code: 'KeyD', key: 'в' })
         expect(wrapper.text()).toContain(
             'Городской налог 20% округляется вверх и удерживается из выручки.'
         )

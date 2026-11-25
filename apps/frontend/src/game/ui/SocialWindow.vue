@@ -10,7 +10,7 @@ import { isConfirmationKey } from './keyboardOwnership'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
-import { navigateDialogueActions } from './uiKeyboard'
+import { activateFocusedButton, navigateDialogueActions, navigatePanelFocus } from './uiKeyboard'
 
 const props = defineProps<{
     title: string
@@ -35,15 +35,15 @@ function repeatConfirmation(event: KeyboardEvent): boolean {
     )
 }
 function key(event: KeyboardEvent): void {
-    if (props.layout === 'shop') {
-        navigateDialogueActions(event, panel.value)
-        if (event.defaultPrevented) return
-    }
+    if (props.layout === 'shop' && navigateDialogueActions(event, panel.value)) return
+    if (activateFocusedButton(event, panel.value) || navigatePanelFocus(event, panel.value)) return
     if (repeatConfirmation(event)) {
         event.preventDefault()
         return
     }
-    if (event.code !== 'Tab') return
+    if (event.code === 'Tab') trapTab(event)
+}
+function trapTab(event: KeyboardEvent): void {
     const fields = Array.from(
         panel.value?.querySelectorAll<HTMLElement>(
             'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'

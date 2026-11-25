@@ -62,18 +62,30 @@ async function checkKeyboardEquip(page: Page) {
     await expect(slots.nth(index + 1)).toBeFocused()
     await page.keyboard.press('ArrowLeft')
     await expect(slots.nth(index)).toBeFocused()
+    const canvas = (await page.locator('canvas[data-game-canvas=true]').boundingBox())!
+    await page.mouse.click(canvas.x + canvas.width - 6, canvas.y + canvas.height * 0.55)
+    await expect(slots.nth(index)).toBeFocused()
     const stationaryPosition = await page.evaluate(
         () => window.__ratataTest!.getState().player?.position
     )
     await page.keyboard.down('KeyD')
-    const tick = await page.evaluate(() => window.__ratataTest!.getState().snapshot!.tick)
-    await expect
-        .poll(() => page.evaluate(() => window.__ratataTest!.getState().snapshot!.tick))
-        .toBeGreaterThan(tick + 2)
-    await page.keyboard.up('KeyD')
+    try {
+        await expect(slots.nth(index + 1)).toBeFocused()
+        const tick = await page.evaluate(() => window.__ratataTest!.getState().snapshot!.tick)
+        await expect
+            .poll(() => page.evaluate(() => window.__ratataTest!.getState().snapshot!.tick))
+            .toBeGreaterThan(tick + 2)
+    } finally {
+        await page.keyboard.up('KeyD')
+    }
     expect(await page.evaluate(() => window.__ratataTest!.getState().player?.position)).toEqual(
         stationaryPosition
     )
+    await page.keyboard.press('KeyA')
+    await expect(slots.nth(index)).toBeFocused()
+    await page.keyboard.press('KeyS')
+    await expect(slots.nth(index + 10)).toBeFocused()
+    await page.keyboard.press('KeyW')
     await expect(slots.nth(index)).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(inventory).toHaveCount(0)

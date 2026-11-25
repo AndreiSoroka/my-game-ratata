@@ -127,7 +127,7 @@ const windows = useAppWindows({
     toggleInventory: toggleInventoryBase,
     leave: () => leaveSession('nickname'),
 })
-const { gameMenu, characterModal, automationPanels, worldInputBlocked, prepareAutomationWindow } =
+const { gameMenu, characterOpen, automationPanels, worldInputBlocked, prepareAutomationWindow } =
     windows
 const { canSelectTarget, isPositionVisible } = windows.dialogueSwitch
 const characterApproach = useCharacterApproach({
@@ -196,7 +196,7 @@ async function joinGame(): Promise<void> {
 
         <section v-else class="game-screen" aria-label="Ratata game">
             <div
-                :inert="gameMenu.open.value || characterModal || undefined"
+                :inert="gameMenu.open.value || characterOpen || undefined"
                 style="display: contents"
             >
                 <InventoryHud

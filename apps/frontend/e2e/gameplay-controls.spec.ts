@@ -30,11 +30,11 @@ test.describe('shared gameplay controls', () => {
             await expect(slots.nth(2)).toHaveAccessibleName(/3: Барьер/)
             await page.keyboard.press('Shift+Digit1')
             await expect(page.getByRole('dialog', { name: 'Назначить слот 1' })).toBeVisible()
-            // Mage order: spark, barrier. Menu arrows must not leak into movement.
+            // Mage order: spark, barrier. WASD is handled by the picker.
             const position = await page.evaluate(
                 () => window.__ratataTest?.getState().player?.position
             )
-            await page.keyboard.press('ArrowDown')
+            await page.keyboard.press('KeyS')
             await page.keyboard.press('Enter')
             await expect(slots.nth(0)).toHaveAccessibleName(/1: Барьер/)
             expect(

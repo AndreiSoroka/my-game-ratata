@@ -14,7 +14,7 @@ import { dialogueSpeechKeys } from './dialogueSpeechKeys'
 import SocialWindow from './SocialWindow.vue'
 import { speechBubbleId } from './speechReceipts'
 import { useEscapeOwner } from './uiEscapeOwners'
-import { navigateDialogueActions } from './uiKeyboard'
+import { navigateDialogueActions, navigatePanelFocus } from './uiKeyboard'
 const props = defineProps<{
     adventure: AdventureSnapshot
     characters: CharacterSnapshot[]
@@ -153,7 +153,7 @@ function handleKeys(event: KeyboardEvent): void {
         return
     }
     if (dialogueSpeechKeys(event, panel.value, props.adventure.dialogue)) return
-    navigateDialogueActions(event, panel.value)
+    if (!navigateDialogueActions(event, panel.value)) navigatePanelFocus(event, panel.value)
 }
 watch(
     () => props.adventure.dialogue?.npcId,
@@ -207,7 +207,7 @@ watch(
                     ? tGame('game.conversation.pageupPagedownReadTabSelect')
                     : undefined
             "
-            :inert="switchPending"
+            :inert="switchPending || undefined"
             @close="sendActiveCommand({ choiceId: 'close', type: 'dialogue_choice' })"
             @choose="choose"
         >
@@ -275,7 +275,7 @@ watch(
             :gold="adventure.gold"
             :blocked-reason="tradeBlockedReason"
             :market="adventure.market"
-            :inert="switchPending"
+            :inert="switchPending || undefined"
             @buy="trade"
             @trade="trade"
             @close="backToConversation"

@@ -2,6 +2,7 @@
 import { nextTick, onMounted, ref } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
+import { navigationDirection } from '@/shared/lib/input'
 import { UiButton } from '@/shared/ui/common'
 
 import { type CharacterTab, characterTabs } from '../model/characterTab'
@@ -46,24 +47,26 @@ function focusSelectedTab(): void {
 }
 
 async function tabKey(event: KeyboardEvent): Promise<void> {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.code)) return
+    const direction = navigationDirection(event)
+    if (direction !== 'left' && direction !== 'right' && !['Home', 'End'].includes(event.code))
+        return
     event.preventDefault()
     const index = characterTabs.findIndex(({ id }) => id === tab.value)
     const lastIndex = characterTabs.length - 1
-    const direction = event.code === 'ArrowRight' ? 1 : -1
     const nextIndex =
         event.code === 'Home'
             ? 0
             : event.code === 'End'
               ? lastIndex
-              : (index + direction + characterTabs.length) % characterTabs.length
+              : (index + (direction === 'right' ? 1 : -1) + characterTabs.length) %
+                characterTabs.length
     tab.value = characterTabs[nextIndex]!.id
     await nextTick()
     focusSelectedTab()
 }
 
 function panelKey(event: KeyboardEvent): void {
-    if (tab.value === 'quests' || event.code !== 'Tab') return
+    if (event.code !== 'Tab') return
     const elements = Array.from(
         panel.value?.querySelectorAll<HTMLElement>(
             'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]'
@@ -82,17 +85,13 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div
-        class="character-backdrop"
-        :class="{ 'character-backdrop--reading': tab === 'quests' }"
-        @pointerdown.self.prevent.stop
-    >
+    <div class="character-backdrop" @pointerdown.self.prevent.stop>
         <section
             ref="panel"
             class="character-window"
             v-bind="$attrs"
             role="dialog"
-            :aria-modal="tab !== 'quests' || undefined"
+            aria-modal="true"
             :aria-label="tGame('game.character.character')"
             tabindex="-1"
             @keydown.capture="panelKey"

@@ -54,8 +54,9 @@ location danger. Buildings have walkable doors; entering hides their roof.
 
 Ordinary HUD button focus still permits gameplay shortcuts, including I; Enter,
 Space and F confirm the focused button. Actual windows and text fields own their
-input. Escape performs one operation per press: close the game menu, handle the
-current chat/window, cancel a ritual or automated action/target, then open the
+input. In windows and the inventory, WASD navigates the interface. W and S scroll
+focused chat history. Escape performs one operation per press: close the game
+menu, handle the current chat/window, cancel a ritual or automated action/target, then open the
 menu if nothing remains to cancel. Holding Escape does not advance through these
 steps. The menu button beside Inventory also works on touch screens.
 **Вернуться в игру** resumes input; **Выйти из игры** returns to sign-in without

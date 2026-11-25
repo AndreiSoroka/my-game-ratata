@@ -1,3 +1,4 @@
+import type { ClientMessage } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
 import { expectCharacterWindowAppearance, heroThemeCases } from './hero-theme-visual'
@@ -14,6 +15,7 @@ for (const viewport of [
     test(`character menu keeps keyboard ownership and selected tab at ${width}px`, async ({
         page,
     }, info) => {
+        const movementCount = trackMovementCommands(page)
         await page.setViewportSize(viewport)
         await page.goto('/?test=1')
         await page.waitForFunction(() => Boolean(window.__ratataTest))
@@ -41,6 +43,9 @@ for (const viewport of [
         await expect(bonuses).toContainText('+20% опыта всех молитвенных школ')
         const before = await page.evaluate(() => window.__ratataTest!.getState().player!.position)
         await page.keyboard.press('KeyD')
+        await expect(development).toBeFocused()
+        await page.keyboard.press('KeyA')
+        await expect(statistics).toBeFocused()
         await page.keyboard.press('Digit2')
         await page.keyboard.press('ArrowRight')
         await expect(development).toHaveAttribute('aria-selected', 'true')
@@ -84,8 +89,9 @@ for (const viewport of [
             'Активных квестов нет'
         )
         await expect(backdrop).toHaveCSS('background-color', backdropColor)
-        await expect(menu).not.toHaveAttribute('aria-modal', 'true')
-        await expectReadingMovement(page)
+        await expect(menu).toHaveAttribute('aria-modal', 'true')
+        await expectQuestReaderBlocksMovement(page, movementCount)
+        await expect(menu).toBeVisible()
         await menu.getByRole('tab', { name: 'Ремесло', exact: true }).click()
         await expect(menu.getByRole('tabpanel', { name: 'Ремесло' })).toContainText(
             'Сплести сапоги'
@@ -105,24 +111,58 @@ for (const viewport of [
     })
 }
 
-async function expectReadingMovement(page: Page): Promise<void> {
-    let moved = false
-    for (const code of ['KeyW', 'KeyA', 'KeyS', 'KeyD']) {
-        const start = await page.evaluate(() => ({
-            position: window.__ratataTest!.getState().player!.position,
-            tick: window.__ratataTest!.getState().snapshot!.tick,
-        }))
-        await page.keyboard.down(code)
+async function expectQuestReaderBlocksMovement(
+    page: Page,
+    movementCount: () => number
+): Promise<void> {
+    const before = movementCount()
+    const start = await page.evaluate(() => ({
+        position: window.__ratataTest!.getState().player!.position,
+        tick: window.__ratataTest!.getState().snapshot!.tick,
+    }))
+    await page.keyboard.down('KeyW')
+    try {
         await page.evaluate(
-            (tick) => window.__ratataTest!.waitFor({ type: 'tick', after: tick + 5 }),
+            (tick) => window.__ratataTest!.waitFor({ type: 'tick', after: tick + 2 }),
             start.tick
         )
-        await page.keyboard.up(code)
-        const end = await page.evaluate(() => window.__ratataTest!.getState().player!.position)
-        if (Math.hypot(end.x - start.position.x, end.y - start.position.y) > 2) {
-            moved = true
-            break
-        }
+    } finally {
+        await page.keyboard.up('KeyW')
     }
-    expect(moved).toBe(true)
+    // Moving focus onto the canvas must not give it keyboard ownership while the dialog is open.
+    await page.locator('canvas[data-game-canvas]').focus()
+    const outsideFocusTick = await page.evaluate(
+        () => window.__ratataTest!.getState().snapshot!.tick
+    )
+    await page.keyboard.down('KeyS')
+    try {
+        await page.keyboard.press('Space')
+        await page.evaluate(
+            (tick) => window.__ratataTest!.waitFor({ type: 'tick', after: tick + 2 }),
+            outsideFocusTick
+        )
+    } finally {
+        await page.keyboard.up('KeyS')
+    }
+    expect(movementCount()).toBe(before)
+    expect(await page.evaluate(() => window.__ratataTest!.getState().player!.position)).toEqual(
+        start.position
+    )
+}
+
+function trackMovementCommands(page: Page): () => number {
+    let count = 0
+    page.on('websocket', (socket) => {
+        if (new URL(socket.url()).pathname !== '/ws') return
+        socket.on('framesent', ({ payload }) => {
+            if (typeof payload !== 'string') return
+            const command = JSON.parse(payload) as ClientMessage
+            if (
+                command.type === 'dash' ||
+                (command.type === 'move_input' && (command.axis.x !== 0 || command.axis.y !== 0))
+            )
+                count += 1
+        })
+    })
+    return () => count
 }

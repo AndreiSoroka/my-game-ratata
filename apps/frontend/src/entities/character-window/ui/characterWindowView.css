@@ -39,12 +39,6 @@ h2 {
     font-size: 22px;
     color: #f1d69a;
 }
-.character-backdrop--reading {
-    pointer-events: none;
-}
-.character-backdrop--reading .character-window {
-    pointer-events: auto;
-}
 .character-header > :deep(.character-close) {
     display: grid;
     place-items: center;

@@ -141,7 +141,7 @@ describe('chest stack capacity', () => {
 })
 
 describe('two-sided chest keyboard interaction', () => {
-    it('switches sides with arrows and confirms exactly one put or take with F, without optimistic mutations', async () => {
+    it('switches sides with A/D or arrows and confirms exactly one put or take with F', async () => {
         const player = characterFixture('self', { inventory: [bagItem] })
         const wrapper = mount(ChestContainer, {
             props: { chest: { chestId: 'chest', items }, player },
@@ -150,9 +150,13 @@ describe('two-sided chest keyboard interaction', () => {
         try {
             await flushPromises()
             const food = wrapper.get('[data-dialog-action="chest:food-1"]')
+            const own = wrapper.get('[data-dialog-action="bag:bag-sword"]')
             expect(document.activeElement).toBe(food.element)
             await food.trigger('keydown', { code: 'ArrowLeft' })
-            const own = wrapper.get('[data-dialog-action="bag:bag-sword"]')
+            expect(document.activeElement).toBe(own.element)
+            await own.trigger('keydown', { code: 'ArrowRight' })
+            expect(document.activeElement).toBe(food.element)
+            await food.trigger('keydown', { code: 'KeyA', key: 'ф' })
             expect(document.activeElement).toBe(own.element)
             await own.trigger('keydown', { code: 'KeyF', key: 'а', repeat: true })
             expect(wrapper.emitted('command')).toBeUndefined()
@@ -161,7 +165,8 @@ describe('two-sided chest keyboard interaction', () => {
                 { type: 'put_chest_item', chestId: 'chest', itemInstanceId: 'bag-sword' },
             ])
             expect(wrapper.findAll('[data-chest-pane="bag"] .chest-items button')).toHaveLength(1)
-            await own.trigger('keydown', { code: 'ArrowRight' })
+            await own.trigger('keydown', { code: 'KeyD', key: 'в' })
+            expect(document.activeElement).toBe(food.element)
             await food.trigger('keydown', { code: 'KeyE', key: 'у' })
             expect(wrapper.emitted('command')).toHaveLength(1)
             await food.trigger('keydown', { code: 'KeyF', key: 'а' })

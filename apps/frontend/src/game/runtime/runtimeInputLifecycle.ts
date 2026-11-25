@@ -1,6 +1,6 @@
 import type { Engine, PointerEvent } from 'excalibur'
 
-import { isOwnedUiTarget } from '../ui/keyboardOwnership'
+import { hasOpenGameWindow, isOwnedUiTarget } from '../ui/keyboardOwnership'
 import { preventContextMenu } from './input'
 import { isEditableTarget } from './runtimeQueries'
 
@@ -27,11 +27,15 @@ export function installRuntimeInputs(
         )
             handlers.release()
     }
+    const keepWindowFocus = (event: MouseEvent) => {
+        if (hasOpenGameWindow()) event.preventDefault()
+    }
     window.addEventListener('keydown', handlers.keyDown)
     window.addEventListener('keyup', handlers.keyUp)
     window.addEventListener('blur', handlers.release)
     window.addEventListener('focusin', focus)
     document.addEventListener('visibilitychange', hidden)
+    canvas.addEventListener('mousedown', keepWindowFocus)
     canvas.addEventListener('contextmenu', preventContextMenu)
     if (handlers.click) canvas.addEventListener('click', handlers.click)
     engine.input.pointers.primary.on('down', handlers.pointer)
@@ -41,6 +45,7 @@ export function installRuntimeInputs(
         window.removeEventListener('blur', handlers.release)
         window.removeEventListener('focusin', focus)
         document.removeEventListener('visibilitychange', hidden)
+        canvas.removeEventListener('mousedown', keepWindowFocus)
         canvas.removeEventListener('contextmenu', preventContextMenu)
         if (handlers.click) canvas.removeEventListener('click', handlers.click)
         engine.input.pointers.primary.off('down', handlers.pointer)

@@ -43,7 +43,14 @@ for (const mobile of [false, true]) {
         await expect(toolbar).toBeHidden()
         await expand.click()
         await history.focus()
-        await moveRight(page)
+        const atHistory = await position(page)
+        await page.keyboard.down('KeyD')
+        try {
+            await settled(page)
+            expect(await position(page)).toEqual(atHistory)
+        } finally {
+            await page.keyboard.up('KeyD')
+        }
         await toolbar.getByRole('button', { name: 'Рядом', exact: true }).focus()
         await moveRight(page)
         await history.focus()
@@ -51,24 +58,7 @@ for (const mobile of [false, true]) {
         await page.keyboard.press('KeyF')
         await page.keyboard.press('Digit1')
         await expect(selectedWorldTarget(page)).toHaveCount(0)
-        await page.evaluate(() =>
-            window.__ratataTest!.send({
-                type: 'chat',
-                text: Array.from({ length: 20 }, (_, index) => `Строка ${index}`).join('\n'),
-            })
-        )
-        await expect
-            .poll(() => history.evaluate((element) => element.scrollHeight > element.clientHeight))
-            .toBe(true)
-        await history.focus()
-        const scrollBefore = await history.evaluate((element) => element.scrollTop)
-        const readingAt = await position(page)
-        await page.keyboard.press('ArrowUp')
-        await expect
-            .poll(() => history.evaluate((element) => element.scrollTop))
-            .toBeLessThan(scrollBefore)
-        await settled(page)
-        expect(await position(page)).toEqual(readingAt)
+        await expectHistoryScrolling(page, history)
 
         await canvas.focus()
         const [readingFrame, readingToolbar, readingHistory] = await Promise.all([
@@ -142,6 +132,31 @@ for (const mobile of [false, true]) {
         expect(await position(page)).toEqual(modalAt)
         await page.keyboard.press('Escape')
     })
+}
+
+async function expectHistoryScrolling(page: Page, history: Locator): Promise<void> {
+    await page.evaluate(() =>
+        window.__ratataTest!.send({
+            type: 'chat',
+            text: Array.from({ length: 20 }, (_, index) => `Строка ${index}`).join('\n'),
+        })
+    )
+    await expect
+        .poll(() => history.evaluate((element) => element.scrollHeight > element.clientHeight))
+        .toBe(true)
+    await history.focus()
+    const scrollTop = () => history.evaluate((element) => element.scrollTop)
+    const scrollBefore = await scrollTop()
+    const readingAt = await position(page)
+    await page.keyboard.press('KeyW')
+    await expect.poll(scrollTop).toBeLessThan(scrollBefore)
+    const afterW = await scrollTop()
+    await page.keyboard.press('KeyS')
+    await expect.poll(scrollTop).toBeGreaterThan(afterW)
+    await page.keyboard.press('ArrowUp')
+    await expect.poll(scrollTop).toBeLessThan(scrollBefore)
+    await settled(page)
+    expect(await position(page)).toEqual(readingAt)
 }
 
 async function expectTabKeepsDraft(

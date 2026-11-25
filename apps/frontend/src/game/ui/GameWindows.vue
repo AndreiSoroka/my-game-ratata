@@ -32,7 +32,7 @@ defineExpose({
 
 <template>
     <div
-        :inert="windows.gameMenu.open.value || windows.characterModal.value || undefined"
+        :inert="windows.gameMenu.open.value || windows.characterOpen.value || undefined"
         style="display: contents"
     >
         <SocialPanels

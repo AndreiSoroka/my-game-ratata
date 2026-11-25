@@ -215,7 +215,7 @@ an exact revision. Paid reconnaissance requires a meaningful inquiry and at leas
 does not count as an inquiry.
 
 Accepted unfinished quests appear only in the character window's **Квесты** tab.
-WASD remains available while reading that tab. Say **«квест готов»** near the actual
+WASD navigates the character window. Say **«квест готов»** near the actual
 issuer to open the server-owned confirmation, review the terms and click **Сдать**.
 A spoken “yes” or an ordinary trade never submits a quest. Worker trophies start
 the existing safety-check trip; final payment still requires the worker's verified

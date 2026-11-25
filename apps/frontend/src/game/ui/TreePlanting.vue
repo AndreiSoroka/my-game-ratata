@@ -12,7 +12,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { tGame } from '@/shared/lib/i18n'
 
 import type { RatataGame } from '../runtime/ratataGame'
-import { isOwnedUiTarget } from './keyboardOwnership'
+import { isOwnedUiTarget, worldKeyboardOwned } from './keyboardOwnership'
 import PlantingHint from './PlantingHint.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
 const props = defineProps<{
@@ -155,7 +155,7 @@ function closePanel(): void {
 }
 useEscapeOwner({ active: () => true, escape: cancel, element: panel })
 function key(event: KeyboardEvent): void {
-    if (isOwnedUiTarget(event.target)) return
+    if (worldKeyboardOwned() || isOwnedUiTarget(event.target)) return
     if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
         cancel()

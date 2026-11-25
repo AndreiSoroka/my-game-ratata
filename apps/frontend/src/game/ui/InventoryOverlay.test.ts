@@ -204,6 +204,42 @@ describe('inventory quick-slot assignment', () => {
     })
 })
 
+it('navigates the bag and equipment with physical WASD, including after focusing a panel surface', async () => {
+    const wrapper = mount(InventoryOverlay, {
+        props: { character: player(), chests: [] },
+        attachTo: document.body,
+    })
+    try {
+        await flushPromises()
+        const slots = wrapper.findAll('.inventory-slot')
+        const equipment = wrapper.findAll('.equipment-slot')
+        for (const [from, code, key, to] of [
+            [0, 'KeyD', 'в', 1],
+            [1, 'KeyS', 'ы', 11],
+            [11, 'KeyA', 'ф', 10],
+            [10, 'KeyW', 'ц', 0],
+        ] as const) {
+            await slots[from]!.trigger('keydown', { code, key })
+            expect(document.activeElement).toBe(slots[to]!.element)
+        }
+        await slots[0]!.trigger('keydown', { code: 'KeyD', altKey: true })
+        expect(document.activeElement).toBe(slots[0]!.element)
+        await slots[0]!.trigger('keydown', { code: 'KeyA' })
+        expect(document.activeElement).toBe(equipment[0]!.element)
+        await equipment[0]!.trigger('keydown', { code: 'KeyS' })
+        expect(document.activeElement).toBe(equipment[1]!.element)
+        await equipment[1]!.trigger('keydown', { code: 'KeyD' })
+        expect(document.activeElement).toBe(slots[10]!.element)
+        await wrapper.get('h2').trigger('pointerdown')
+        await wrapper.trigger('keydown', { code: 'KeyW' })
+        expect(document.activeElement).toBe(slots[0]!.element)
+        expect(wrapper.emitted('inventoryAction')).toBeUndefined()
+        expect(wrapper.emitted('equipmentAction')).toBeUndefined()
+    } finally {
+        wrapper.unmount()
+    }
+})
+
 describe('standalone inventory keyboard ownership', () => {
     it('keeps a plain header focused and closes with Escape even if focus was lost to the page', async () => {
         const wrapper = mount(InventoryOverlay, {
@@ -258,7 +294,7 @@ describe('standalone inventory keyboard ownership', () => {
             wrapper.unmount()
         }
     })
-    it('uses F to select a slot and perform its action, ignoring repeat and blocking world shortcuts', async () => {
+    it('moves between a slot and its actions, confirms with F and blocks world shortcuts', async () => {
         const worldKey = vi.fn<(event: KeyboardEvent) => void>()
         window.addEventListener('keydown', worldKey)
         const wrapper = mount(InventoryOverlay, {
@@ -271,7 +307,14 @@ describe('standalone inventory keyboard ownership', () => {
             slot.element.focus()
             await slot.trigger('keydown', { code: 'KeyF', key: 'а' })
             await flushPromises()
-            const eat = wrapper.get<HTMLButtonElement>('.inventory-actions button')
+            let eat = wrapper.get<HTMLButtonElement>('.inventory-actions button')
+            expect(document.activeElement).toBe(eat.element)
+            await eat.trigger('keydown', { code: 'KeyW', key: 'ц' })
+            expect(document.activeElement).toBe(slot.element)
+            expect(wrapper.find('.inventory-actions').exists()).toBe(false)
+            await slot.trigger('keydown', { code: 'KeyF', key: 'а' })
+            await flushPromises()
+            eat = wrapper.get<HTMLButtonElement>('.inventory-actions button')
             expect(document.activeElement).toBe(eat.element)
             await eat.trigger('keydown', { code: 'KeyF', repeat: true })
             expect(wrapper.emitted('inventoryAction')).toBeUndefined()

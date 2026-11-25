@@ -83,6 +83,34 @@ it('does not intercept P in a text editor', async () => {
     }
 })
 
+it('keeps physical WASD in the character modal, including the quests tab', async () => {
+    const view = mount(CharacterWindow, {
+        props: { player: developmentCharacterFixture(), characters: [], tab: 'quests' },
+        attachTo: document.body,
+    })
+    try {
+        await flushPromises()
+        const dialog = view.get('[role="dialog"]')
+        const tab = view.get('[role="tab"][aria-selected="true"]')
+        expect(dialog.attributes('aria-modal')).toBe('true')
+        expect(dialog.attributes('data-world-movement')).toBeUndefined()
+        await tab.trigger('keydown', { code: 'KeyW', key: 'ц' })
+        expect(document.activeElement).toBe(view.get('.character-close').element)
+        await view.get('.character-close').trigger('keydown', { code: 'KeyS', key: 'ы' })
+        expect(document.activeElement).toBe(tab.element)
+        await tab.trigger('keydown', { code: 'KeyD', key: 'в' })
+        expect(view.emitted('update:tab')?.at(-1)).toEqual(['crafting'])
+        await view.setProps({ tab: 'crafting' })
+        await view.get('[role="tab"][aria-selected="true"]').trigger('keydown', {
+            code: 'KeyA',
+            key: 'ф',
+        })
+        expect(view.emitted('update:tab')?.at(-1)).toEqual(['quests'])
+    } finally {
+        view.unmount()
+    }
+})
+
 it('keeps recipes and crafting commands in the modal character tab', async () => {
     const player = developmentCharacterFixture()
     const adventure = adventureFixture()

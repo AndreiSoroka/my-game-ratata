@@ -85,7 +85,7 @@ it('lets the player choose the reward mode for a delivery without separate accep
         props: { prompt: { ...prompt, preAcceptance: true }, serverTime: 1000, playerId: 'self' },
     })
     try {
-        await view.get('input[value="submitter"]').setValue()
+        await view.get('input[value="party_equal"]').trigger('keydown', { code: 'KeyD', key: 'в' })
         expect(view.emitted('command')).toBeUndefined()
         await view
             .findAll('button')

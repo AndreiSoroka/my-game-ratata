@@ -7,7 +7,7 @@ import { tGame } from '@/shared/lib/i18n'
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
 import { useEscapeOwner } from './uiEscapeOwners'
-import { activateFocusedButton } from './uiKeyboard'
+import { activateFocusedButton, navigatePanelFocus } from './uiKeyboard'
 
 const props = withDefaults(
     defineProps<{
@@ -50,7 +50,7 @@ function key(event: KeyboardEvent): void {
         ;(button ?? panel.value)?.focus()
         return
     }
-    activateFocusedButton(event, panel.value)
+    if (!activateFocusedButton(event, panel.value)) navigatePanelFocus(event, panel.value)
 }
 </script>
 

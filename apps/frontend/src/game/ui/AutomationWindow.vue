@@ -5,7 +5,7 @@ import { tGame } from '@/shared/lib/i18n'
 
 import GameButton from './primitives/GameButton.vue'
 import GameFrame from './primitives/GameFrame.vue'
-import { activateFocusedButton } from './uiKeyboard'
+import { activateFocusedButton, navigatePanelFocus } from './uiKeyboard'
 import { useDialogEscape } from './useDialogEscape'
 
 defineProps<{ title: string }>()
@@ -13,7 +13,7 @@ const emit = defineEmits<{ close: [] }>()
 const panel = ref<HTMLElement>()
 useDialogEscape(panel, () => emit('close'))
 function key(event: KeyboardEvent): void {
-    if (activateFocusedButton(event, panel.value)) return
+    if (activateFocusedButton(event, panel.value) || navigatePanelFocus(event, panel.value)) return
     if (event.code !== 'Tab') return
     const fields = Array.from(
         panel.value?.querySelectorAll<HTMLElement>(

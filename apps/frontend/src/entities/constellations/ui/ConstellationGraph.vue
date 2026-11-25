@@ -3,6 +3,7 @@ import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
+import { navigationDirection } from '@/shared/lib/input'
 import { constellationButtonColors, UiButton } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { useDarkPanelTheme } from '@/shared/ui/theme'
@@ -139,12 +140,15 @@ function choose(node: ConstellationNodeSnapshot, pointer = true): void {
 }
 function nodeKey(event: KeyboardEvent, node: ConstellationNodeSnapshot): void {
     if (!hitTargets.value.has(node.id)) return
-    const direction = {
-        ArrowLeft: [-1, 0],
-        ArrowRight: [1, 0],
-        ArrowUp: [0, -1],
-        ArrowDown: [0, 1],
-    }[event.code]
+    const keyDirection = navigationDirection(event)
+    const direction =
+        keyDirection &&
+        {
+            left: [-1, 0],
+            right: [1, 0],
+            up: [0, -1],
+            down: [0, 1],
+        }[keyDirection]
     if (direction) {
         event.preventDefault()
         const next = nextConstellationNode(interactiveNodes.value, node, direction)

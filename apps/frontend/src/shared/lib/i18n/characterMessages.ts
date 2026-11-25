@@ -110,8 +110,7 @@ export const characterMessages = {
     tilesS: ['клеток/с', 'tiles/s'],
     timber: ['Древесина', 'Timber'],
     up: ['До', 'Up to'],
-    wasdMove: ['WASD — идти ·', 'WASD to move ·'],
+    wasdNavigate: ['WASD — навигация ·', 'WASD to navigate ·'],
     wheatGrain: ['Зерно пшеницы', 'Wheat grain'],
-    worldKeepsMoving: ['Мир продолжает жить ·', 'The world keeps moving ·'],
     yourSkyIsNotAvailable: ['Небосвод ещё не получен.', 'Your sky is not available yet.'],
 } as const

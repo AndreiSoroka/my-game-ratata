@@ -1,6 +1,7 @@
 const editorSelector = 'input, textarea, select, [contenteditable="true"], .speech-text'
 const publicChatEditorSelector = 'input[data-public-chat-input]'
-const windowSelector = '[role="dialog"], [role="menu"], [role="alertdialog"], .adventure-window'
+const windowSelector =
+    'dialog[open], [role="dialog"], [role="menu"], [role="alertdialog"], .adventure-window'
 
 export function isTextEntry(target: EventTarget | null): boolean {
     return (
@@ -22,10 +23,11 @@ export function isOwnedUiTarget(target: EventTarget | null): boolean {
 export function isConfirmationKey(event: KeyboardEvent): boolean {
     return ['Enter', 'Space', 'KeyF'].includes(event.code) || ['Enter', ' '].includes(event.key)
 }
+export function hasOpenGameWindow(): boolean {
+    return document.querySelector(windowSelector) !== null
+}
 export function worldKeyboardOwned(): boolean {
-    return (
-        document.querySelector(windowSelector) !== null || isOwnedUiTarget(document.activeElement)
-    )
+    return hasOpenGameWindow() || isOwnedUiTarget(document.activeElement)
 }
 /** A placement tool may own canvas clicks; other visible windows still block them. */
 export function worldPointerBlocked(allowPublicChat = false): boolean {
@@ -37,33 +39,13 @@ export function worldPointerBlocked(allowPublicChat = false): boolean {
             : isTextEntry(document.activeElement))
     )
 }
-/** A reading panel may explicitly pass physical movement through without granting other game keys. */
-export function permitsWorldMovement(event: KeyboardEvent): boolean {
-    if (
-        !['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code) ||
-        reservedKey(event) ||
-        isTextEntry(event.target) ||
-        isTextEntry(document.activeElement)
-    )
-        return false
-    const windows = Array.from(document.querySelectorAll<HTMLElement>(windowSelector))
-    const reader = [event.target, document.activeElement].some(
-        (target) =>
-            target instanceof HTMLElement && target.closest('[data-world-movement="wasd"]') !== null
-    )
-    return (
-        (reader || windows.length > 0) &&
-        windows.every((window) => window.dataset.worldMovement === 'wasd')
-    )
-}
-
 /** The public draft accepts confirmation from its editor or read-only history. */
 export function publicChatOwnsKey(event: KeyboardEvent): boolean {
     if (
         reservedKey(event) ||
         isForeignTextEntry(event.target) ||
         isForeignTextEntry(document.activeElement) ||
-        document.querySelector(windowSelector) !== null
+        hasOpenGameWindow()
     )
         return false
     const target = event.target instanceof HTMLElement ? event.target : document.activeElement
@@ -82,7 +64,7 @@ export function focusWorldInput(allowPublicChat = false): void {
     const editorOwnsFocus = allowPublicChat
         ? isForeignTextEntry(document.activeElement)
         : isTextEntry(document.activeElement)
-    if (document.querySelector(windowSelector) || editorOwnsFocus) return
+    if (hasOpenGameWindow() || editorOwnsFocus) return
     document.querySelector<HTMLCanvasElement>('[data-game-canvas]')?.focus()
 }
 
@@ -96,7 +78,6 @@ export function isPublicChatEditor(target: EventTarget | null): boolean {
 
 export function gameKeyBlocked(event: KeyboardEvent): boolean {
     if (reservedKey(event)) return true
-    if (permitsWorldMovement(event)) return false
     if (worldKeyboardOwned() || isOwnedUiTarget(event.target)) return true
     const focus = event.target instanceof HTMLElement ? event.target : document.activeElement
     return (
