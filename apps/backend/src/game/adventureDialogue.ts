@@ -7,7 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { adventureDialogue, adventureNpcRoles } from './adventureContent'
-import { resolveAdventureNpc } from './adventureNpc'
+import { conversationalNpcService, resolveAdventureNpc } from './adventureNpc'
 import {
     type AdventureChoiceContext,
     applyAdventureChoice,
@@ -35,7 +35,14 @@ export function interactAdventureNpc(
     text?: string,
     availableWorkerRequests = false
 ): AdventureActionResult {
-    const npc = resolveAdventureNpc(actor, npcId, locationNPCs, now, navigation)
+    const npc = resolveAdventureNpc(
+        actor,
+        npcId,
+        locationNPCs,
+        now,
+        navigation,
+        conversationalNpcService(service)
+    )
 
     if (npc === undefined) {
         if (navigation === undefined) {
@@ -103,7 +110,8 @@ export function chooseAdventureReply(
         state.dialogue?.npcId,
         locationNPCs,
         now,
-        navigation
+        navigation,
+        conversationalChoice(state.dialogue?.initialView, choiceId)
     )
 
     if (npc === undefined) {
@@ -136,6 +144,13 @@ export function chooseAdventureReply(
     }
     refreshTradeDialogue(actor, state.dialogue, state.cityTradeBlockedReason)
     return []
+}
+
+function conversationalChoice(
+    service: NpcInteractionService | undefined,
+    choiceId: string
+): boolean {
+    return service === undefined && choiceId !== 'turn_in_trophies'
 }
 
 function rejectInteraction(

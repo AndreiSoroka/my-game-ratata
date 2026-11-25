@@ -107,7 +107,7 @@ export class GameCharacter {
     public readonly reputation: CharacterReputation
     public readonly spawnPosition: Vector2
     public readonly visualId: CharacterVisualId
-    public animationAction: CharacterAnimationAction = 'idle'
+    public animationAction: CharacterAnimationAction | 'prepare' = 'idle'
     public animationStartedAt: number
     public animationUntil = 0
     public alive = true
@@ -234,7 +234,7 @@ export class GameCharacter {
     }
 
     public setAnimation(
-        action: CharacterAnimationAction,
+        action: GameCharacter['animationAction'],
         now: number,
         lockMs = 0
     ): void {

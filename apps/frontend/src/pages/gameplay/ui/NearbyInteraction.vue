@@ -37,7 +37,6 @@ const props = defineProps<{
 const emit = defineEmits<{
     command: [command: ClientMessage]
     targetChange: [target: TargetHighlight | undefined]
-    selectGrave: [id: string]
 }>()
 const playUiSound = inject(gameUiSoundKey)
 const opened = ref<{
@@ -99,7 +98,7 @@ const neighbors = computed<DialogueNeighbors>(() => {
 const hasNeighbor = computed(() => Boolean(neighbors.value.left || neighbors.value.right))
 const directAction = computed(() => {
     const options = target.value?.actions
-    if (options?.length !== 1 || hasNeighbor.value) return undefined
+    if (grave.value || options?.length !== 1 || hasNeighbor.value) return undefined
     const action = options[0]
     return action && !action.disabled && action.command.type !== 'set_personal_hostility'
         ? action
@@ -121,15 +120,16 @@ function stopMovement(player: CharacterSnapshot): void {
     emit('command', { type: 'move_input', axis: { x: 0, y: 0 } })
 }
 const readyToOpen = computed(() => !opened.value && !props.blocked && Boolean(props.player?.alive))
-const canOpen = computed(() => readyToOpen.value && Boolean(target.value?.actions.length))
+const canOpen = computed(() => readyToOpen.value && target.value !== undefined)
 const prompt = computed(() => {
     const selected = target.value
     if (!canOpen.value || !selected) return undefined
+    const targetLabel = `F ${selected.name}`
+    if (grave.value && selected.actions.length === 0) return targetLabel
     const actionLabel =
         selected.actions.length === 1 && !hasNeighbor.value
             ? selected.actions[0]?.label
             : tGame('game.world.chooseAction')
-    const targetLabel = `F ${selected.name}`
     return actionLabel && actionLabel !== selected.name
         ? `${targetLabel} · ${actionLabel}`
         : targetLabel
@@ -173,7 +173,6 @@ function openMenu(expectedKey?: string, forceMenu = false): void {
     const direct = directActionForMenu(forceMenu, forcedCharacter)
     if (!direct && !selectMenuTarget(selected, explicit)) return
     stopMovement(player)
-    if (!forcedCharacter && grave.value) emit('selectGrave', grave.value.id)
     if (direct) {
         emit('command', direct.command)
         focusWorldInput()
@@ -285,15 +284,11 @@ defineExpose({ canOpenFor, openMenu, prompt })
         :context-label="target?.name ?? opened?.name"
         :target-key="opened?.key"
         :neighbors="neighbors"
+        :details-only="grave !== undefined && actions.length === 0"
         @select="select"
         @switch-character="switchCharacter"
         @close="dismissMenu"
     >
-        <GraveDetails
-            v-if="grave && snapshot"
-            :grave="grave"
-            :server-time="snapshot.serverTime"
-            :prayer="player?.abilities?.prayers?.pray ?? player?.abilities?.prayer"
-        />
+        <GraveDetails v-if="grave && snapshot" :grave="grave" :server-time="snapshot.serverTime" />
     </NearbyActionMenu>
 </template>

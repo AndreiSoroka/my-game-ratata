@@ -14,14 +14,16 @@ export function createAdventureSessions(
         reconcile: (
             characters: Iterable<GameCharacter>,
             navigationFor: (actor: GameCharacter) => NavigationService,
-            urgentThreat?: (npc: GameCharacter) => boolean
+            urgentThreat?: (npc: GameCharacter) => boolean,
+            now?: number
         ) =>
             reconcileConversations(
                 states,
                 characters,
                 navigationFor,
                 urgentThreat,
-                canReadQuestBoard
+                canReadQuestBoard,
+                now
             ),
         close: (characterId: string) =>
             closeConversationsFor(states, characterId),

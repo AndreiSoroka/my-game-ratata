@@ -52,6 +52,14 @@ describe('resolved shared attack abilities', () => {
         })
         expect(actor.mana).toBe(mana - 6)
         const hitAt = attack.now + spark.windupMs
+        expect(actor.snapshot(attack.now).animation).toMatchObject({
+            pose: 'prepare',
+            hitAt,
+        })
+        actor.updateMovementAnimation(true, hitAt - 1)
+        expect(actor.snapshot(hitAt - 1).animation.pose).toBe('prepare')
+        actor.updateMovementAnimation(true, hitAt)
+        expect(actor.snapshot(hitAt).animation.action).toBe('walk')
         const nextAt = attack.now + spark.cooldownMs
         expect(resolvePendingAttackHit({ ...attack, now: hitAt - 1 })).toEqual(
             []

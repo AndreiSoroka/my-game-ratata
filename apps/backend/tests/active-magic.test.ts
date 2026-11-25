@@ -197,6 +197,10 @@ describe('Arcane projectile', () => {
         expect(cast(caster, 'fireball', context, enemy.id)).toMatchObject([
             { kind: 'attack' },
         ])
+        expect(caster.snapshot(start).animation).toMatchObject({
+            pose: 'prepare',
+            hitAt: 1400,
+        })
         expect(resolveTestSpells(caster, context, 1399)).toEqual([])
         expect(resolveTestSpells(caster, context, 1450)).toEqual([])
         expect(
@@ -221,6 +225,9 @@ describe('Arcane projectile', () => {
         expect(
             cast(caster, 'greater_fireball', { ...context, now: 6000 })
         ).toMatchObject([{ kind: 'attack' }])
+        expect(caster.snapshot(6000).animation).toMatchObject({
+            pose: 'prepare',
+        })
     })
 
     it('hits enemies and allies in line of sight, honors walls, and grants one mastery reward', () => {

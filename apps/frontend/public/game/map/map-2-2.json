@@ -5354,6 +5354,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:36:26"
@@ -5466,6 +5471,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -5580,6 +5590,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:62:32"
@@ -5676,6 +5691,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:24:49"
@@ -5771,6 +5791,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -5885,6 +5910,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:74:49"
@@ -5997,6 +6027,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -6111,6 +6146,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:53:60"
@@ -6206,6 +6246,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
                         {
                             "name": "propId",
                             "type": "string",
@@ -6303,6 +6348,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-2:prop:74:29"
@@ -6398,6 +6448,11 @@
                     "rotation": 0,
                     "visible": true,
                     "properties": [
+                        {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
                         {
                             "name": "propId",
                             "type": "string",

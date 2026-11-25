@@ -78,6 +78,7 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
             mapId === 'map1' ? CENTER_LOCATION_ID : mapId
         ),
         ...(encounters === undefined ? {} : { encounters }),
+        ...readSpeechTransparency(map),
         baseSolid: solid.map(
             (blocked, index) => blocked && (resourceCells[index] ?? 0) === 0
         ),
@@ -91,6 +92,65 @@ export function buildGrid(mapId: string, map: TiledMap): MapGrid {
         tileWidth: map.tilewidth,
         width: map.width,
     }
+}
+
+function readSpeechTransparency(
+    map: TiledMap
+): Pick<MapGrid, 'speechTransparent'> {
+    const cells = new Set<number>()
+    const props = map.layers.find(
+        (layer) => layer.type === 'objectgroup' && layer.name === 'Depth props'
+    )?.objects
+    const independentSolids = map.layers.filter(
+        (layer) =>
+            layer.type === 'tilelayer' &&
+            layer.name !== 'Collision' &&
+            isSolidLayer(layer)
+    )
+    for (const prop of props ?? []) {
+        if (
+            prop.type !== 'depth_prop' ||
+            prop.properties?.some(
+                ({ name, value }) =>
+                    name === 'speechTransparent' && value === true
+            ) !== true
+        ) {
+            continue
+        }
+        const { left, top, right, bottom } = speechFootprint(prop, map)
+        for (let y = top; y < bottom; y++) {
+            for (let x = left; x < right; x++) {
+                const index = y * map.width + x
+                if (
+                    independentSolids.every(
+                        (layer) => (layer.data?.[index] ?? 0) === 0
+                    )
+                ) {
+                    cells.add(index)
+                }
+            }
+        }
+    }
+    return cells.size === 0 ? {} : { speechTransparent: cells }
+}
+
+function speechFootprint(prop: EncounterMapObject, map: TiledMap) {
+    const left = prop.x / map.tilewidth
+    const top = prop.y / map.tileheight
+    const right = (prop.x + prop.width) / map.tilewidth
+    const bottom = (prop.y + prop.height) / map.tileheight
+    if (
+        ![left, top, right, bottom].every(Number.isInteger) ||
+        left < 0 ||
+        top < 0 ||
+        right > map.width ||
+        bottom > map.height ||
+        right <= left ||
+        bottom <= top
+    ) {
+        throw new Error('Invalid speech-transparent furniture footprint')
+    }
+    return { left, top, right, bottom }
 }
 
 function cityMetadata(

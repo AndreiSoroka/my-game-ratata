@@ -166,6 +166,7 @@ export interface CharacterAnimationSnapshot {
     hitAt?: number
     movementAt?: number
     action: CharacterAnimationAction
+    pose?: 'prepare'
     startedAt: number
 }
 

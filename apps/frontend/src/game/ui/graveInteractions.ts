@@ -1,7 +1,6 @@
 import {
     type CharacterSnapshot,
     GRAVE_INTERACTION_RANGE,
-    gravePurifyCastMs,
     isMotherPrayer,
     type PrayerActionId,
     type PrayerPreview,
@@ -17,7 +16,7 @@ import { tGame } from '@/shared/lib/i18n'
 
 import { chestActions } from './chestActions'
 import { interactionDistance } from './interactionTargets'
-import type { InteractionAction, InteractionTarget } from './nearbyInteractionActions'
+import type { InteractionTarget } from './nearbyInteractionActions'
 
 /** Explicit selection pins the grave even while the ordinary prayer preview changes. */
 export function gravePrayerPreview(
@@ -93,39 +92,6 @@ function prayerAvailability(player: CharacterSnapshot, abilityId: PrayerActionId
     return null
 }
 
-export function graveActions(
-    player: CharacterSnapshot,
-    grave: WorldGraveSnapshot
-): InteractionAction[] {
-    const preview = gravePrayerPreview(player, grave)
-    return [
-        {
-            id: `grave:attack:${grave.id}`,
-            label:
-                grave.phase === 'active'
-                    ? tGame('game.world.attackGrave')
-                    : tGame('game.world.graveDestroyed'),
-            disabled: grave.phase !== 'active',
-            command: { type: 'attack', target: { kind: 'grave', id: grave.id } },
-        },
-        {
-            id: `grave:purify:${grave.id}`,
-            label:
-                preview.unavailableReason ??
-                tGame('game.world.cleanseGraveCosts', {
-                    mana: preview.manaCost,
-                    seconds: (preview.durationMs ?? gravePurifyCastMs(grave.phase)) / 1000,
-                }),
-            disabled: preview.unavailableReason !== null,
-            command: {
-                type: 'use_ability',
-                abilityId: 'pray',
-                intent: { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } },
-            },
-        },
-    ]
-}
-
 export function graveTargets(
     snapshot: WorldSnapshot,
     player: CharacterSnapshot
@@ -144,12 +110,9 @@ export function graveTargets(
             position: grave.position,
             bounds: { x: grave.position.x - 8, y: grave.position.y - 8, width: 16, height: 16 },
             range: snapshotPrayerParameters(player, 'pray').radius,
-            actions: [
-                ...graveActions(player, grave),
-                ...snapshot.chests
-                    .filter((chest) => corpseSharesGrave(chest, grave, player))
-                    .flatMap((chest) => chestActions({ ...snapshot, chests: [chest] }, player)),
-            ],
+            actions: snapshot.chests
+                .filter((chest) => corpseSharesGrave(chest, grave, player))
+                .flatMap((chest) => chestActions({ ...snapshot, chests: [chest] }, player)),
         }))
 }
 

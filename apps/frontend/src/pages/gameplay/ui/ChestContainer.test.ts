@@ -6,8 +6,10 @@ import {
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { UiSoundId } from '@/game/assets/soundCatalog'
 import { characterFixture } from '@/game/testing/characterFixture'
 
+import { gameUiSoundKey } from '../model/gameUiSound'
 import ChestContainer from './ChestContainer.vue'
 
 const items: ItemInstanceSnapshot[] = [
@@ -16,6 +18,47 @@ const items: ItemInstanceSnapshot[] = [
     { instanceId: 'boots-3', itemId: 'boots' },
 ]
 const bagItem: ItemInstanceSnapshot = { instanceId: 'bag-sword', itemId: 'old_sword' }
+
+it('plays the inventory cue only when directional keys move focus', async () => {
+    const playUiSound = vi.fn<(id: UiSoundId) => void>()
+    const chest = { chestId: 'chest', items }
+    const player = characterFixture('self', { inventory: [bagItem] })
+    const wrapper = mount(ChestContainer, {
+        props: { chest, player },
+        attachTo: document.body,
+        global: { provide: { [gameUiSoundKey]: playUiSound } },
+    })
+    try {
+        await flushPromises()
+        const food = wrapper.get('[data-dialog-action="chest:food-1"]')
+        const sword = wrapper.get('[data-dialog-action="chest:sword-2"]')
+        const backpack = wrapper.get('[data-dialog-action="bag:bag-sword"]')
+        expect(document.activeElement).toBe(food.element)
+        expect(playUiSound).not.toHaveBeenCalled()
+
+        await food.trigger('keydown', { code: 'ArrowDown' })
+        expect(document.activeElement).toBe(sword.element)
+        await sword.trigger('keydown', { code: 'KeyA', key: 'ф' })
+        expect(document.activeElement).toBe(backpack.element)
+        await backpack.trigger('keydown', { code: 'KeyW', key: 'ц' })
+        expect(document.activeElement).toBe(backpack.element)
+        expect(playUiSound.mock.calls).toEqual([['uiSlotSelect'], ['uiSlotSelect']])
+
+        await backpack.trigger('keydown', { code: 'Tab' })
+        expect(document.activeElement).toBe(food.element)
+        await food.trigger('keydown', { code: 'End' })
+        const takeAll = wrapper.get('[data-dialog-action="all"]')
+        expect(document.activeElement).toBe(takeAll.element)
+        await takeAll.trigger('keydown', { code: 'Home' })
+        expect(document.activeElement).toBe(food.element)
+        await wrapper.setProps({ chest: { ...chest, items: items.slice(1) } })
+        await flushPromises()
+        expect(document.activeElement).toBe(sword.element)
+        expect(playUiSound).toHaveBeenCalledTimes(2)
+    } finally {
+        wrapper.unmount()
+    }
+})
 
 describe('chest stack capacity', () => {
     it('uses open chest capacity for deposits and keeps focus on a usable action after updates', async () => {

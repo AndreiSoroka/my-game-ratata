@@ -6,13 +6,16 @@ async function openGraveStory(page: Page, state: string): Promise<void> {
 }
 
 test.describe('Storybook production grave states', () => {
-    test('active source rounds authorized HP and preserves stone damage multipliers', async ({
+    test('active source rounds authorized HP and shows only the short guidance', async ({
         page,
     }) => {
         await openGraveStory(page, 'active')
         const details = page.getByLabel('Состояние могилы')
         await expect(details).toContainText('100/100 HP')
-        await expect(details).toContainText('Источник скелетов · камень')
+        await expect(details).toContainText(
+            'Из могил могут подниматься скелеты, поэтому их надо разрушить или очистить.'
+        )
+        await expect(details).toContainText('Киркой быстрее, оружием и магией дольше.')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
             'aria-valuenow',
             '99.75'
@@ -21,21 +24,9 @@ test.describe('Storybook production grave states', () => {
             'aria-valuemax',
             '100'
         )
-        await expect(details.locator('dt')).toHaveText([
-            'Кирка',
-            'Оружие',
-            'Магия',
-            'Кулаки',
-            'Стрелы',
-        ])
-        await expect(details.locator('dd')).toHaveText([
-            '100% урона',
-            '25% урона',
-            '25% урона',
-            '10% урона',
-            '5% урона',
-        ])
-        await expect(details).toContainText('5 MP · 3 с без движения. Esc — прервать.')
+        await expect(details.locator('.bar-track')).toHaveCSS('height', '14px')
+        await expect(details.locator('dl')).toHaveCount(0)
+        await expect(details).not.toContainText('5 MP')
     })
 
     test('ruined source displays the server-based restoration countdown', async ({ page }) => {
@@ -44,7 +35,6 @@ test.describe('Storybook production grave states', () => {
         await expect(details).toContainText('Разрушенная могила')
         await expect(details).toContainText('0/100 HP')
         await expect(details).toContainText('Восстановится через 20:00')
-        await expect(details).toContainText('5 MP · 3 с без движения. Esc — прервать.')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
             'aria-valuenow',
             '0'
@@ -62,10 +52,8 @@ test.describe('Storybook production grave states', () => {
         await expect(details.locator('dl')).toHaveCount(0)
     })
 
-    test('compact target rounds HP text while retaining its fractional bar fill', async ({
-        page,
-    }) => {
-        await openGraveStory(page, 'compact-target')
+    test('rounds HP text while retaining its fractional bar fill', async ({ page }) => {
+        await openGraveStory(page, 'fractional-health')
         const details = page.getByLabel('Состояние могилы')
         await expect(details).toContainText('0/100 HP')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
@@ -74,6 +62,23 @@ test.describe('Storybook production grave states', () => {
         )
         await expect(details.locator('dl')).toHaveCount(0)
         await expect(details).not.toContainText('Esc — прервать')
+    })
+
+    test('renders localized English guidance at narrow width', async ({ page }) => {
+        await page.setViewportSize({ width: 320, height: 700 })
+        await openGraveStory(page, 'active')
+        await page.evaluate(async (modulePath) => {
+            const { setGameLocale } = await import(modulePath)
+            setGameLocale('en')
+        }, '/src/shared/lib/i18n/index.ts')
+        const details = page.getByLabel('Grave condition')
+        await expect(details).toContainText(
+            'Skeletons can rise from graves, so graves must be destroyed or purified.'
+        )
+        await expect(details).toContainText(
+            'A pickaxe works fastest. Weapons and magic take longer.'
+        )
+        await expect(details.locator('.bar-track')).toHaveCSS('height', '14px')
     })
 })
 

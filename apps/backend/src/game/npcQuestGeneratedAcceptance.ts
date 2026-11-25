@@ -16,6 +16,7 @@ import {
     questOfferAvailable,
     type QuestOfferRecord,
     questResult,
+    questTransferReachable,
 } from './npcQuestTypes'
 
 export function acceptGenerated(
@@ -99,6 +100,7 @@ export function redeemPublishedQuest(
         wallet === undefined ||
         !draft.objectives.every((objective) => objective.kind === 'deliver') ||
         !questOfferAvailable(offer, context.environment, now) ||
+        !questTransferReachable(actor, issuer, context.environment) ||
         context.jobs.has(publication.id) ||
         group.leaderId !== actor.id ||
         !parties.contractSlots.claim(group.key, publication.id)

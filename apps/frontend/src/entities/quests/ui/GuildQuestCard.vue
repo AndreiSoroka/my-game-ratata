@@ -136,7 +136,6 @@ const progressLabel = computed(() =>
                     :items="[{ itemId: request.requiredTrophyItemId, quantity: 1 }]"
                     :show-heading="false"
                 />
-                <p class="quest-card-hint">{{ tGame('game.quests.trophyFoundEarlierCounts') }}</p>
             </template>
             <p class="quest-card-hint">
                 {{ tGame('game.quests.waitForWorkerCompleteOne') }}

@@ -154,7 +154,9 @@ function snapshotAnimation(
     character: GameCharacter
 ): CharacterSnapshot['animation'] {
     return {
-        action: character.animationAction,
+        ...(character.animationAction === 'prepare'
+            ? { action: 'attack', pose: 'prepare' }
+            : { action: character.animationAction }),
         startedAt: character.animationStartedAt,
         ...(character.combat.action === undefined
             ? {}

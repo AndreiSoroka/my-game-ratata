@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HeroClass } from '@my-game-ratata/contracts'
+import { ref } from 'vue'
 
 import { useGameplaySession } from '../model/useGameplaySession'
 import AutomationPanels from './AutomationPanels.vue'
@@ -16,6 +17,7 @@ import TestControlPanel from './TestControlPanel.vue'
 import TreePlanting from './TreePlanting.vue'
 
 const props = defineProps<{ canEnterWorld: () => Promise<boolean> }>()
+const nearbyTargetKey = ref<string>()
 const isStarted = defineModel<boolean>('started', { default: false })
 defineSlots<{
     start(props: {
@@ -126,6 +128,7 @@ const {
                     :player="localCharacter"
                     :characters="visibleCharacters"
                     :blocked="worldInputBlocked"
+                    :nearby-target-key="nearbyTargetKey"
                     :interaction-prompt="interaction?.prompt"
                     @interact="windows.openNearbyMenu"
                     @request-interact="windows.openNearbyMenu(undefined, true)"
@@ -143,8 +146,7 @@ const {
                     :is-position-visible="isPositionVisible"
                     :blocked="worldInputBlocked"
                     @command="gameWindows?.command($event)"
-                    @target-change="game?.setInteractionTarget($event)"
-                    @select-grave="gameplay?.selectGrave($event)"
+                    @target-change="nearbyTargetKey = $event?.key"
                 />
                 <GameplayAdventurePanel
                     v-if="snapshot && localCharacter"

@@ -2,7 +2,8 @@ import { expect, it } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
 import { parseClientMessage } from '../src/game/messages'
-import { canHearSpeech } from '../src/game/socialSpeech'
+import { loadNavigationService } from '../src/game/navigation'
+import { canHearNearbySpeech, canHearSpeech } from '../src/game/socialSpeech'
 import { WhisperService } from '../src/game/whispers'
 import { exchangeFixture } from './exchangeFixture'
 
@@ -96,6 +97,41 @@ it('uses inclusive 48 and 80 unit boundaries and never hears across locations', 
     f.b.position.x = f.a.position.x
     f.b.locationId = 'map-0-0'
     expect(canHearSpeech(f.b, f.a, f.navigation, 0)).toBe(false)
+})
+
+it('hears nearby speech and whispers through an authored low table, with physical sight blocked', () => {
+    const { a, b } = fixture()
+    const navigation = loadNavigationService()
+    a.position = { x: 600, y: 408 }
+    b.position = { x: 600, y: 440 }
+    const whispers = new WhisperService({
+        getCharacter: (id) => (id === b.id ? b : a),
+        navigationFor: () => navigation,
+        heard: () => undefined,
+    })
+
+    expect(navigation.hasLineOfSight(a.position, b.position)).toBe(false)
+    expect(canHearNearbySpeech(a, b, navigation, 0)).toBe(true)
+    expect(
+        whispers.handle(
+            a,
+            { type: 'whisper', targetId: b.id, text: 'Слышно?' },
+            0
+        )
+    ).toBe(true)
+
+    const door = navigation.grid.doors?.find(({ id }) =>
+        id.endsWith('novogorod.guild')
+    )
+    if (door === undefined) {
+        throw new Error('Expected an authored guild door')
+    }
+    const { x, y, width, height } = door.bounds
+    a.position = { x: x + width / 2, y: y - 8 }
+    b.position = { x: x + width / 2, y: y + height + 8 }
+    expect(whispers.available(a, b, 1)).toBe(true)
+    navigation.setDoorState(door.id, 'closed')
+    expect(whispers.available(a, b, 2)).toBe(false)
 })
 
 it('rejects a whisper addressed by ID to a hidden crouching recipient', () => {

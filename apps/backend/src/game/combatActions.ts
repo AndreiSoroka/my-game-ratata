@@ -1,6 +1,7 @@
 import {
     type AttackGeometry,
     type GameEventPayload,
+    isFireSpell,
 } from '@my-game-ratata/contracts'
 
 import { prepareComboTarget } from './bladeCombo'
@@ -56,7 +57,7 @@ export function startCombatAction(
     }
     actor.lastAttackAt = now
     actor.lockAction(now, phases.movementMs)
-    actor.setAnimation('attack', now, phases.animationMs ?? phases.cycleMs)
+    startAttackAnimation(actor, now, attack, phases)
     actor.attackZoneUntil = now + phases.cycleMs
     const event: StartedCombatAction = {
         kind: 'attack',
@@ -78,4 +79,23 @@ export function startCombatAction(
               sourceActorId: actor.id,
           })
         : event
+}
+
+function startAttackAnimation(
+    actor: GameCharacter,
+    now: number,
+    attack: Pick<PendingAttackHit, 'delivery' | 'abilityId'>,
+    phases: AttackPhases
+): void {
+    const preparesProjectile =
+        attack.delivery === 'ranged_physical' ||
+        attack.abilityId === 'spark' ||
+        isFireSpell(attack.abilityId ?? '')
+    actor.setAnimation(
+        preparesProjectile ? 'prepare' : 'attack',
+        now,
+        preparesProjectile
+            ? phases.windupMs
+            : (phases.animationMs ?? phases.cycleMs)
+    )
 }

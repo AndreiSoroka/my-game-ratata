@@ -181,12 +181,12 @@ in-world explanation.
 Before accepting a quest choose **Вся награда сдающему** or **Поровну группе**
 (the default). The journal shows active quests, their fixed reward mode and paid
 shares; the party window shows presence and contribution. Submission uses the
-current quest's confirmation window. Worker requests have **Сообщить о расчистке**
+current quest's confirmation window. Worker requests have **Передать трофей и доложить**
 and a later reward claim after the worker's return; the [request article](../knowledge/work/requests.md)
 explains the stages.
 
-A selected grave offers inspection, attack and **Упокоить могилу**. Its segmented
-ring shows shared purification progress. Bind known prayers separately with
+A selected grave offers inspection. Attack and use **Упокоить могилу** from the
+action bar. Its segmented ring shows shared purification progress. Bind known prayers with
 Shift+1–4; resurrection is a mode of the appropriate prayer, without a separate
 hotbar action. The preview shows earned information, targets and actual costs.
 

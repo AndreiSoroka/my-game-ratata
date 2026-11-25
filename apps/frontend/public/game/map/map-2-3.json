@@ -11318,6 +11318,11 @@
                     "visible": true,
                     "properties": [
                         {
+                            "name": "speechTransparent",
+                            "type": "bool",
+                            "value": true
+                        },
+                        {
                             "name": "propId",
                             "type": "string",
                             "value": "map-2-3:prop:22:47"

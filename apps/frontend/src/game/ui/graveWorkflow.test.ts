@@ -63,6 +63,53 @@ describe('typed grave projectiles', () => {
     })
 })
 
+describe('temporary grave targeting', () => {
+    it('approaches a temporary grave once, repeats on a rapid second press and stops on the third', async () => {
+        const { wrapper, grave, sendCommand } = fixture()
+        try {
+            const key = `grave:${grave.id}`
+            await wrapper.setProps({ nearbyTargetKey: key })
+            expect(wrapper.vm.selectedKey).toBeUndefined()
+            expect(wrapper.get('.hotbar').attributes('data-focused-target-key')).toBe(key)
+            press('Digit1')
+            press('Digit1')
+            press('Digit1')
+            const action = { kind: 'attack', target: { kind: 'grave', id: grave.id } }
+            expect(sendCommand.mock.calls).toEqual([
+                [{ type: 'auto_action', action: { ...action, once: true } }],
+                [{ type: 'auto_action', action }],
+                [{ type: 'auto_action', action: null }],
+            ])
+        } finally {
+            wrapper.unmount()
+        }
+    })
+    it.each(['target changes', 'grave is ruined', 'Escape'] as const)(
+        'cancels a pending temporary grave action when %s',
+        async (reason) => {
+            const { wrapper, grave, snapshot, sendCommand } = fixture()
+            try {
+                await wrapper.setProps({ nearbyTargetKey: `grave:${grave.id}` })
+                press('Digit1')
+                press('Digit1')
+                if (reason === 'target changes') {
+                    await wrapper.setProps({ nearbyTargetKey: undefined })
+                } else if (reason === 'grave is ruined') {
+                    await wrapper.setProps({
+                        snapshot: { ...snapshot, graves: [{ ...grave, phase: 'ruined' }] },
+                    })
+                } else {
+                    press('Escape')
+                }
+                expect(sendCommand).toHaveBeenLastCalledWith({ type: 'cancel_control' })
+                expect(wrapper.vm.selectedKey).toBeUndefined()
+            } finally {
+                wrapper.unmount()
+            }
+        }
+    )
+})
+
 describe('grave selection and hotbar', () => {
     it('pins basic attacks and repeats to the grave, then clears on purification', async () => {
         const { wrapper, grave, snapshot, sendCommand } = fixture()
@@ -157,8 +204,8 @@ describe('grave selection and hotbar', () => {
     })
 })
 
-describe('F grave menu', () => {
-    it('forwards selected identity and facts, preserves it when a neighbor approaches, and closes after purification', async () => {
+describe('F grave inspection', () => {
+    it('shows pinned facts without issuing a grave action and closes after purification', async () => {
         const player = characterFixture('self', {
             heroClass: 'cleric',
             abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
@@ -172,30 +219,30 @@ describe('F grave menu', () => {
         try {
             wrapper.vm.openMenu()
             await flushPromises()
-            expect(wrapper.emitted('selectGrave')).toEqual([[grave.id]])
-            expect(wrapper.find('[role="menu"]').exists()).toBe(true)
-            expect(wrapper.text()).toContain('5% урона')
+            const panel = wrapper.get('[role="dialog"]')
+            expect(panel.attributes('aria-labelledby')).toBeTruthy()
+            expect(wrapper.find('[role="menuitem"]').exists()).toBe(false)
+            expect(wrapper.text()).toContain('Киркой быстрее')
+            expect(document.activeElement).toBe(panel.get('button').element)
+            expect(wrapper.emitted('targetChange')?.at(-1)?.[0]).toMatchObject({
+                key: `grave:${grave.id}`,
+            })
             await wrapper.setProps({
                 snapshot: {
                     ...snapshot,
                     graves: [grave, graveFixture({ id: 'neighbor', position: { x: 0, y: 8 } })],
                 },
             })
-            await wrapper.get(`[data-action-id="grave:purify:${grave.id}"]`).trigger('click')
-            expect(wrapper.emitted('command')?.at(-1)).toEqual([
-                {
-                    type: 'use_ability',
-                    abilityId: 'pray',
-                    intent: { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } },
-                },
+            expect(wrapper.emitted('targetChange')?.at(-1)?.[0]).toMatchObject({
+                key: `grave:${grave.id}`,
+            })
+            expect(wrapper.emitted('command')).toEqual([
+                [{ type: 'move_input', axis: { x: 0, y: 0 } }],
             ])
-            await wrapper.setProps({ selectedGraveId: grave.id })
-            wrapper.vm.openMenu()
-            await flushPromises()
             await wrapper.setProps({
                 snapshot: { ...snapshot, graves: [{ ...grave, phase: 'purified' }] },
             })
-            expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+            expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
         } finally {
             wrapper.unmount()
         }

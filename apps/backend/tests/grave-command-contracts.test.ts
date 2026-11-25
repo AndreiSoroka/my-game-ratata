@@ -11,6 +11,7 @@ const commands = [
     { type: 'use_ability', abilityId: 'spark', target },
     { type: 'use_ability', abilityId: 'fireball', target },
     { type: 'auto_action', action: { kind: 'attack', target } },
+    { type: 'auto_action', action: { kind: 'attack', target, once: true } },
     {
         type: 'auto_action',
         action: { kind: 'ability', abilityId: 'shot', target },

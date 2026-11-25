@@ -6,7 +6,8 @@ export function recordProp(
     rows,
     tiles,
     kind = 'prop',
-    treeProfile
+    treeProfile,
+    speechTransparent = false
 ) {
     ctx.propPlacements.push({
         x,
@@ -16,6 +17,7 @@ export function recordProp(
         tiles: [...tiles],
         kind,
         treeProfile,
+        speechTransparent,
     })
 }
 
@@ -59,6 +61,9 @@ export function createDepthProps(ctx, locationId) {
             rotation: 0,
             visible: true,
             properties: [
+                ...(prop.speechTransparent
+                    ? [{ name: 'speechTransparent', type: 'bool', value: true }]
+                    : []),
                 ...(prop.treeProfile
                     ? [
                           {

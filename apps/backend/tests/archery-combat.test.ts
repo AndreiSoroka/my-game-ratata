@@ -68,6 +68,10 @@ describe('archery targeting and action phases', () => {
             delivery: 'ranged_physical',
             attackGeometry: { kind: 'circle', radius: 160 },
         })
+        expect(actor.snapshot(1000).animation).toMatchObject({
+            pose: 'prepare',
+            hitAt: 1700,
+        })
         expect(actor.energy).toBe(energy - 20)
         expect(actor.combat.readyAt).toBe(2800)
         expect(resolvePendingAttackHit(at(1699))).toEqual([])
@@ -105,6 +109,7 @@ describe('archery targeting and action phases', () => {
         ).toMatchObject([
             { phase: 'interrupted', kind: 'attack', abilityId: 'sniper_shot' },
         ])
+        expect(actor.snapshot(1500).animation).toMatchObject({ action: 'idle' })
         expect(actor.energy).toBe(energy - 20)
         expect(actor.combat.readyAt).toBe(2800)
         expect(actor.abilities.availableAt.sniper_shot).toBe(2800)

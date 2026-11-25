@@ -34,6 +34,7 @@ export interface HotbarProps {
     player: CharacterSnapshot
     target?: CharacterSnapshot
     grave?: WorldGraveSnapshot
+    approachGrave?: boolean
     graves?: WorldGraveSnapshot[]
     objectTarget?: boolean
     acquireAttackTarget?: () => string | undefined
@@ -229,23 +230,30 @@ function activateAttack(
     reason: string | undefined
 ): void {
     const address = combatAddress(props)
-    if (!props.grave && (props.player.basicAttackKind ?? 'melee') === 'melee') {
+    if (approachesMeleeTarget(props)) {
         if (attackWeaponBroken(props)) return
         const acquiredTargetId = address ? undefined : props.acquireAttackTarget?.()
-        const targetId = address?.targetId ?? acquiredTargetId
-        if (targetId !== undefined) {
-            const attack = { kind: 'attack', targetId } as const
+        const resolved = address ?? (acquiredTargetId ? { targetId: acquiredTargetId } : undefined)
+        if (resolved !== undefined) {
+            const attack = { kind: 'attack', ...resolved } as const
             emit('command', {
                 type: 'auto_action',
                 action: { ...attack, once: true },
             })
-            gestures.markAttackPending(targetId)
+            gestures.markAttackPending(attack)
             gestures.remember(index, attack, acquiredTargetId)
             return
         }
     }
     if (!reason) emit('command', { type: 'attack', ...address })
     if (address) gestures.remember(index, { kind: 'attack', ...address })
+}
+
+function approachesMeleeTarget({ player, grave, approachGrave }: HotbarProps): boolean {
+    return (
+        (player.basicAttackKind ?? 'melee') === 'melee' &&
+        (!grave || (approachGrave === true && grave.phase === 'active'))
+    )
 }
 function activatePlanting(
     binding: HotbarBinding,

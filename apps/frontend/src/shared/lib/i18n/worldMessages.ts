@@ -73,7 +73,6 @@ export const worldMessages = {
     closeEsc: ['Закрыть · Esc', 'Close · Esc'],
     closeLoot: ['Закрыть обыск', 'Close search'],
     cutWithoutLoot: ['Срубить без добычи', 'Chop without collecting'],
-    damagePercent: ['{percent}% урона', '{percent}% damage'],
     depositRetained: ['Аванс {deposit} ◈ не возвращён', 'Deposit of {deposit} ◈ was not refunded'],
     destroyedGrave: ['Разрушенная могила', 'Destroyed grave'],
     disconnectedFromServer: ['Нет соединения с сервером.', 'Disconnected from the server.'],
@@ -228,7 +227,6 @@ export const worldMessages = {
     selectAndUseF: ['Выберите цель и используйте F', 'Select a target and use F'],
     selectedGrave: ['В выбранную могилу', 'Into the selected grave'],
     selectLiving: ['Выберите живую цель: E', 'Select a living target: E'],
-    skeletonSourceStone: ['Источник скелетов · камень', 'Skeleton source · Stone'],
     sowCost: [
         'Посеять · {required} семя · {energy} EN · в рюкзаке: {seeds}{unavailable}',
         'Sow · {required} seed · {energy} EN · in backpack: {seeds}{unavailable}',
@@ -246,10 +244,6 @@ export const worldMessages = {
     switchSidesWSSelect: [
         '←→ / A D — сторона · ↑↓ / W S — выбор · F / Enter — переложить · Esc — закрыть. Стопки переносятся целиком. Непоместившиеся останутся',
         '←→ / A D to switch sides · ↑↓ / W S to select · F / Enter to move · Esc to close. Stacks move together. Items that do not fit stay here.',
-    ],
-    sWithoutMovingEscInterrupt: [
-        'с без движения. Esc — прервать.',
-        's without moving. Esc to interrupt.',
     ],
     take: ['← Взять', '← Take'],
     takeAll: ['Забрать всё', 'Take all'],

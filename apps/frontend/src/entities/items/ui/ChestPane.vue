@@ -2,9 +2,7 @@
 import type { ItemInstanceSnapshot } from '@my-game-ratata/contracts'
 
 import { itemAssetCatalog } from '@/shared/lib/item-assets'
-import { ItemSlot } from '@/shared/ui/common'
-import { UiButton } from '@/shared/ui/common'
-import { UiFrame } from '@/shared/ui/common'
+import { darkPanelButtonColors, ItemSlot, UiButton, UiFrame } from '@/shared/ui/common'
 
 import { itemStackLabel } from '../model/itemLabels'
 
@@ -39,6 +37,8 @@ const emit = defineEmits<{ select: [instanceId: string] }>()
         <div class="chest-items">
             <UiButton
                 size="small"
+                border="border-015"
+                :colors="darkPanelButtonColors"
                 v-for="item in items"
                 class="chest-item"
                 :key="item.instanceId"

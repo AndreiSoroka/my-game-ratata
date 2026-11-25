@@ -1,10 +1,7 @@
 import {
-    authoredMessage,
     CENTER_LOCATION_ID,
     DEFAULT_QUEST_REWARD_MODE,
-    type GuildQuestDefinition,
     type QuestBoardEntry,
-    type QuestObjective,
     type QuestRewardMode,
     type QuestTurnInPromptSnapshot,
 } from '@my-game-ratata/contracts'
@@ -12,15 +9,18 @@ import {
 import type { GameCharacter } from './character'
 import { novogorodStory as cityStory } from './cityStoryDefinitions'
 import type { NpcQuestResult } from './npcQuests'
+import { questResult, questTransferReachable } from './npcQuestTypes'
+import { validateQuestDraft } from './npcQuestValidation'
+import {
+    bellQuest,
+    type BoardQuest,
+    guildQuest,
+    questBoardIssuerId,
+} from './questBoardEntries'
+export { type BoardQuest, questBoardIssuerId } from './questBoardEntries'
+import { validateQuestExcursion } from './questExcursions'
 import { hasDeliveries, type QuestTurnInEnvironment } from './questTurnInRules'
-
-export const questBoardIssuerId = cityStory.issuerId
-
-export interface BoardQuest {
-    entry: QuestBoardEntry
-    objectives: QuestObjective[]
-    guild?: GuildQuestDefinition
-}
+import { availableGold } from './rewardReservations'
 
 export class QuestBoardCatalog {
     public constructor(private readonly environment: QuestTurnInEnvironment) {}
@@ -112,12 +112,72 @@ export class QuestBoardCatalog {
         return entries
     }
 
+    public offerable(player: GameCharacter, now: number): BoardQuest[] {
+        const issuer = this.environment.getCharacter(questBoardIssuerId)
+        if (issuer?.alive !== true) {
+            return []
+        }
+        return this.available(player, now).filter((job) =>
+            this.canOffer(issuer, player, job, now)
+        )
+    }
+
+    private canOffer(
+        issuer: GameCharacter,
+        player: GameCharacter,
+        job: BoardQuest,
+        now: number
+    ): boolean {
+        if (!this.groupCanTake(player, job)) {
+            return false
+        }
+        const request = job.guild?.workRequest
+        if (request !== undefined) {
+            const wallet = this.environment.adventure.questFunding.wallet(
+                request.cityId
+            )
+            return (
+                wallet !== undefined &&
+                availableGold(wallet) >= job.entry.rewardGold
+            )
+        }
+        if (job.entry.source !== 'published') {
+            return true
+        }
+        const post = this.environment.quests.publications.get(job.entry.id, now)
+        return (
+            post?.revision === job.entry.revision &&
+            validateQuestDraft(issuer, post.draft, this.environment) === null &&
+            validateQuestExcursion(player, post.draft, this.environment) ===
+                null
+        )
+    }
+
     public offer(
         issuer: GameCharacter,
         player: GameCharacter,
         job: BoardQuest,
         now: number
     ): NpcQuestResult {
+        const current = this.available(player, now).find(
+            ({ entry }) =>
+                entry.id === job.entry.id &&
+                entry.revision === job.entry.revision
+        )
+        if (
+            issuer.id !== questBoardIssuerId ||
+            current === undefined ||
+            !this.canOffer(issuer, player, current, now)
+        ) {
+            const group = this.environment.parties.contractGroup(player.id)
+            return questResult(
+                false,
+                group.occupied && job.entry.source !== 'story'
+                    ? 'Сначала завершите действующий договор.'
+                    : 'Этот договор сейчас недоступен.'
+            )
+        }
+        job = current
         const quests = this.environment.quests.boardOffers
         switch (job.entry.source) {
             case 'story':
@@ -132,11 +192,7 @@ export class QuestBoardCatalog {
             case 'guild':
             case 'worker':
                 if (job.guild === undefined) {
-                    return {
-                        accepted: false,
-                        error: 'Этот договор сейчас недоступен.',
-                        events: [],
-                    }
+                    return questResult(false, 'Этот договор сейчас недоступен.')
                 }
                 return job.entry.source === 'worker'
                     ? quests.offerWorker(issuer, player.id, job.guild, now)
@@ -153,9 +209,15 @@ export class QuestBoardCatalog {
     }
 
     public directReady(player: GameCharacter, job: BoardQuest): boolean {
+        const request = job.guild?.workRequest
         return (
             this.groupCanTake(player, job) &&
-            (job.guild?.workRequest?.proofAccepted === true ||
+            questTransferReachable(
+                player,
+                this.environment.getCharacter(questBoardIssuerId),
+                this.environment
+            ) &&
+            (request?.proofAccepted === true ||
                 (job.objectives.length > 0 &&
                     job.objectives.every(
                         (objective) => objective.kind === 'deliver'
@@ -242,64 +304,7 @@ export class QuestBoardCatalog {
                     now
                 )
             case 'guild':
-                return {
-                    accepted: false,
-                    error: 'Сначала возьми этот договор.',
-                    events: [],
-                }
+                return questResult(false, 'Сначала возьми этот договор.')
         }
-    }
-}
-
-function guildQuest(definition: GuildQuestDefinition): BoardQuest {
-    const { titleMessage, descriptionMessage, workRequest } = definition
-    return {
-        entry: {
-            id: definition.id,
-            revision: 1,
-            source: workRequest === undefined ? 'guild' : 'worker',
-            title: definition.title,
-            description: definition.description,
-            ...(titleMessage === undefined ? {} : { titleMessage }),
-            ...(descriptionMessage === undefined ? {} : { descriptionMessage }),
-            rewardGold: definition.rewardGold,
-            status: 'available',
-        },
-        objectives:
-            workRequest === undefined || workRequest.proofAccepted
-                ? []
-                : [
-                      {
-                          kind: 'deliver',
-                          itemId: workRequest.requiredTrophyItemId,
-                          quantity: 1,
-                          recipientId: workRequest.clerkId,
-                      },
-                  ],
-        guild: definition,
-    }
-}
-
-function bellQuest(): BoardQuest {
-    return {
-        entry: {
-            id: cityStory.questId,
-            revision: 1,
-            source: 'story',
-            title: cityStory.title,
-            description: cityStory.description,
-            titleMessage: authoredMessage('story.title'),
-            descriptionMessage: authoredMessage('story.cityDescription'),
-            rewardGold: cityStory.rewardGold,
-            status: 'available',
-        },
-        objectives: [
-            {
-                kind: 'deliver',
-                itemId: cityStory.requiredItemId,
-                quantity: cityStory.quantity,
-                recipientId: questBoardIssuerId,
-            },
-        ],
     }
 }

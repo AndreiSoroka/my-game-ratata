@@ -130,7 +130,10 @@ for (const scenario of scenarios) {
         await offer.getByRole('radio', { name: scenario.workerLabel }).focus()
         await page.keyboard.press('KeyF')
         await expect(offer.locator(`input[value="${workerMode}"]`)).toBeChecked()
+        // WASD changes the reward option when a radio has focus.
+        await offer.getByRole('button', { name: 'Взять', exact: true }).focus()
         await expectStationaryWithKey(page, 'KeyD')
+        await expect(offer.locator(`input[value="${workerMode}"]`)).toBeChecked()
         await offer.getByRole('button', { name: 'Взять', exact: true }).focus()
         await page.keyboard.press('Enter')
         await expect
@@ -144,6 +147,10 @@ for (const scenario of scenarios) {
             () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
         )
         try {
+            await whisperQuestRequest(page, miraId, 'Я сделал задание')
+            const whisper = page.getByRole('dialog', { name: /^Шёпот:/u })
+            await expect(whisper).toContainText('Для доклада нужен свободный трофей')
+            await page.keyboard.press('Escape')
             const character = await openQuestJournal(page)
             const journal = character.getByRole('region', { name: 'Активные квесты' })
             await expect(journal).toBeVisible()
@@ -160,7 +167,7 @@ for (const scenario of scenarios) {
         }
         const reviewGuildOffer = () =>
             whisperQuestRequest(page, miraId, 'Хочу взять «Зачистка троп»')
-        await reviewGuildOffer()
+        await whisperQuestRequest(page, miraId, 'Дай что-нибудь простое')
         await expect(offer.getByRole('heading', { name: 'Зачистка троп' })).toBeVisible()
         await expect(offer.getByText('из городского фонда')).toHaveCount(0)
         await assertCenteredViewport(offer)

@@ -18,9 +18,9 @@ import { itemStackLabel } from '@/entities/items'
 import type { BuildingEntrance } from '../runtime/buildingEntrances'
 import { relation } from '../ui/combatTargeting'
 import { targetInteractionDistance } from '../ui/interactionTargets'
-import { type InteractionAction, nearbyInteractionTarget } from '../ui/nearbyInteractionActions'
+import type { InteractionAction } from '../ui/nearbyInteractionActions'
 import { observeAdventure } from './observeAdventure'
-import { environmentTargets } from './observeEnvironment'
+import { environmentTargets, observedTargetActions } from './observeEnvironment'
 import type { RatataTestState } from './testInterface'
 
 export interface AgentTarget {
@@ -155,15 +155,7 @@ function observeTargets(
             ...target,
             key: `${target.kind}:${target.id}`,
             distance: targetInteractionDistance(player.position, target),
-            actions:
-                nearbyInteractionTarget(
-                    snapshot,
-                    player,
-                    characters,
-                    visibility.isInteractionVisible,
-                    `${target.kind}:${target.id}`,
-                    true
-                )?.actions ?? [],
+            actions: observedTargetActions(snapshot, player, characters, target, visibility),
         }))
         .sort((a, b) => a.distance - b.distance || a.key.localeCompare(b.key))
 }

@@ -17,21 +17,27 @@ function resolveSwing(f: ReturnType<typeof fixture>): void {
     f.resolveHit(hitAt)
 }
 
-it('parses one-shot attack commands only with a character target', () => {
+it('parses one-shot attack commands with exactly one character or typed grave target', () => {
     const action = { kind: 'attack', targetId: 'enemy', once: true }
     const command = { type: 'auto_action', action }
     expect(parseClientMessage(JSON.stringify(command))).toEqual({
         message: command,
     })
 
+    const graveAction = {
+        kind: 'attack',
+        target: { kind: 'grave', id: 'grave' },
+        once: true,
+    }
+    const graveCommand = { ...command, action: graveAction }
+    expect(parseClientMessage(JSON.stringify(graveCommand))).toEqual({
+        message: graveCommand,
+    })
+
     for (const invalid of [
         { kind: 'attack', once: true },
         { ...action, targetId: ' ' },
-        {
-            kind: 'attack',
-            target: { kind: 'grave', id: 'grave' },
-            once: true,
-        },
+        { ...graveAction, target: { kind: 'grave', id: '' } },
         { ...action, target: { kind: 'grave', id: 'grave' } },
         { ...action, once: false },
         {

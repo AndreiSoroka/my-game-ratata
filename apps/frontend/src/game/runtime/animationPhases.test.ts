@@ -27,3 +27,28 @@ it('carries server phases through character presentation without changing the ma
     expect(characterFrame(characterCatalog.player, actor, 1500)?.action).toBe('attack')
     expect(actor.animation.startedAt).toBe(1000)
 })
+
+it('holds only the projectile preparation pose until release or interruption', () => {
+    const actor = characterFixture('hero', {
+        facing: 'left',
+        animation: {
+            action: 'attack',
+            startedAt: 1000,
+            hitAt: 1500,
+            durationMs: 900,
+            pose: 'prepare',
+        },
+    })
+    const frame = (now: number, hurt?: number) =>
+        characterFrame(characterCatalog.player, actor, now, hurt)
+
+    expect(frame(1499)).toMatchObject({ action: 'attack', frame: 0, flipHorizontal: true })
+    expect(frame(1500)?.action).toBe('idle')
+    expect(frame(1600)?.action).toBe('idle')
+    expect(frame(1499, 0)?.action).toBe('damaged')
+
+    delete actor.animation.hitAt
+    expect(frame(1300)?.action).toBe('idle')
+    actor.animation.action = 'walk'
+    expect(frame(1300)?.action).toBe('walk')
+})

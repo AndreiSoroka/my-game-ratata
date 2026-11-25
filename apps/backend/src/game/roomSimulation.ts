@@ -149,7 +149,8 @@ function reconcileRoomConversations(
             reacting.has(actor.id) ||
             (actor.id === SAVVA_ID
                 ? observeNecromancerScene(actor, room, now).threat !== undefined
-                : room.findVisibleTarget(actor, 240, now) !== undefined)
+                : room.findVisibleTarget(actor, 240, now) !== undefined),
+        now
     )
 }
 

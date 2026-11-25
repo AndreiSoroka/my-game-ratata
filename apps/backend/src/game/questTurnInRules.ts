@@ -4,6 +4,7 @@ import type {
     NpcQuestSnapshot,
     QuestObjective,
     QuestTurnInPromptSnapshot,
+    WorkRequestSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -11,6 +12,7 @@ import type { GameCharacter } from './character'
 import type { ExchangeService } from './exchange'
 import type { NavigationService } from './navigation'
 import type { NpcQuestService } from './npcQuests'
+import { questTransferReachable } from './npcQuestTypes'
 import type { PartyService } from './parties'
 import { availableItemQuantity } from './rewardReservations'
 import { canHearSpeech } from './socialSpeech'
@@ -24,7 +26,9 @@ export interface QuestTurnInEnvironment {
     whispers: WhisperService
     getCharacter: (id: string) => GameCharacter | undefined
     characters: () => Iterable<GameCharacter>
-    navigationFor: (actor: GameCharacter) => NavigationService
+    navigationFor: (
+        actor: Pick<GameCharacter, 'locationId'>
+    ) => NavigationService
     localeFor: (id: string) => GameLocale
 }
 export type QuestTurnInAction = 'report' | 'turn_in'
@@ -115,20 +119,50 @@ export function hasDeliveries(
     )
 }
 
+export function activeWorkerRequest(
+    environment: QuestTurnInEnvironment,
+    player: GameCharacter,
+    job: NpcQuestSnapshot
+): WorkRequestSnapshot | undefined {
+    const active = environment.parties.boardActiveJob(player.id)
+    return active?.instanceId === job.instanceId &&
+        active.workRequest?.id === job.workerRequestId
+        ? active.workRequest
+        : undefined
+}
+
 function workerAction(
     environment: QuestTurnInEnvironment,
     player: GameCharacter,
     job: NpcQuestSnapshot
 ): QuestTurnInAction | undefined {
-    const active = environment.parties.boardActiveJob(player.id)
-    const request =
-        active?.instanceId === job.instanceId ? active.workRequest : undefined
-    if (request?.stage === 'waiting') {
+    const request = activeWorkerRequest(environment, player, job)
+    if (
+        request === undefined ||
+        !canReachWorkerClerk(environment, player, request)
+    ) {
+        return undefined
+    }
+    if (request.stage === 'waiting') {
         return request.proofAccepted || hasDeliveries(player, job.objectives)
             ? 'report'
             : undefined
     }
-    return job.status === 'ready' ? 'turn_in' : undefined
+    return request.stage === 'ready' && job.status === 'ready'
+        ? 'turn_in'
+        : undefined
+}
+
+export function canReachWorkerClerk(
+    environment: QuestTurnInEnvironment,
+    player: GameCharacter,
+    request: WorkRequestSnapshot
+): boolean {
+    return questTransferReachable(
+        player,
+        environment.getCharacter(request.clerkId),
+        environment
+    )
 }
 
 export function readyTurnInAction(
@@ -148,7 +182,13 @@ export function readyTurnInAction(
     if (job.workerRequestId !== undefined) {
         return workerAction(environment, player, job)
     }
-    return job.status === 'ready' && hasDeliveries(player, job.objectives)
+    return job.status === 'ready' &&
+        questTransferReachable(
+            player,
+            environment.getCharacter(job.issuerId),
+            environment
+        ) &&
+        hasDeliveries(player, job.objectives)
         ? 'turn_in'
         : undefined
 }

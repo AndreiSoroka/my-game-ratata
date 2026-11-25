@@ -1,7 +1,13 @@
 import type { CharacterSnapshot } from '@my-game-ratata/contracts'
 
-import { type CharacterDefinition, resolveAnimationRow } from '../assets/characterCatalog'
+import {
+    type CharacterAnimation,
+    type CharacterDefinition,
+    resolveAnimationRow,
+} from '../assets/characterCatalog'
 import { animationFrame } from './animationFrame'
+
+type AnimatedCharacter = Pick<CharacterSnapshot, 'alive' | 'facing' | 'animation'>
 
 const nativeHumanIds = new Set([
     'player',
@@ -13,15 +19,11 @@ const nativeHumanIds = new Set([
 
 export function characterFrame(
     definition: CharacterDefinition,
-    snapshot: Pick<CharacterSnapshot, 'alive' | 'facing' | 'animation'>,
+    snapshot: AnimatedCharacter,
     now: number,
     hurtElapsed?: number
 ) {
-    const action = !snapshot.alive
-        ? 'death'
-        : hurtElapsed !== undefined
-          ? 'damaged'
-          : snapshot.animation.action
+    const action = presentedAction(snapshot, now, hurtElapsed)
     const authored = definition.animations[action]
     // Native human sheets have no hurt row. The first death-row frame is a
     // standing recoil pose; never play its later falling frames for a living hit.
@@ -46,23 +48,33 @@ export function characterFrame(
     return {
         action,
         row,
-        frame: animationFrame(playable, action, now, {
-            animation: frameTiming(snapshot, action, startedAt),
-        }),
+        frame: presentedFrame(playable, snapshot.animation, action, startedAt, now),
         flipHorizontal: snapshot.facing === 'left',
     }
+}
+
+function presentedAction(snapshot: AnimatedCharacter, now: number, hurtElapsed?: number) {
+    if (!snapshot.alive) return 'death'
+    if (hurtElapsed !== undefined) return 'damaged'
+    const { action, hitAt, pose } = snapshot.animation
+    return action === 'attack' && pose === 'prepare' && now >= (hitAt ?? -Infinity)
+        ? 'idle'
+        : action
 }
 
 function isNativeHumanDeath(definition: CharacterDefinition, action: string): boolean {
     return action === 'death' && nativeHumanIds.has(definition.id)
 }
 
-function frameTiming(
-    snapshot: Pick<CharacterSnapshot, 'animation'>,
+function presentedFrame(
+    playable: NonNullable<CharacterAnimation>,
+    animation: CharacterSnapshot['animation'],
     action: CharacterSnapshot['animation']['action'],
-    startedAt: number
+    startedAt: number,
+    now: number
 ) {
-    return action === 'attack'
-        ? { ...snapshot.animation, action, startedAt }
-        : { action, startedAt }
+    if (action === 'attack' && animation.pose === 'prepare') return 0
+    return animationFrame(playable, action, now, {
+        animation: action === 'attack' ? { ...animation, startedAt } : { action, startedAt },
+    })
 }

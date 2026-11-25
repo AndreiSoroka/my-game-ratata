@@ -1,7 +1,10 @@
 import {
     authoredMessages,
     type LocalizedMessage,
+    NPC_ENGLISH_NAMES,
 } from '@my-game-ratata/contracts'
+
+import type { GameCharacter } from './character'
 
 export interface QuestChatTitle {
     id: string
@@ -13,11 +16,18 @@ export function localizedQuestTitle(
     job: QuestChatTitle,
     locale: 'ru' | 'en'
 ): string {
-    const message = job.titleMessage
-    if (message === undefined) {
-        return job.title
+    return localizedQuestText(job.title, job.titleMessage, locale)
+}
+
+export function localizedQuestText(
+    text: string,
+    message: LocalizedMessage | null | undefined,
+    locale: 'ru' | 'en'
+): string {
+    if (message == null) {
+        return text
     }
-    return (authoredMessages[locale][message.key] ?? job.title).replace(
+    return (authoredMessages[locale][message.key] ?? text).replace(
         /\{(\w+)\}/gu,
         (source, name: string) => String(message.params?.[name] ?? source)
     )
@@ -59,24 +69,44 @@ export function namedQuest(text: string, job: QuestChatTitle): boolean {
     )
 }
 
-export type QuestSpeech = 'take' | 'submit' | 'yes' | 'status'
+export type QuestSpeech =
+    'take' | 'recommend' | 'submit' | 'yes' | 'status' | 'report' | 'details'
 
 export function questSpeech(text: string): QuestSpeech | undefined {
-    const words = normalize(text)
+    const words = withoutMira(text)
     if (
-        /^(?:да|yes|ага|yep|да (?:готов|закончил|выполнил)[а-я]*|yes (?:i did|finished|done))$/u.test(
-            words
-        )
-    ) {
-        return 'yes'
-    }
-    if (
-        /(?:^| )(?:не (?:хочу|буду|готов|выполнил|закончил|сда)|not (?:ready|finished)|don t want)/u.test(
+        /(?:^| )(?:не (?:хочу|буду|готов|выполнил|закончил|сделал|расчистил|очистил|передал|сда)|not (?:ready|finished)|don t want|didn t (?:finish|complete|clear|hand))/u.test(
             words
         )
     ) {
         return undefined
     }
+    if (
+        /^(?:да|yes|ага|yep|да (?:я )?(?:готов|закончил|выполнил)[а-я]*|yes (?:i did|finished|done))$/u.test(
+            words
+        )
+    ) {
+        return 'yes'
+    }
+    if (trophyReport(words, text.trim().endsWith('?'))) {
+        return 'report'
+    }
+    if (simpleOfferRequest(words)) {
+        return 'recommend'
+    }
+    if (activeQuestList(text)) {
+        return 'status'
+    }
+    if (boardDetailsRequest(words)) {
+        return 'details'
+    }
+    return questProgressSpeech(text, words)
+}
+
+function questProgressSpeech(
+    text: string,
+    words: string
+): QuestSpeech | undefined {
     if (/(?:^| )(?:взять|принять|возьму|take|accept)(?: |$)/u.test(words)) {
         return 'take'
     }
@@ -114,22 +144,126 @@ export function questSpeech(text: string): QuestSpeech | undefined {
 export function questCompletionQuestion(text: string): boolean {
     return (
         text.includes('?') &&
-        /(?:^| )(?:ты (?:уже )?(?:закончил|завершил|выполнил)[а-я]*|did you (?:already )?(?:finish|complete)|have you (?:finished|completed))(?: |$)/u.test(
+        /(?:^| )(?:ты (?:уже )?(?:закончил|завершил|выполнил|расчистил|очистил)[а-я]*|did you (?:already )?(?:finish|complete|clear)|have you (?:finished|completed|cleared))(?: |$)/u.test(
             normalize(text)
         )
     )
 }
 
 export function unnamedHandIn(text: string): boolean {
-    const words = normalize(text).replace(/^(?:мира|mira) /u, '')
-    return /^(?:(?:я )?(?:готов[а]? |хочу |можно |могу )?(?:сдать|сдаю|отчитаться)(?: (?:мой |этот )?(?:квест|заказ|договор|поручение))?|(?:квест|заказ|поручение|договор) готов[оа]?|готово|(?:я )?(?:его )?(?:сделал|выполнил|закончил)[а-я]*|quest complete|done|(?:(?:i want to|can i|i m ready to) )?(?:turn in|hand in|submit)(?: (?:the |my |this )?(?:quest|order|contract))?)$/u.test(
-        words
+    return /^(?:(?:я )?(?:готов[а]? |хочу |можно |могу )?(?:сдать|сдаю|отчитаться)(?: (?:мой |этот )?(?:квест|заказ|договор|поручение|задание))?|(?:квест|заказ|поручение|договор|задание) готов[оа]?|готово|(?:я )?(?:его )?(?:сделал|выполнил|закончил)[а-я]*(?: (?:свой |свое |это )?(?:квест|заказ|поручение|договор|задание))?|quest complete|done|i (?:finished|completed) (?:the |my |this )?(?:quest|order|contract|task|job)|(?:(?:i want to|can i|i m ready to) )?(?:turn in|hand in|submit)(?: (?:the |my |this )?(?:quest|order|contract|task))?)$/u.test(
+        withoutMira(text)
     )
 }
 
 export function unnamedStatus(text: string): boolean {
-    const words = normalize(text).replace(/^(?:мира|mira) /u, '')
+    const words = withoutMira(text)
     return /^(?:(?:статус|прогресс)(?: (?:моего )?(?:квеста|заказа|поручения|договора))?|как (?:там )?(?:мо[йияе] )?(?:квест|заказ|поручение|договор)|quest status)$/u.test(
         words
+    )
+}
+
+export function activeQuestList(text: string): boolean {
+    return /^(?:(?:какие|покажи) (?:у меня |мои )?(?:активные|текущие) (?:квесты|заказы|поручения|задания)(?: у меня)?|(?:which|what) (?:quests|orders|tasks) (?:do i have active|are active)|(?:what are|show me) my active (?:quests|orders|tasks))$/u.test(
+        withoutMira(text)
+    )
+}
+
+function withoutMira(text: string): string {
+    return normalize(text).replace(/^(?:мира|mira) /u, '')
+}
+
+function simpleOfferRequest(words: string): boolean {
+    return (
+        /^(?:дай(?:те)?|предложи(?:те)?|есть|можно) (?:мне )?(?:что нибудь простое|простое (?:задание|поручение|дело)|простой (?:квест|заказ)|(?:задание|поручение|квест) попроще)(?: пожалуйста)?$/u.test(
+            words
+        ) ||
+        /^(?:can you |could you |please )?(?:give me|offer me|do you have) (?:something simple|(?:a |an )?(?:simple|easy) (?:quest|job|task|order))(?: please)?$/u.test(
+            words
+        )
+    )
+}
+
+function boardDetailsRequest(words: string): boolean {
+    return (
+        /^(?:о чем (?:эти |те )?(?:задания|квесты|заказы|поручения)|расс(?:к|ке)ажи(?:те)? (?:подробнее )?о (?:заданиях|квестах|заказах|поручениях))(?: |$)/u.test(
+            words
+        ) ||
+        /^(?:what are (?:these|those|the) (?:quests|jobs|orders|tasks) about|tell me (?:more )?about (?:these|those|the) (?:quests|jobs|orders|tasks))(?: |$)/u.test(
+            words
+        )
+    )
+}
+
+export function workerReportSubject(text: string): string | undefined {
+    return /(?: (?:для|по) (?:квеста|задания|поручения|заказа)| for (?:the )?(?:quest|task|order)) (.+)$/u.exec(
+        withoutMira(text)
+    )?.[1]
+}
+
+function trophyReport(words: string, question: boolean): boolean {
+    if (question && !/(?:^как |^how | как | how )/u.test(words)) {
+        return false
+    }
+    return (
+        /^(?:да )?(?:я )?(?:расчистил|очистил)[а-я]*(?: участок| поле)?$/u.test(
+            words
+        ) ||
+        /^(?:я )?(?:(?:хочу|готов[а]?) (?:тебе |вам )?передать|п(?:ере|еер)дал[а]?) (?:кость|трофей)(?: (?:для|по) (?:квеста|задания|поручения|заказа) .+)?$/u.test(
+            words
+        ) ||
+        /^(?:я )?готов[а]? передать как (?:это сделать|передать)$/u.test(
+            words
+        ) ||
+        /^(?:оформи(?:те)? сдачу|как (?:передать|сдать)) (?:кость|кости|трофей|трофея)$/u.test(
+            words
+        ) ||
+        /^(?:yes )?i (?:cleared (?:it|the (?:site|field|farm))|(?:want|am ready) to hand in (?:the )?(?:bone|trophy)(?: for (?:the )?(?:quest|task|order) .+)?|(?:handed|turned|gave) in (?:the )?(?:bone|trophy))$/u.test(
+            words
+        ) ||
+        /^i (?:am|m) ready to hand (?:it (?:in|over)|in (?:the )?(?:bone|trophy)) how (?:do|can) i (?:do (?:it|that)|hand it in)$/u.test(
+            words
+        ) ||
+        /^(?:how (?:do i|can i) hand in|(?:process|open) the hand in for) (?:the )?(?:bone|trophy)$/u.test(
+            words
+        )
+    )
+}
+
+export function questClarification(text: string, job: QuestChatTitle): boolean {
+    const words = withoutMira(text)
+    return (
+        !text.trim().endsWith('?') &&
+        !/(?:^| )(?:не|нет|not|no)(?: |$)/u.test(words) &&
+        ([
+            job.title,
+            localizedQuestTitle(job, 'ru'),
+            localizedQuestTitle(job, 'en'),
+        ].some((title) => normalize(title) === words) ||
+            /^(?:для|про|то|заказ|квест|задание|поручение|for|the one|the farmer(?: s)?|the miner(?: s)?|the lumberjack(?: s)?) /u.test(
+                words
+            ))
+    )
+}
+
+export function refersToWorker(text: string, worker: GameCharacter): boolean {
+    const words = normalize(text).replace(/(^| )фемер(?= |$)/gu, '$1фермер')
+    const references = [worker.nickname, NPC_ENGLISH_NAMES[worker.id]].filter(
+        (name): name is string => Boolean(name)
+    )
+    return (
+        references.some((name) =>
+            ` ${words} `.includes(` ${normalize(name)} `)
+        ) ||
+        (worker.tags.has('worker.farmer') &&
+            /(?:^| )(?:фермер(?:а|у|ом|е)?|farmer)(?: |$)/u.test(words)) ||
+        (worker.tags.has('worker.miner') &&
+            /(?:^| )(?:каменщик(?:а|у|ом|е)?|шахтер(?:а|у|ом|е)?|miner|mason)(?: |$)/u.test(
+                words
+            )) ||
+        (worker.tags.has('worker.lumberjack') &&
+            /(?:^| )(?:лесник(?:а|у|ом|е)?|дровосек(?:а|у|ом|е)?|lumberjack|woodcutter)(?: |$)/u.test(
+                words
+            ))
     )
 }

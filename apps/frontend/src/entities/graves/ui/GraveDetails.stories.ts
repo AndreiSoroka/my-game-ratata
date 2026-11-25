@@ -16,12 +16,10 @@ const grave: Args['grave'] = {
 }
 const meta = {
     title: 'Entities/graves/GraveDetails',
-    args: { grave, serverTime: 1000, compact: false },
+    args: { grave, serverTime: 1000 },
     argTypes: {
         grave: { control: 'object' },
         serverTime: { control: 'number' },
-        compact: { control: 'boolean' },
-        prayer: { control: 'object' },
     },
 } satisfies Meta<Args>
 export default meta
@@ -50,10 +48,9 @@ export const Purified: Story = {
         grave: { ...grave, phase: 'purified', health: { kind: 'exact', current: 0, max: 100 } },
     },
 }
-export const CompactTarget: Story = {
+export const FractionalHealth: Story = {
     ...Default,
     args: {
         grave: { ...grave, health: { kind: 'exact', current: 0.05, max: 100 } },
-        compact: true,
     },
 }

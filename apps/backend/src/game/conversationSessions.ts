@@ -2,6 +2,7 @@ import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
+import { canConverseWithNpc } from './socialSpeech'
 
 export const CONVERSATION_REACH = 48
 
@@ -28,7 +29,8 @@ export function reconcileConversations(
     characters: Iterable<GameCharacter>,
     navigationFor: (actor: GameCharacter) => NavigationService,
     urgentThreat: (npc: GameCharacter) => boolean = () => false,
-    canReadQuestBoard?: CanReadQuestBoard
+    canReadQuestBoard?: CanReadQuestBoard,
+    now = 0
 ): Set<string> {
     const actors = new Map([...characters].map((actor) => [actor.id, actor]))
     const held = new Set<string>()
@@ -54,8 +56,13 @@ export function reconcileConversations(
             continue
         }
         if (
-            !available(npc) ||
-            !conversationAvailable(actor, npc, navigationFor) ||
+            !conversationAvailable(
+                actor,
+                npc,
+                navigationFor,
+                now,
+                dialogue.initialView === undefined
+            ) ||
             urgentThreat(npc)
         ) {
             state.dialogue = null
@@ -110,16 +117,27 @@ function available(actor: GameCharacter | undefined): actor is GameCharacter {
 }
 
 function conversationAvailable(
-    actor: GameCharacter | undefined,
+    actor: GameCharacter,
     npc: GameCharacter | undefined,
-    navigationFor: (actor: GameCharacter) => NavigationService
-): actor is GameCharacter {
+    navigationFor: (actor: GameCharacter) => NavigationService,
+    now: number,
+    allowSpeechAcrossFurniture: boolean
+): npc is GameCharacter {
+    const navigation = navigationFor(actor)
     return (
         available(actor) &&
         available(npc) &&
-        (actor.controllerKind !== 'network_player' || actor.connected) &&
+        actor.connected &&
         actor.locationId === npc.locationId &&
         distance(actor.position, npc.position) <= CONVERSATION_REACH &&
-        navigationFor(actor).hasLineOfSight(actor.position, npc.position)
+        (navigation.hasLineOfSight(actor.position, npc.position) ||
+            (allowSpeechAcrossFurniture &&
+                canConverseWithNpc(
+                    actor,
+                    npc,
+                    navigation,
+                    now,
+                    CONVERSATION_REACH
+                )))
     )
 }

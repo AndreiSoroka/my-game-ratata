@@ -10,7 +10,7 @@ interface GestureState {
     previous?: { index: number; at: number; action: CharacterAutoAction }
     optimistic?: CharacterAutoAction
     acquiredTargetId?: string
-    pendingAttack?: { targetId: string; combatId: string | undefined }
+    pendingAttack?: { targetKey: string; combatId: string | undefined }
     activeIndex?: number
     lastFood?: { index: number; at: number }
     suppressServer: boolean
@@ -50,9 +50,11 @@ export function createGestures(
             }
             reset()
         },
-        hasPendingAttack: (targetId: string) => hasPendingAttack(state, props.player, targetId),
-        markAttackPending: (targetId: string) => {
-            state.pendingAttack = { targetId, combatId: props.player.combat?.action?.id }
+        hasPendingAttack: (targetKey: string) => hasPendingAttack(state, props.player, targetKey),
+        markAttackPending: (attack: CharacterAutoAction) => {
+            const targetKey = attackTargetKey(attack)
+            if (targetKey)
+                state.pendingAttack = { targetKey, combatId: props.player.combat?.action?.id }
         },
         active: (index: number, binding: HotbarBinding | null) =>
             index === activeIndex() && bindingMatchesAction(binding, action()),
@@ -93,18 +95,20 @@ export function createGestures(
         },
     }
 }
-function attacksTarget(action: CharacterAutoAction | undefined, targetId: string): boolean {
-    return action?.kind === 'attack' && action.targetId === targetId
+function attackTargetKey(action: CharacterAutoAction | undefined): string | undefined {
+    if (action?.kind !== 'attack') return undefined
+    if (action.target) return `${action.target.kind}:${action.target.id}`
+    return action.targetId ? `character:${action.targetId}` : undefined
 }
 function hasPendingAttack(
     state: GestureState,
     player: CharacterSnapshot,
-    targetId: string
+    targetKey: string
 ): boolean {
     const mode = player.control?.mode
     return (
-        attacksTarget(state.optimistic, targetId) ||
-        (state.pendingAttack?.targetId === targetId && mode !== 'route' && mode !== 'follow')
+        attackTargetKey(state.optimistic) === targetKey ||
+        (state.pendingAttack?.targetKey === targetKey && mode !== 'route' && mode !== 'follow')
     )
 }
 function acknowledge(
@@ -116,7 +120,7 @@ function acknowledge(
     const combatId = player.combat?.action?.id
     if (
         pending &&
-        (attacksTarget(player.control?.action, pending.targetId) ||
+        (attackTargetKey(player.control?.action) === pending.targetKey ||
             (combatId !== undefined && combatId !== pending.combatId))
     )
         state.pendingAttack = undefined

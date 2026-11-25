@@ -15,6 +15,12 @@ export { resolveMapRoot } from './mapFiles'
 import { clamp } from './math'
 import { type NavigationDoor, NavigationDoors } from './navigationDoors'
 export { loadNavigationService } from './navigationLoader'
+import {
+    isSolidTile,
+    passesSpeech,
+    visibleLineFraction,
+} from './navigationVisibility'
+export { isSolidTile } from './navigationVisibility'
 import { findPath } from './pathfinding'
 import type { AuthoredDoor } from './worldObjectData'
 
@@ -37,6 +43,7 @@ export interface MapGrid {
     training?: TrainingMapData
     /** Immutable terrain/walls, excluding authored harvestable obstacles. */
     baseSolid?: boolean[]
+    speechTransparent?: ReadonlySet<number>
     /** Authored safe soil: independent of footstep sound and atlas tiles. */
     plantable?: boolean[]
     surfaces?: GroundSurface[]
@@ -53,6 +60,7 @@ export class NavigationService {
     public readonly grid: MapGrid
     public readonly summary: MapSummary
     private resourceBase: boolean[] | undefined
+    private readonly resourceObstacleCells = new Set<number>()
     private solidsWithoutDoors: boolean[]
     private readonly doors: NavigationDoors
 
@@ -81,9 +89,11 @@ export class NavigationService {
     public setResourceObstacles(bounds: readonly WorldObjectBounds[]): void {
         this.resourceBase ??= this.solidsWithoutDoors.slice()
         const solid = this.resourceBase.slice()
+        this.resourceObstacleCells.clear()
         for (const area of bounds) {
             for (const index of this.cellsInBounds(area)) {
                 solid[index] = true
+                this.resourceObstacleCells.add(index)
             }
         }
         this.solidsWithoutDoors = solid
@@ -258,36 +268,28 @@ export class NavigationService {
     }
 
     public hasLineOfSight(from: Vector2, to: Vector2): boolean {
-        return this.visibleLineFraction(from, to) === 1
+        return visibleLineFraction(this.grid, from, to) === 1
+    }
+
+    public hasSpeechLine(from: Vector2, to: Vector2): boolean {
+        return this.grid.speechTransparent === undefined
+            ? this.hasLineOfSight(from, to)
+            : visibleLineFraction(this.grid, from, to, (tile) =>
+                  passesSpeech(
+                      this.grid,
+                      tile,
+                      this.resourceObstacleCells,
+                      this.doors
+                  )
+              ) === 1
     }
 
     public visibleLineEndpoint(from: Vector2, to: Vector2): Vector2 {
-        const fraction = this.visibleLineFraction(from, to)
+        const fraction = visibleLineFraction(this.grid, from, to)
         return {
             x: from.x + (to.x - from.x) * fraction,
             y: from.y + (to.y - from.y) * fraction,
         }
-    }
-
-    private visibleLineFraction(from: Vector2, to: Vector2): number {
-        const steps = Math.max(
-            1,
-            Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 8)
-        )
-
-        for (let index = 1; index <= steps; index += 1) {
-            const ratio = index / steps
-            const point = {
-                x: from.x + (to.x - from.x) * ratio,
-                y: from.y + (to.y - from.y) * ratio,
-            }
-
-            if (this.isSolidTile(this.worldToTile(point))) {
-                return (index - 1) / steps
-            }
-        }
-
-        return 1
     }
 
     public walkableNeighbors(tile: TileCoordinate): TileCoordinate[] {
@@ -327,16 +329,4 @@ export class NavigationService {
 
         return { ...position }
     }
-}
-
-export function isSolidTile(grid: MapGrid, tile: TileCoordinate): boolean {
-    if (tile.x < 0 || tile.y < 0) {
-        return true
-    }
-
-    if (tile.x >= grid.width || tile.y >= grid.height) {
-        return true
-    }
-
-    return grid.solid[tile.y * grid.width + tile.x] === true
 }

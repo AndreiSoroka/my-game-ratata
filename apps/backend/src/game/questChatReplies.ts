@@ -1,29 +1,36 @@
-import type { NpcQuestSnapshot } from '@my-game-ratata/contracts'
+import {
+    type NpcQuestSnapshot,
+    type WorkRequestSnapshot,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import type { BoardQuest } from './questBoardCatalog'
+import { questTransferReachable } from './npcQuestTypes'
 import {
+    localizedQuestText,
     localizedQuestTitle,
     namedQuest,
     type QuestChatTitle,
     questCompletionQuestion,
+    refersToWorker,
 } from './questChatWords'
 import { questConversationJobs } from './questConversation'
 import {
+    activeWorkerRequest,
     currentQuestContact,
     type QuestContact,
     questContactAt,
     type QuestTurnInEnvironment,
     turnInContact,
 } from './questTurnInRules'
-import { availableItemQuantity } from './rewardReservations'
+import { workerReportText } from './questWorkerDialogue'
 
 export interface QuestQuestion extends QuestContact {
-    instanceId: string
-    revision: number
+    playerId: string
+    kind: 'choose' | 'confirm'
+    jobs: Array<Pick<NpcQuestSnapshot, 'instanceId' | 'revision'>>
 }
 
-interface ReplyContact {
+export interface ReplyContact {
     issuer: GameCharacter
     player: GameCharacter
     now: number
@@ -32,20 +39,42 @@ interface ReplyContact {
 export class QuestChatReplies {
     private readonly questions = new Map<string, QuestQuestion>()
 
-    public consumeQuestion(playerId: string): QuestQuestion | undefined {
-        const question = this.questions.get(playerId)
-        this.questions.delete(playerId)
-        return question
+    public question({
+        player,
+        issuer,
+        now,
+    }: ReplyContact): QuestQuestion | undefined {
+        const key = questionKey(player.id, issuer.id)
+        const question = this.questions.get(key)
+        if (question === undefined) {
+            return undefined
+        }
+        if (
+            currentQuestContact(this.environment, player, question, now) ===
+            issuer
+        ) {
+            return question
+        }
+        this.questions.delete(key)
+        return undefined
+    }
+
+    public clearQuestion({ player, issuer }: ReplyContact): void {
+        this.questions.delete(questionKey(player.id, issuer.id))
     }
 
     public questionIssuer(
         player: GameCharacter,
         now: number
     ): string | undefined {
-        const question = this.questions.get(player.id)
-        return question === undefined
-            ? undefined
-            : currentQuestContact(this.environment, player, question, now)?.id
+        const issuers = [...this.questions.values()]
+            .filter((question) => question.playerId === player.id)
+            .flatMap(
+                (question) =>
+                    currentQuestContact(this.environment, player, question, now)
+                        ?.id ?? []
+            )
+        return issuers.length === 1 ? issuers[0] : undefined
     }
 
     public deliveredQuestion(
@@ -65,7 +94,7 @@ export class QuestChatReplies {
             issuer,
             player,
             now
-        ).filter((job) => namedQuest(text, job))
+        ).filter((job) => this.matchesJob(player, job, text))
         if (jobs.length === 1 && jobs[0] !== undefined) {
             this.rememberQuestion(issuer, player, jobs[0], now)
         }
@@ -77,22 +106,50 @@ export class QuestChatReplies {
         job: NpcQuestSnapshot,
         now: number
     ): void {
-        this.questions.set(player.id, {
+        this.remember({ issuer, player, now }, [job], 'confirm')
+    }
+
+    private remember(
+        { issuer, player, now }: ReplyContact,
+        jobs: NpcQuestSnapshot[],
+        kind: QuestQuestion['kind']
+    ): void {
+        this.questions.set(questionKey(player.id, issuer.id), {
             ...questContactAt(issuer, player, now + 30_000),
-            instanceId: job.instanceId,
-            revision: job.revision,
+            playerId: player.id,
+            kind,
+            jobs: jobs.map(({ instanceId, revision }) => ({
+                instanceId,
+                revision,
+            })),
         })
     }
 
+    public matchesJob(
+        player: GameCharacter,
+        job: NpcQuestSnapshot,
+        text: string
+    ): boolean {
+        if (namedQuest(text, job)) {
+            return true
+        }
+        const request = activeWorkerRequest(this.environment, player, job)
+        const worker =
+            request === undefined
+                ? undefined
+                : this.environment.getCharacter(request.workerId)
+        return worker !== undefined && refersToWorker(text, worker)
+    }
+
     public update(now: number): void {
-        for (const [playerId, question] of this.questions) {
-            const player = this.environment.getCharacter(playerId)
+        for (const [key, question] of this.questions) {
+            const player = this.environment.getCharacter(question.playerId)
             if (
                 player === undefined ||
                 currentQuestContact(this.environment, player, question, now) ===
                     undefined
             ) {
-                this.questions.delete(playerId)
+                this.questions.delete(key)
             }
         }
     }
@@ -103,23 +160,59 @@ export class QuestChatReplies {
 
     public constructor(private readonly environment: QuestTurnInEnvironment) {}
 
-    public askWhich(contact: ReplyContact, jobs: QuestChatTitle[]): void {
+    public askWhich(contact: ReplyContact, jobs: QuestChatTitle[]): boolean {
         if (jobs.length === 0) {
-            this.say(
+            return this.say(
                 contact,
                 'Сейчас у тебя нет заказа для сдачи. Посмотри, какие заказы есть на доске у гильдии.',
                 'You have no order to turn in right now. Check the board by the guild.'
             )
-            return
         }
         const titles = (locale: 'ru' | 'en') =>
             [...new Set(jobs.map((job) => localizedQuestTitle(job, locale)))]
                 .slice(0, 6)
                 .join(', ')
-        this.say(
+        return this.say(
             contact,
             `Какой заказ? Назови его. ${titles('ru')}`,
             `Which order? Tell me its name. ${titles('en')}`
+        )
+    }
+
+    public askWhichToSubmit(
+        contact: ReplyContact,
+        jobs: NpcQuestSnapshot[]
+    ): void {
+        if (this.askWhich(contact, jobs) && jobs.length > 0) {
+            this.remember(contact, jobs, 'choose')
+        }
+    }
+
+    public describeContracts(
+        contact: ReplyContact,
+        jobs: NpcQuestSnapshot[],
+        offers: QuestChatTitle[]
+    ): void {
+        const titles = (entries: QuestChatTitle[], locale: 'ru' | 'en') =>
+            entries
+                .map((entry) => localizedQuestTitle(entry, locale))
+                .join(', ')
+        const activeRu =
+            jobs.length > 0
+                ? `У тебя в работе ${titles(jobs, 'ru')}.`
+                : 'У тебя нет активных поручений от меня.'
+        const activeEn =
+            jobs.length > 0
+                ? `Your active quests are ${titles(jobs, 'en')}.`
+                : 'You have no active quests from me.'
+        this.say(
+            contact,
+            offers.length > 0
+                ? `${activeRu} Сейчас могу предложить ${titles(offers, 'ru')}.`
+                : activeRu,
+            offers.length > 0
+                ? `${activeEn} I can currently offer ${titles(offers, 'en')}.`
+                : activeEn
         )
     }
 
@@ -132,11 +225,57 @@ export class QuestChatReplies {
     }
 
     public explain(contact: ReplyContact, job: NpcQuestSnapshot): void {
+        const request = activeWorkerRequest(
+            this.environment,
+            contact.player,
+            job
+        )
+        if (request !== undefined) {
+            this.explainWorker(contact, job, request)
+            return
+        }
+        if (job.status === 'ready' && this.approachIfBlocked(contact)) {
+            return
+        }
+        const detailEn = localizedQuestText(
+            '',
+            job.noticeMessage ?? job.objectiveMessages?.[0],
+            'en'
+        )
         this.say(
             contact,
             `«${localizedQuestTitle(job, 'ru')}» пока не готово к сдаче. ${job.notice ?? job.objectiveLabels?.join(' ') ?? ''}`,
-            `“${localizedQuestTitle(job, 'en')}” is not ready to hand in yet.`
+            `“${localizedQuestTitle(job, 'en')}” is not ready to hand in yet.${detailEn === '' ? '' : ` ${detailEn}`}`
         )
+    }
+
+    public approachIfBlocked(contact: ReplyContact): boolean {
+        if (
+            questTransferReachable(
+                contact.player,
+                contact.issuer,
+                this.environment
+            )
+        ) {
+            return false
+        }
+        this.say(
+            contact,
+            'Подойди ко мне ближе, чтобы оформить сдачу.',
+            'Come closer to hand in the quest.'
+        )
+        return true
+    }
+
+    private explainWorker(
+        contact: ReplyContact,
+        job: NpcQuestSnapshot,
+        request: WorkRequestSnapshot
+    ): void {
+        const [ru, en] = workerReportText(contact, request, this.environment)
+        if (this.say(contact, ru, en)) {
+            this.remember(contact, [job], 'confirm')
+        }
     }
 
     public explainDelivery(contact: ReplyContact, groupCanTake: boolean): void {
@@ -155,31 +294,6 @@ export class QuestChatReplies {
         }
     }
 
-    public describeOrder(
-        contact: ReplyContact,
-        { entry, objectives }: BoardQuest,
-        active?: NpcQuestSnapshot
-    ): void {
-        const delivery = objectives[0]
-        const progress =
-            entry.source === 'story' && delivery?.kind === 'deliver'
-                ? ` (${String(Math.min(delivery.quantity, availableItemQuantity(contact.player.inventory, delivery.itemId)))}/${String(delivery.quantity)})`
-                : ''
-        const other =
-            active === undefined
-                ? ''
-                : ` «${localizedQuestTitle(active, 'ru')}» — ${active.objectiveLabels?.[0] ?? ''}.`
-        const otherEn =
-            active === undefined
-                ? ''
-                : ` “${localizedQuestTitle(active, 'en')}” is a separate contract.`
-        this.say(
-            contact,
-            `«${localizedQuestTitle(entry, 'ru')}»${progress}. ${entry.source === 'story' ? 'Для сдачи нужны три сердца из рюкзака.' : entry.description}${other}`,
-            `“${localizedQuestTitle(entry, 'en')}”${progress}. ${entry.source === 'story' ? 'Bring the three hearts from your bag.' : entry.description}${otherEn}`
-        )
-    }
-
     public say(
         { issuer, player, now }: ReplyContact,
         ru: string,
@@ -194,4 +308,8 @@ export class QuestChatReplies {
             { language: locale }
         )
     }
+}
+
+function questionKey(playerId: string, issuerId: string): string {
+    return JSON.stringify([playerId, issuerId])
 }

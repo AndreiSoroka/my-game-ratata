@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-    type CharacterAbilitiesSnapshot,
-    GRAVE_PURIFY_MANA_COST,
-    gravePurifyCastMs,
-    MATERIAL_DAMAGE_MULTIPLIERS,
-    type MaterialImpact,
-    type WorldGraveSnapshot,
-} from '@my-game-ratata/contracts'
+import type { WorldGraveSnapshot } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
@@ -18,17 +11,10 @@ import { graveName } from '../model/graveName'
 const props = defineProps<{
     grave: WorldGraveSnapshot
     serverTime: number
-    compact?: boolean
-    prayer?: CharacterAbilitiesSnapshot['prayer']
 }>()
 const remaining = computed(() =>
     Math.max(0, (props.grave.restoresAt ?? props.serverTime) - props.serverTime)
 )
-function percent(impact: MaterialImpact): string {
-    return tGame('game.world.damagePercent', {
-        percent: MATERIAL_DAMAGE_MULTIPLIERS[props.grave.material][impact] * 100,
-    })
-}
 function duration(ms: number): string {
     const seconds = Math.ceil(ms / 1000)
     return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
@@ -43,7 +29,7 @@ function duration(ms: number): string {
         </div>
         <GameBar
             :value="healthBarPercent(grave.health)"
-            :height="7"
+            :height="14"
             :label="tGame('game.world.graveDurability')"
             color="var(--ui-dark-panel-positive)"
             track-color="var(--ui-dark-bar-track)"
@@ -55,7 +41,10 @@ function duration(ms: number): string {
         <p v-else-if="grave.phase === 'purified'">
             {{ tGame('game.world.sourceUndeathHasBeenCleansed') }}
         </p>
-        <p v-else>{{ tGame('game.world.skeletonSourceStone') }}</p>
+        <template v-else>
+            <p>{{ tGame('game.world.graveSkeletons') }}</p>
+            <p>{{ tGame('game.world.graveToolEffectiveness') }}</p>
+        </template>
         <div
             v-if="grave.purification"
             class="grave-purification"
@@ -88,26 +77,6 @@ function duration(ms: number): string {
                 {{ grave.purification.required }}</span
             >
         </div>
-        <template v-if="!compact && grave.phase !== 'purified'">
-            <dl class="grave-details__resistance">
-                <dt>{{ tGame('game.world.pickaxe') }}</dt>
-                <dd>{{ percent('stone_tool') }}</dd>
-                <dt>{{ tGame('game.world.weapon') }}</dt>
-                <dd>{{ percent('weapon') }}</dd>
-                <dt>{{ tGame('game.world.magic') }}</dt>
-                <dd>{{ percent('arcane') }}</dd>
-                <dt>{{ tGame('game.world.fists') }}</dt>
-                <dd>{{ percent('unarmed') }}</dd>
-                <dt>{{ tGame('game.world.arrows') }}</dt>
-                <dd>{{ percent('projectile') }}</dd>
-            </dl>
-            <p class="grave-details__hint">
-                {{ tGame('game.world.cleansing') }}
-                {{ prayer?.manaCost ?? GRAVE_PURIFY_MANA_COST }} MP ·
-                {{ (prayer?.durationMs ?? gravePurifyCastMs(grave.phase)) / 1000 }}
-                {{ tGame('game.world.sWithoutMovingEscInterrupt') }}
-            </p>
-        </template>
     </section>
 </template>
 
@@ -125,19 +94,6 @@ function duration(ms: number): string {
 }
 p {
     margin: 6px 0;
-}
-.grave-details__resistance {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 2px 12px;
-    margin: 8px 0;
-}
-dd {
-    margin: 0;
-}
-.grave-details__hint {
-    color: var(--ui-dark-panel-text);
-    font-size: 11px;
 }
 .grave-purification {
     display: flex;

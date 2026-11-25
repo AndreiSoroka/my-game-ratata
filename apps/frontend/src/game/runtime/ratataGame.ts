@@ -177,15 +177,11 @@ export class RatataGame {
         if (this.connected && !this.stopped && view?.engine.isReady) view.audio.playSound(id)
     }
 
-    public setInteractionTarget(target: TargetHighlight | undefined): void {
-        this.view?.sceneActors?.setInteractionTarget(this.isMapReady ? target : undefined)
-    }
-
     public readonly projectPosition = (position: Vector2) =>
         projectPosition(this.view?.engine, this.view?.canvas, position)
 
     public setCombatTarget(target: TargetHighlight | undefined): void {
-        this.view?.sceneActors?.setCombatTarget(target)
+        this.view?.sceneActors?.setCombatTarget(this.isMapReady ? target : undefined)
     }
     public setShotPreview(path: ProjectilePath | undefined): void {
         this.view?.sceneActors?.setShotPreview(this.isMapReady ? path : undefined)

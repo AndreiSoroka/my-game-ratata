@@ -109,6 +109,63 @@ test('hands off from the merchant shop to a nearby player menu', async ({
     }
 })
 
+test('uses F to talk across a low guild table', async ({ page, browser }) => {
+    test.setTimeout(75_000)
+    const peer = await browser.newPage()
+    try {
+        await joinSocial(page, 'table-speaker')
+        const listener = await joinSocial(peer, 'table-listener')
+        const entry = await page.evaluate(
+            () =>
+                window
+                    .__ratataTest!.observe()
+                    .targets.find(
+                        ({ kind, name }) => kind === 'building' && name.includes('Гильдия')
+                    )!.position
+        )
+        await enterBuilding(page, 'Гильдия')
+        await enterBuilding(peer, 'Гильдия')
+        // In the browser world the low table occupies the row between these tiles.
+        await walkTo(page, { x: entry.x - 32, y: entry.y - 80 }, 2)
+        await walkTo(peer, { x: entry.x - 32, y: entry.y - 112 }, 2)
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (id) =>
+                        window
+                            .__ratataTest!.getState()
+                            .snapshot!.characters.find((actor) => actor.id === id)?.interactions
+                            ?.speechReachable,
+                    listener
+                )
+            )
+            .toBe(true)
+
+        await page.bringToFront()
+        await page.locator('canvas[data-game-canvas=true]').focus()
+        await selectSocialTarget(page, listener)
+        await page.keyboard.press('KeyF')
+        const talk = page.getByRole('menu', { name: 'table-listener', exact: true })
+        await expect(talk.getByRole('menuitem')).toHaveText('Шёпот: table-listener')
+        await page.keyboard.press('Enter')
+        const whisper = page.getByRole('dialog', { name: 'Шёпот: table-listener' })
+        const text = 'Слышно через стол?'
+        await whisper.getByPlaceholder('Сообщение собеседнику').fill(text)
+        await whisper.getByPlaceholder('Сообщение собеседнику').press('Enter')
+        await expect
+            .poll(() =>
+                peer.evaluate(
+                    () =>
+                        window.__ratataTest!.getState().snapshot?.social?.whisper?.messages.at(-1)
+                            ?.text
+                )
+            )
+            .toBe(text)
+    } finally {
+        await peer.close()
+    }
+})
+
 async function approachMerchant(page: Page): Promise<void> {
     await enterBuilding(page, 'Лавка')
     await page.waitForFunction(

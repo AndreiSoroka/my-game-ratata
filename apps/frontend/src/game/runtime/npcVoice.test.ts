@@ -163,6 +163,37 @@ it('voices English NPC speech with an installed local English voice', () => {
     )
 })
 
+it.each([
+    {
+        language: 'ru',
+        voice: 'dialogue',
+        text: String.raw`**Привет**, Саэла!\\n<break time="1s"/>«[Зачистка троп](https://example.test/quest)»&#x20;— 30 золотых.\\`,
+        expected: 'Привет, Саэла! «Зачистка троп» — 30 золотых.',
+    },
+    {
+        language: 'en',
+        voice: 'ambient',
+        text: String.raw`&lt;speak&gt;Go \\north / east.\\tDon't forget the _way-stone_!&lt;/speak&gt;`,
+        expected: "Go north east. Don't forget the way-stone!",
+    },
+] as const)('speaks plain $language text and preserves the original line', (entry) => {
+    const { player, synthesis } = setup([voice('Pavel'), voice('Kate', 'en-GB')])
+    const event = speech(1, { language: entry.language, voice: entry.voice, text: entry.text })
+    player.receive(event)
+    expect(synthesis.speak).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ text: entry.expected })
+    )
+    expect(event.text).toBe(entry.text)
+})
+
+it('skips an empty cleaned dialogue without interrupting an ambient line', () => {
+    const { player, synthesis } = setup()
+    player.receive(speech())
+    player.receive(speech(2, { voice: 'dialogue', text: '<break/> ** … / \\\\' }))
+    expect(synthesis.speak).toHaveBeenCalledTimes(1)
+    expect(synthesis.cancel).not.toHaveBeenCalled()
+})
+
 it('assigns pitch and rate separately when NPCs share the only installed voice', () => {
     const random = vi.spyOn(Math, 'random').mockReturnValue(0)
     const local = voice('Irina')

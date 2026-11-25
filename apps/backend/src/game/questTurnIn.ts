@@ -167,12 +167,10 @@ export class QuestTurnInService {
                       now
                   )
         if (outcome.accepted && view.action === 'report') {
-            this.chat.say(
-                issuer,
-                player,
+            this.chat.replies.say(
+                { issuer, player, now },
                 'Спасибо за доклад! Теперь дождёмся проверки рабочего места и возвращения работника.',
-                'Thanks for the report. Now we wait for the worker to check the site and return.',
-                now
+                'Thanks for the report. Now we wait for the worker to check the site and return.'
             )
         }
         return outcome

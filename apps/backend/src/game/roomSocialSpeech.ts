@@ -29,7 +29,9 @@ export function handleSocialSpeech(
     ) {
         if (!whispers.handle(actor, message, now)) {
             notice(
-                `Шёпот слышен ${interactionRangeText(WHISPER_RANGE, room.navigationFor(actor).grid.tileWidth)} при прямой видимости.`
+                room.localeFor(actor.id) === 'en'
+                    ? 'Move closer to whisper. Walls and closed doors block speech.'
+                    : `Шёпот слышен ${interactionRangeText(WHISPER_RANGE, room.navigationFor(actor).grid.tileWidth)}. Стены и закрытые двери заглушают речь.`
             )
         } else if (message.type === 'whisper_open') {
             room.social.npcSpeech.turns.close(

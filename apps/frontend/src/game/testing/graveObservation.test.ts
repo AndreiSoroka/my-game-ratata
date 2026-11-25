@@ -57,6 +57,11 @@ describe('observed grave targets', () => {
             type: 'attack',
             target: { kind: 'grave', id: target.id },
         })
+        expect(target.actions[1]?.command).toEqual({
+            type: 'use_ability',
+            abilityId: 'pray',
+            intent: { mode: 'purify_grave', target: { kind: 'grave', id: target.id } },
+        })
         const goal = navigationGoal(
             state,
             { targetKey: target.key },

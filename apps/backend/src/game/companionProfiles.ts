@@ -19,6 +19,7 @@ export interface CompanionProfile {
     needsIntroduction: boolean
     personality: string
     stationary: boolean
+    yieldWhileIdle?: true
     assistancePolicy: AssistancePolicy
 }
 
@@ -47,6 +48,7 @@ export const companionProfiles: Record<string, CompanionProfile> = {
     ),
     npc_friendly_girl_1: {
         ...residentProfile,
+        yieldWhileIdle: true,
         dialogueNames: ['Мира', 'Mira'],
         personality:
             'Мира — хранительница Новогорода и глава гильдии искателей. Поддерживает городское хозяйство, следит за запасами и просьбами работников, помогает жителям найти полезное дело. Может обходить город, но не следует за путниками, не уходит в походы и не сражается.',

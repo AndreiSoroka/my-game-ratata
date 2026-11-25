@@ -258,6 +258,36 @@ it('automatic grave melee approaches using ordinary reach, pins its target and s
     expect(snapshotControl(f.actor).mode).toBe('none')
     expect(f.events).toHaveLength(1)
 })
+it('approaches a typed grave and starts only one ordinary melee swing', () => {
+    const f = graveCombatFixture('vanguard')
+    f.actor.position.x = 60
+    const action = { kind: 'attack', target: f.reference, once: true } as const
+    expect(
+        setCharacterControl(
+            f.actor,
+            { type: 'auto_action', action },
+            f.world,
+            1000
+        )
+    ).toBe(true)
+    advanceCharacterControl(f.actor, f.world, 1000)
+    expect(snapshotControl(f.actor)).toMatchObject({ action, waiting: 'range' })
+    expect(f.actor.hasPath()).toBe(true)
+    expect(f.events).toEqual([])
+    f.actor.position.x = 100
+    advanceCharacterControl(f.actor, f.world, 1300)
+    expect(snapshotControl(f.actor).mode).toBe('none')
+    expect(f.events).toEqual([
+        expect.objectContaining({ kind: 'attack', target: f.reference }),
+    ])
+    expect(f.hit(1350)).toContainEqual(
+        expect.objectContaining({ kind: 'world_damage', target: f.reference })
+    )
+    expect(
+        advanceCharacterControl(f.actor, f.world, f.actor.combat.readyAt + 1)
+    ).toBe(false)
+    expect(f.events).toHaveLength(1)
+})
 it('automatic forward Shot damages stone without practice, silently waits for resources and never starts another attack on cancel', () => {
     const f = graveCombatFixture()
     f.actor.energy = 10

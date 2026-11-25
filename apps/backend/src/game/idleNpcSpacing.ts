@@ -8,7 +8,7 @@ import {
     sideStepDestination,
     standingOccupancy,
 } from './characterSpacing'
-import { stationaryNpc } from './companionProfiles'
+import { companionProfiles, stationaryNpc } from './companionProfiles'
 import { available, humanControlled } from './crimeRules'
 import { canTargetByFaction } from './factions'
 import { distance } from './math'
@@ -21,7 +21,8 @@ export function canYieldWhileIdle(actor: GameCharacter, now: number): boolean {
         available(actor) &&
         !humanControlled(actor) &&
         actor.trainingTarget === undefined &&
-        !stationaryNpc(actor.id) &&
+        (!stationaryNpc(actor.id) ||
+            companionProfiles[actor.id]?.yieldWhileIdle === true) &&
         (order === undefined || order === 'idle') &&
         isIdle(actor, now)
     )

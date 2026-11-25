@@ -42,6 +42,7 @@ test('shows the trophy and disables abandoning for players without permission', 
     const card = await openCard(page, 'awaiting-proof')
     const trophy = card.getByRole('listitem').filter({ hasText: 'Кость × 1' })
     await expect(trophy.locator('img')).toHaveJSProperty('naturalWidth', 16)
+    await expect(card.getByText('Подойдёт трофей, найденный раньше.')).toHaveCount(0)
     const abandon = card.getByRole('button', { name: 'Отказаться от обращения' })
     await expect(card.getByRole('button')).toHaveCount(1)
     await expect(abandon).toBeEnabled()

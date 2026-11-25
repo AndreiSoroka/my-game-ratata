@@ -2,10 +2,11 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import { GraveDetails } from '@/entities/graves'
+import { gameLocale, setGameLocale } from '@/shared/lib/i18n'
 
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
-import { graveActions, gravePrayerPreview } from './graveInteractions'
+import { gravePrayerPreview } from './graveInteractions'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
 
 const cleric = () =>
@@ -14,26 +15,6 @@ const cleric = () =>
         abilities: { known: ['pray'], cooldowns: {}, casting: null, barrier: null },
     })
 describe('explicit grave interactions', () => {
-    it('pins both ordinary attacks and purification to the same stable grave ID', () => {
-        const grave = graveFixture()
-        const actions = graveActions(cleric(), grave)
-        expect(actions.map((action) => action.command)).toEqual([
-            { type: 'attack', target: { kind: 'grave', id: grave.id } },
-            {
-                type: 'use_ability',
-                abilityId: 'pray',
-                intent: { mode: 'purify_grave', target: { kind: 'grave', id: grave.id } },
-            },
-        ])
-        expect(actions.every((action) => !action.disabled)).toBe(true)
-        const ruined = graveActions(cleric(), {
-            ...grave,
-            phase: 'ruined',
-            health: { kind: 'exact', current: 0, max: 100 },
-        })
-        expect(ruined[0]?.disabled).toBe(true)
-        expect(ruined[1]?.disabled).toBe(false)
-    })
     it.each(['unknown', 'mana', 'cooldown', 'casting', 'dead', 'far', 'hidden'] as const)(
         'explains the %s requirement without choosing a different prayer',
         (failure) => {
@@ -77,7 +58,10 @@ describe('explicit grave interactions', () => {
         const player = cleric()
         const grave = graveFixture()
         const snapshot = { ...worldFixture([player]), graves: [grave] }
-        expect(nearbyInteractionTarget(snapshot, player, [])?.key).toBe(`grave:${grave.id}`)
+        expect(nearbyInteractionTarget(snapshot, player, [])).toMatchObject({
+            key: `grave:${grave.id}`,
+            actions: [],
+        })
         expect(nearbyInteractionTarget(snapshot, player, [], () => false)).toBeUndefined()
         expect(
             nearbyInteractionTarget(
@@ -97,21 +81,40 @@ describe('explicit grave interactions', () => {
     })
 })
 describe('reusable grave facts', () => {
-    it('rounds displayed HP and shows material effectiveness and server-based restoration countdown', async () => {
+    it('rounds permitted HP and localizes the guidance while preserving the restoration timer', async () => {
+        const previous = gameLocale.value
+        setGameLocale('ru')
         const wrapper = mount(GraveDetails, { props: { grave: graveFixture(), serverTime: 1000 } })
-        expect(wrapper.text()).toContain('100/100 HP')
-        expect(wrapper.text()).toContain('5% урона')
-        expect(wrapper.text()).toContain('100% урона')
-        await wrapper.setProps({
-            grave: graveFixture({
-                phase: 'ruined',
-                health: { kind: 'exact', current: 0, max: 100 },
-                restoresAt: 181_000,
-            }),
-        })
-        expect(wrapper.text()).toContain('3:00')
-        await wrapper.setProps({ serverTime: 182_000 })
-        expect(wrapper.text()).toContain('0:00')
-        wrapper.unmount()
+        try {
+            expect(wrapper.text()).toContain('100/100 HP')
+            expect(wrapper.text()).toContain('Киркой быстрее, оружием и магией дольше.')
+            expect(wrapper.get('.bar-track').attributes('style')).toContain('14px')
+            setGameLocale('en')
+            await wrapper.vm.$nextTick()
+            expect(wrapper.text()).toContain(
+                'Skeletons can rise from graves, so graves must be destroyed or purified.'
+            )
+            expect(wrapper.text()).toContain(
+                'A pickaxe works fastest. Weapons and magic take longer.'
+            )
+            await wrapper.setProps({
+                grave: graveFixture({
+                    phase: 'ruined',
+                    health: { kind: 'percent', percent: 0 },
+                    restoresAt: 181_000,
+                    purification: { completed: 2, required: 5 },
+                }),
+            })
+            expect(wrapper.text()).not.toContain('HP')
+            expect(wrapper.text()).toContain('3:00')
+            expect(wrapper.get('[aria-label="Grave cleansing"]').attributes('aria-valuenow')).toBe(
+                '2'
+            )
+            await wrapper.setProps({ serverTime: 182_000 })
+            expect(wrapper.text()).toContain('0:00')
+        } finally {
+            wrapper.unmount()
+            setGameLocale(previous)
+        }
     })
 })

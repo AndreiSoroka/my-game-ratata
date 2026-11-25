@@ -6,7 +6,6 @@ import NearbyActionMenu from '../../pages/gameplay/ui/NearbyActionMenu.vue'
 import NearbyInteraction from '../../pages/gameplay/ui/NearbyInteraction.vue'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
-import { graveActions } from './graveInteractions'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
 
 function fixture() {
@@ -32,7 +31,7 @@ function fixture() {
 
 describe('one F target for a grave and its coincident corpse', () => {
     it.each(['active', 'ruined'] as const)(
-        'offers the %s grave and exact corpse commands together instead of hiding purification behind loot',
+        'offers the %s grave and exact corpse search together',
         (phase) => {
             const f = fixture()
             f.grave.phase = phase
@@ -40,7 +39,6 @@ describe('one F target for a grave and its coincident corpse', () => {
             const target = f.select()
             expect(target?.key).toBe(`grave:${f.grave.id}`)
             expect(target?.actions).toEqual([
-                ...graveActions(f.player, f.grave),
                 {
                     id: `chest:${f.corpse.id}`,
                     label: 'Обыскать: Павший',
@@ -63,7 +61,7 @@ describe('one F target for a grave and its coincident corpse', () => {
         f.grave.phase = 'active'
         f.player.position.y = f.grave.position.y - 40
         expect(f.select()?.key).toBe(`grave:${f.grave.id}`)
-        expect(f.select()?.actions).toEqual(graveActions(f.player, f.grave))
+        expect(f.select()?.actions).toEqual([])
     })
 })
 
@@ -99,7 +97,7 @@ describe('independent interaction identities', () => {
             chestId: ordinaryChest.id,
         })
         f.snapshot.chests.shift()
-        expect(f.select(`grave:${f.grave.id}`)?.actions).toEqual(graveActions(f.player, f.grave))
+        expect(f.select(`grave:${f.grave.id}`)?.actions).toEqual([])
         expect(pinned?.actions.at(-1)?.command).toEqual({
             type: 'open_chest',
             chestId: f.corpse.id,
@@ -121,16 +119,14 @@ describe('independent interaction identities', () => {
         const f = fixture()
         const neighboringGrave = graveFixture({ id: 'neighbor', position: { x: 16, y: 24 } })
         f.snapshot.graves.push(neighboringGrave)
-        expect(f.select(`grave:${neighboringGrave.id}`)?.actions).toEqual(
-            graveActions(f.player, neighboringGrave)
-        )
+        expect(f.select(`grave:${neighboringGrave.id}`)?.actions).toEqual([])
         expect(nearbyInteractionTarget(f.snapshot, f.player, [], () => false)).toBeUndefined()
         f.player.alive = false
         expect(f.select()).toBeUndefined()
     })
 })
 
-it('opens one F menu with grave and corpse actions, then closes instead of selecting replacement loot', async () => {
+it('opens one F menu with grave facts and exact corpse search, then closes when the loot changes', async () => {
     const f = fixture()
     const wrapper = mount(NearbyInteraction, {
         props: { snapshot: f.snapshot, player: f.player, characters: [], blocked: false },
@@ -139,7 +135,8 @@ it('opens one F menu with grave and corpse actions, then closes instead of selec
     try {
         wrapper.vm.openMenu()
         await flushPromises()
-        expect(wrapper.get('[role="menu"]').text()).toContain('Упокоить могилу')
+        expect(wrapper.findAll('[role="menuitem"]')).toHaveLength(1)
+        expect(wrapper.get('[aria-label="Состояние могилы"]').text()).toContain('Киркой быстрее')
         expect(wrapper.get('[role="menu"]').text()).toContain('Обыскать: Павший')
         const menu = wrapper.getComponent(NearbyActionMenu)
         const originalCommandCount = wrapper.emitted('command')?.length

@@ -36,12 +36,42 @@ interface ActiveLine {
     timeout: number
 }
 
+const speechEntities = new Map([
+    ['amp', '&'],
+    ['apos', "'"],
+    ['gt', '>'],
+    ['lt', '<'],
+    ['nbsp', ' '],
+    ['quot', '"'],
+])
+
+function plainSpeechText(text: string): string {
+    return text
+        .replace(
+            /&(?:#x([\da-f]+)|#(\d+)|([a-z]+));/giu,
+            (_, hex: string | undefined, decimal: string | undefined, name: string | undefined) => {
+                if (name !== undefined) return speechEntities.get(name.toLowerCase()) ?? ' '
+                const point = hex === undefined ? Number(decimal) : Number.parseInt(hex, 16)
+                return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : ' '
+            }
+        )
+        .replace(/\\+(?:r\\+n|[nrt](?![a-z]))/gu, ' ')
+        .replace(/<!--[\s\S]*?-->|<\/?[a-z][^<>]*>/giu, ' ')
+        .replace(/!?\[([^\]\n]+)\]\([^)\n]*\)/gu, '$1')
+        .replace(/[^\p{L}\p{M}\p{N}\s.,!?;:…()"'«»‘’“”—–-]+/gu, ' ')
+        .replace(/\s+([.,!?;:…])/gu, '$1')
+        .replace(/\s+/gu, ' ')
+        .trim()
+}
+
 function voiceLine(event: GameEventPayload): VoiceLine | undefined {
     const { actorId, locationId, speechId, voice, text } = event
     if (event.kind !== 'chat' || (voice !== 'ambient' && voice !== 'dialogue')) return
     if (!actorId || !locationId || speechId === undefined || !text?.trim()) return
     if (!Number.isSafeInteger(speechId)) return
-    return { actorId, locationId, speechId, voice, text, language: event.language ?? 'ru' }
+    const plain = plainSpeechText(text)
+    if (!/[\p{L}\p{N}]/u.test(plain)) return
+    return { actorId, locationId, speechId, voice, text: plain, language: event.language ?? 'ru' }
 }
 
 function volumeAt(distance: number): number {
@@ -187,10 +217,7 @@ export class NpcVoice {
 
         this.pending = undefined
         this.cancelActive()
-        // Keep dialogue plain text on engines that support SSML input.
-        const utterance = new window.SpeechSynthesisUtterance(
-            pending.text.replaceAll('<', '‹').replaceAll('>', '›')
-        )
+        const utterance = new window.SpeechSynthesisUtterance(pending.text)
         utterance.voice = speech.voice
         utterance.lang = speech.voice.lang.replace('_', '-')
         utterance.rate = speech.rate

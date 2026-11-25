@@ -95,6 +95,13 @@ export function npcQuestFixture() {
             { type: 'npc_quest_turn_in', instanceId: id },
             30
         )
+    const putTableBetweenPlayerAndIssuer = () => {
+        player.position = { x: 72, y: 88 }
+        issuer.position = { x: 104, y: 88 }
+        const table = 5 * navigation.grid.width + 5
+        navigation.grid.solid[table] = true
+        navigation.grid.speechTransparent = new Set([table])
+    }
     return {
         player,
         friend,
@@ -109,5 +116,6 @@ export function npcQuestFixture() {
         draft,
         accept,
         turnIn,
+        putTableBetweenPlayerAndIssuer,
     }
 }

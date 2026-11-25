@@ -9,6 +9,7 @@ import {
     type NpcQuestEnvironment,
     type NpcQuestRecord,
     questContact,
+    questTransferReachable,
 } from './npcQuestTypes'
 
 export function turnInNpcQuest(
@@ -34,6 +35,9 @@ export function turnInNpcQuest(
             false,
             job.view.notice ?? 'Условия ещё не выполнены или заказчик далеко.'
         )
+    }
+    if (!questTransferReachable(actor, issuer, context.environment)) {
+        return result(false, 'Подойдите к заказчику, чтобы передать поручение.')
     }
     const wallet = questRewardWallet(
         context.environment,

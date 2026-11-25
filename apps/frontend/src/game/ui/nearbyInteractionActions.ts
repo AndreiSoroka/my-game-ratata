@@ -51,6 +51,7 @@ export interface InteractionTarget extends TargetHighlight {
 interface TargetCandidate extends InteractionTarget {
     range: number
     door?: WorldObjectSnapshot['door']
+    speechReachable?: boolean
 }
 type InteractionVisibility = (
     position: Vector2,
@@ -58,15 +59,6 @@ type InteractionVisibility = (
     range?: number
 ) => boolean
 type CanSelectTarget = (key: string) => boolean
-
-export function nearbyInteractionActions(
-    snapshot: WorldSnapshot,
-    player: CharacterSnapshot,
-    characters: CharacterSnapshot[],
-    isPositionVisible?: InteractionVisibility
-): InteractionAction[] {
-    return nearbyInteractionTarget(snapshot, player, characters, isPositionVisible)?.actions ?? []
-}
 
 export function nearbyInteractionTarget(
     snapshot: WorldSnapshot,
@@ -89,11 +81,12 @@ export function nearbyInteractionTarget(
         ...itemTargets(snapshot, player),
     ]
     return facingInteractionTarget(
-        candidates.filter(
-            (candidate) =>
-                (targetKey === undefined || candidate.key === targetKey) &&
-                isAvailable(candidate, player, isPositionVisible, canSelectTarget)
-        ),
+        candidates
+            .filter((candidate) => targetKey === undefined || candidate.key === targetKey)
+            .flatMap(
+                (candidate) =>
+                    availableTarget(candidate, player, isPositionVisible, canSelectTarget) ?? []
+            ),
         player,
         targetKey,
         ignoreFacing
@@ -108,24 +101,37 @@ export function nearbyCharacterInteractionTargets(
     canSelectTarget?: CanSelectTarget
 ): InteractionTarget[] {
     if (!player.alive || player.tags.includes('offline')) return []
-    return characterTargets(snapshot, player, characters).filter(
-        (candidate) =>
-            candidate.actions.some((action) => !action.disabled) &&
-            isAvailable(candidate, player, isPositionVisible, canSelectTarget)
-    )
+    return characterTargets(snapshot, player, characters)
+        .flatMap(
+            (candidate) =>
+                availableTarget(candidate, player, isPositionVisible, canSelectTarget) ?? []
+        )
+        .filter((candidate) => candidate.actions.some((action) => !action.disabled))
 }
 
-function isAvailable(
+function availableTarget(
     candidate: TargetCandidate,
     player: CharacterSnapshot,
     visible: InteractionVisibility,
     canSelectTarget?: CanSelectTarget
-): boolean {
-    return (
-        candidate.actions.length > 0 &&
-        targetVisible(candidate, player.position, visible) &&
-        canSelectTarget?.(candidate.key) !== false
+): TargetCandidate | undefined {
+    if (
+        (candidate.actions.length === 0 && !candidate.key.startsWith('grave:')) ||
+        canSelectTarget?.(candidate.key) === false
     )
+        return
+    if (targetVisible(candidate, player.position, visible)) return candidate
+    if (!candidate.speechReachable) return
+    const actions = candidate.actions.filter(
+        ({ command }) =>
+            command.type === 'whisper_open' ||
+            command.type === 'quest_inquire' ||
+            (command.type === 'interact' &&
+                (command.service === undefined ||
+                    command.service === 'city_affairs' ||
+                    command.service === 'worker_requests'))
+    )
+    return actions.length ? { ...candidate, actions } : undefined
 }
 
 function portalTargets(snapshot: WorldSnapshot, player: CharacterSnapshot): TargetCandidate[] {
@@ -193,6 +199,7 @@ function characterTargets(
                 relationship: relation(character, player),
                 name: characterName(character.id, character.nickname),
                 position: character.position,
+                speechReachable: character.interactions?.speechReachable === true,
                 range: Math.max(
                     COMPANION_REQUEST_RANGE,
                     THEFT_RULES.reportRange,

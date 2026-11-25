@@ -1,7 +1,5 @@
 import { expect as baseExpect, type Page } from '@playwright/test'
 
-import { selectedWorldTarget } from './world-target-ui'
-
 export const socialExpect = baseExpect.configure({ timeout: 10_000 })
 const expect = socialExpect
 
@@ -69,24 +67,19 @@ export async function approachGiftPartner(
 }
 
 export async function selectSocialTarget(page: Page, id: string): Promise<void> {
-    const name = await page.evaluate(
-        (targetId) =>
-            window
-                .__ratataTest!.getState()
-                .snapshot!.characters.find((actor) => actor.id === targetId)!.nickname,
-        id
-    )
-    const selected = selectedWorldTarget(page)
+    await page.bringToFront()
+    await page.locator('canvas[data-game-canvas=true]').focus()
+    const key = `character:${id}`
+    const hotbar = page.locator('.hotbar')
     const limit = await page.evaluate(() => window.__ratataTest!.observe().targets.length + 1)
     for (let count = 0; count < limit; count += 1) {
+        if ((await hotbar.getAttribute('data-selected-target-key')) === key) return
         await page.keyboard.press('Tab')
-        if ((await selected.getAttribute('data-selected-target-name')) === name) break
     }
-    await expect(selected).toHaveAttribute('data-selected-target-name', name)
+    await expect(hotbar).toHaveAttribute('data-selected-target-key', key)
 }
 
 export async function socialMenu(page: Page, id: string, action: RegExp): Promise<void> {
-    await page.locator('canvas[data-game-canvas=true]').focus()
     await selectSocialTarget(page, id)
     await page.keyboard.press('KeyF')
     await page.getByRole('menuitem', { name: action }).click()

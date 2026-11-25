@@ -8,7 +8,7 @@ import type {
     WorldObjectBounds,
     WorldSnapshot,
 } from '@my-game-ratata/contracts'
-import { BoundingBox, Engine, type ImageSource, type SpriteSheet, vec } from 'excalibur'
+import { BoundingBox, Engine, type ImageSource, type SpriteSheet } from 'excalibur'
 
 import type { CharacterId } from '../assets/characterCatalog'
 import type { BellImages } from './bellViews'
@@ -48,7 +48,6 @@ export class SceneActors {
     private readonly guides: TrainingGuides
     private trainingAreas: TrainingAreaDefinition[] = []
     private readonly combatTarget: InteractionTargetViews
-    private readonly interactionTarget: InteractionTargetViews
     private mapVisibility: MapVisibility | undefined
     private playerPosition: Vector2 | undefined
     private readonly mapView: SceneMapView
@@ -78,11 +77,6 @@ export class SceneActors {
             characterVisible,
             this.characterPosition
         )
-        this.interactionTarget = new InteractionTargetViews(
-            engine,
-            characterVisible,
-            this.characterPosition
-        )
         this.routeWaypoints = new RouteWaypointViews(engine)
         this.buildingViews = new BuildingViews(engine)
         this.depthProps = new DepthPropViews(engine)
@@ -105,7 +99,6 @@ export class SceneActors {
             (id) => {
                 this.combatEffects.forgetCharacter(id)
                 this.combatTarget.forgetCharacter(id)
-                this.interactionTarget.forgetCharacter(id)
             },
             () => this.placeAttachedViews()
         )
@@ -133,7 +126,6 @@ export class SceneActors {
         this.statusViews.dispose()
         this.footsteps.dispose()
         this.routeWaypoints.dispose()
-        this.interactionTarget.dispose()
         this.combatTarget.dispose()
         this.mapVisibility?.resourceInterest?.clear()
         this.mapVisibility = this.playerPosition = undefined
@@ -264,7 +256,6 @@ export class SceneActors {
     }
 
     private clearTargetHighlights(): void {
-        this.interactionTarget.clear()
         this.setCombatTarget(undefined)
     }
 
@@ -283,11 +274,6 @@ export class SceneActors {
     public setCombatTarget(target: TargetHighlight | undefined): void {
         this.combatTarget.set(target)
         this.characters.setNameFocus(this.combatTarget.characterId)
-    }
-
-    public setInteractionTarget(target: TargetHighlight | undefined): void {
-        const onMap = target && this.mapBounds.contains(vec(target.position.x, target.position.y))
-        this.interactionTarget.set(this.playerPosition && onMap ? target : undefined)
     }
 
     public readonly isPositionVisible = (position: Vector2): boolean =>
@@ -316,6 +302,5 @@ export class SceneActors {
         this.combatEffects.reposition()
         this.prayerAreas.reposition(this.characterPosition)
         this.combatTarget.reposition()
-        this.interactionTarget.reposition()
     }
 }

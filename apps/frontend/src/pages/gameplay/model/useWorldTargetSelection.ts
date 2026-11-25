@@ -24,11 +24,12 @@ interface SelectionProps {
     player: CharacterSnapshot
     characters: CharacterSnapshot[]
     blocked: boolean
+    nearbyTargetKey?: string
 }
 interface SelectionEffects {
     cancel: () => void
     resetGesture: () => void
-    hasPendingAttack: (targetId: string) => boolean
+    hasPendingAttack: (targetKey: string) => boolean
     interact: (id: string) => void
 }
 
@@ -63,7 +64,7 @@ export function useWorldTargetSelection(props: SelectionProps, effects: Selectio
         else effects.resetGesture()
     }
     function acquireAttackTarget(): string | undefined {
-        if (selectedKey.value !== undefined) return undefined
+        if (selectedKey.value !== undefined || state.focusedTarget.value) return undefined
         const nearest = nearestAttackTarget(props, tileSize(), visible)
         return nearest && selectKey(nearest.key) ? nearest.id : undefined
     }
@@ -88,15 +89,14 @@ export function useWorldTargetSelection(props: SelectionProps, effects: Selectio
         return false
     }
     function resetSelectedAction(key: string): void {
-        const prefix = 'character:'
-        const pending = key.startsWith(prefix) && effects.hasPendingAttack(key.slice(prefix.length))
-        if (pending || targetedControlKey(props.player.control) === key) effects.cancel()
+        if (effects.hasPendingAttack(key) || targetedControlKey(props.player.control) === key)
+            effects.cancel()
         else effects.resetGesture()
     }
     installSelectionLifecycle(props, state, validateSelection, resetSelectedAction)
     return {
         selectedKey,
-        selectedTarget,
+        focusedTarget: state.focusedTarget,
         selectedId: state.selectedId,
         selectedGraveId: state.selectedGraveId,
         target: state.target,
@@ -153,14 +153,6 @@ function createSelectionState(props: SelectionProps) {
     const selectedGraveId = computed(() =>
         selectedTarget.value?.kind === 'grave' ? selectedTarget.value.id : undefined
     )
-    const grave = computed(() =>
-        props.snapshot.graves?.find((entry) => entry.id === selectedGraveId.value)
-    )
-    const target = computed(() =>
-        selectedId.value === props.player.id
-            ? props.player
-            : props.characters.find((actor) => actor.id === selectedId.value)
-    )
     const visible = (candidate: WorldSelectionTarget) =>
         props.game?.isSelectionVisible?.(candidate) ?? true
     const eligible = (candidate: WorldSelectionTarget) =>
@@ -170,9 +162,29 @@ function createSelectionState(props: SelectionProps) {
             worldSelectionRange(props.player, tileSize()),
             visible
         )
+    const focusedTarget = computed(() => {
+        if (selectedKey.value !== undefined) return selectedTarget.value
+        if (props.blocked || !props.player.alive || props.player.cooldowns.stunMsLeft > 0)
+            return undefined
+        const candidate = candidates.value.find(({ key }) => key === props.nearbyTargetKey)
+        return candidate && eligible(candidate) ? candidate : undefined
+    })
+    const grave = computed(() =>
+        focusedTarget.value?.kind === 'grave'
+            ? props.snapshot.graves?.find((entry) => entry.id === focusedTarget.value?.id)
+            : undefined
+    )
+    const target = computed(() => {
+        const focus = focusedTarget.value
+        if (focus?.kind !== 'character') return undefined
+        return focus.relationship === 'self'
+            ? props.player
+            : props.characters.find((actor) => actor.id === focus.id)
+    })
     return {
         selectedKey,
         selectedTarget,
+        focusedTarget,
         selectedId,
         selectedGraveId,
         target,
@@ -190,29 +202,36 @@ function installSelectionLifecycle(
     validateSelection: () => boolean,
     resetSelectedAction: (key: string) => void
 ): void {
-    const { candidates, grave, selectedTarget } = state
+    const { candidates, grave, focusedTarget, selectedKey } = state
     watch([candidates, () => props.player], validateSelection)
+    watch([() => focusedTarget.value?.key, selectedKey], ([key, pinned], [previous, wasPinned]) => {
+        if (!pinned && !wasPinned && previous && previous !== key) resetSelectedAction(previous)
+    })
     watch(
-        () => grave.value?.phase,
-        (phase, previous) => {
-            if (previous && phase && previous !== phase && state.selectedKey.value)
-                resetSelectedAction(state.selectedKey.value)
+        [() => grave.value?.id, () => grave.value?.phase],
+        ([id, phase], [previousId, previousPhase]) => {
+            if (id && id === previousId && previousPhase && phase !== previousPhase)
+                resetSelectedAction(`grave:${id}`)
         }
     )
-    watch(selectedTarget, (selected) => {
-        if (!selected) {
-            props.game?.setCombatTarget(undefined)
-            return
-        }
-        const { name, ...target } = selected
-        const character = target.kind === 'character'
-        // Other characters already have a world nameplate. The local player has none by default.
-        props.game?.setCombatTarget({
-            ...target,
-            kind: character ? 'character' : 'object',
-            ...(!character || target.relationship === 'self' ? { name } : {}),
-        })
-    })
+    watch(
+        focusedTarget,
+        (selected) => {
+            if (!selected) {
+                props.game?.setCombatTarget(undefined)
+                return
+            }
+            const { name, ...target } = selected
+            const character = target.kind === 'character'
+            // Other characters already have a world nameplate. The local player has none by default.
+            props.game?.setCombatTarget({
+                ...target,
+                kind: character ? 'character' : 'object',
+                ...(!character || target.relationship === 'self' ? { name } : {}),
+            })
+        },
+        { immediate: true }
+    )
     let frame = 0
     function checkViewport(): void {
         validateSelection()

@@ -1,8 +1,8 @@
 import { CENTER_LOCATION_ID, type Vector2 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { findStandingApproach } from './characterSpacing'
 import { companionProfiles } from './companionProfiles'
-import { findActorPath } from './doorNavigation'
 import type { GameRoom } from './room'
 import type { SocialHistory } from './socialHistory'
 import type { SocialRumorEncounter } from './socialHistoryTypes'
@@ -123,10 +123,15 @@ export class RoomRumorMeetings {
         }
         const [speaker, listener] = pair
         const mover = canVisit(listener) ? listener : speaker
-        const home =
-            mover === listener ? speaker.spawnPosition : listener.spawnPosition
-        const path = findActorPath(this.room.navigationFor(mover), mover, home)
-        if (path.length > 0) {
+        const counterpart = mover === listener ? speaker : listener
+        const approach = findStandingApproach(
+            mover,
+            counterpart,
+            this.room,
+            contactRange
+        )
+        if (approach.kind === 'approaching') {
+            const { path } = approach
             mover.setPath(path)
             if (mover.path === path) {
                 this.visit = {

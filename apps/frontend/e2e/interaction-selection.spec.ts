@@ -29,6 +29,13 @@ for (const layout of [
             ].sort((a, b) => a.id.localeCompare(b.id))
             const canvas = page.locator('canvas[data-game-canvas=true]')
             await canvas.focus()
+            const focusedTarget = page.locator('.hotbar[data-focused-target-key]')
+            await expect(selectedWorldTarget(page)).toHaveCount(0)
+            await expect(focusedTarget).toHaveAttribute(
+                'data-focused-target-key',
+                `character:${left!.id}`
+            )
+            await expect.poll(() => nameOpacities(page, left!.id, right!.id)).toEqual([1, 0.35])
             await selectSocialTarget(page, left!.id)
             const before = await playerPosition(page)
             await openNearbyMenu(page, layout.name === 'mobile')
@@ -62,7 +69,11 @@ for (const layout of [
             await canvas.focus()
             await page.keyboard.press('Escape')
             await expect(selectedWorldTarget(page)).toHaveCount(0)
-            await expect.poll(() => nameOpacities(page, left!.id, right!.id)).toEqual([1, 1])
+            await expect(focusedTarget).toHaveAttribute(
+                'data-focused-target-key',
+                `character:${left!.id}`
+            )
+            await expect.poll(() => nameOpacities(page, left!.id, right!.id)).toEqual([1, 0.35])
         } finally {
             await peers.close()
         }

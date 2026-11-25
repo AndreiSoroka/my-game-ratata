@@ -148,10 +148,6 @@ export const questsMessages = {
         'Трофей принят. Повторные пробные рейсы бесплатны.',
         'Trophy accepted. Another verification trip costs nothing.',
     ],
-    trophyFoundEarlierCounts: [
-        'Подойдёт трофей, найденный раньше.',
-        'A trophy found earlier counts.',
-    ],
     turnIn: ['Сдать', 'Turn in'],
     turnInContract: ['Сдать контракт', 'Turn in contract'],
     turnInQuest: ['Сдать поручение', 'Turn in quest'],

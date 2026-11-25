@@ -16,11 +16,13 @@ const props = defineProps<{
     contextLabel?: string
     targetKey?: string
     neighbors?: DialogueNeighbors
+    detailsOnly?: boolean
 }>()
 const emit = defineEmits<{ select: [id: string]; close: []; switchCharacter: [key: string] }>()
 const playUiSound = inject(gameUiSoundKey)
 const menu = ref<HTMLElement>()
 const panel = ref<HTMLElement>()
+const closeButton = ref<InstanceType<typeof UiButton>>()
 useEscapeOwner({ active: () => props.open, escape: () => emit('close'), element: panel })
 const activeId = ref<string>()
 const labelId = useId()
@@ -37,6 +39,11 @@ function returnFocus(): void {
 }
 function focusAction(id?: string): void {
     activeId.value = id
+    if (props.detailsOnly) {
+        const button: unknown = closeButton.value?.$el
+        if (button instanceof HTMLElement) button.focus()
+        return
+    }
     const button = Array.from(
         menu.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []
     ).find((item) => item.dataset.actionId === id)
@@ -53,6 +60,7 @@ function activate(id?: string): void {
     }
 }
 function moveFocus(direction: number): void {
+    if (enabled.value.length === 0) return
     const index = enabled.value.findIndex((action) => action.id === activeId.value)
     const next = (index + direction + enabled.value.length) % enabled.value.length
     navigateTo(enabled.value[next]?.id)
@@ -80,6 +88,7 @@ function handleCharacterKey(event: KeyboardEvent): boolean {
     return true
 }
 function confirmFocusedAction(event: KeyboardEvent): void {
+    if (props.detailsOnly && event.code !== 'KeyF') return
     event.preventDefault()
     if (event.repeat) return
     const focused = document.activeElement
@@ -148,6 +157,7 @@ onBeforeUnmount(returnFocus)
         v-if="open"
         ref="panel"
         class="nearby-action-panel adventure-window game-frame-host"
+        :role="detailsOnly ? 'dialog' : undefined"
         :aria-labelledby="labelId"
         @keydown.stop="handleKey"
         @keyup.stop
@@ -158,9 +168,10 @@ onBeforeUnmount(returnFocus)
         <header class="nearby-action-panel__header">
             <h2 :id="labelId">{{ contextLabel ?? tGame('game.world.nearbyActions') }}</h2>
             <UiButton
+                ref="closeButton"
                 size="small"
                 icon
-                tabindex="-1"
+                :tabindex="detailsOnly ? 0 : -1"
                 :aria-label="tGame('game.world.closeActions')"
                 @click="emit('close')"
             >
@@ -175,7 +186,7 @@ onBeforeUnmount(returnFocus)
             @switch-target="emit('switchCharacter', $event)"
         />
         <slot />
-        <div ref="menu" role="menu" :aria-labelledby="labelId" tabindex="-1">
+        <div v-if="!detailsOnly" ref="menu" role="menu" :aria-labelledby="labelId" tabindex="-1">
             <UiButton
                 size="small"
                 v-for="action in actions"
@@ -194,7 +205,7 @@ onBeforeUnmount(returnFocus)
                 {{ tGame('game.world.noActionsAvailableNearby') }}
             </p>
         </div>
-        <p class="nearby-action-panel__hint">
+        <p v-if="!detailsOnly" class="nearby-action-panel__hint">
             <template v-if="neighbors?.left || neighbors?.right">
                 {{ tGame('game.world.switchNearbyCharacter') }} ·
             </template>

@@ -28,6 +28,7 @@ const props = defineProps<{
     characters: CharacterSnapshot[]
     blocked: boolean
     interactionPrompt?: string
+    nearbyTargetKey?: string
 }>()
 const emit = defineEmits<{ interact: [id: string]; requestInteract: []; openMenu: []; plant: [] }>()
 const hotbar = ref<InstanceType<typeof ActionHotbar>>()
@@ -38,7 +39,7 @@ const prayerCast = computed(
 )
 const {
     selectedKey,
-    selectedTarget,
+    focusedTarget,
     selectedId,
     selectedGraveId,
     target,
@@ -53,8 +54,12 @@ const {
 } = useWorldTargetSelection(props, {
     cancel: () => cancel(),
     resetGesture: () => hotbar.value?.resetGesture(),
-    hasPendingAttack: (targetId) => hotbar.value?.hasPendingAttack(targetId) ?? false,
+    hasPendingAttack: (targetKey) => hotbar.value?.hasPendingAttack(targetKey) ?? false,
     interact: (id) => emit('interact', id),
+})
+const pendingFocusedAttack = computed(() => {
+    const key = focusedTarget.value?.key
+    return key !== undefined && hotbar.value?.hasPendingAttack(key) === true
 })
 function send(command: ClientMessage): void {
     props.game?.sendCommand(command)
@@ -111,6 +116,7 @@ useEscapeOwner({
             props.player.abilities?.magicChannel ||
             props.snapshot.automation?.run?.status === 'running' ||
             selectedKey.value ||
+            pendingFocusedAttack.value ||
             (props.player.control && props.player.control.mode !== 'none')
         ),
     escape: () => {
@@ -139,6 +145,13 @@ function assignItem(slot: number, itemId: 'food' | 'sapling'): void {
     hotbar.value?.assignItem(slot, itemId)
 }
 let closingDialogue: string | undefined
+function dialogueReachable(speaker: CharacterSnapshot | undefined, allowSpeech: boolean): boolean {
+    if (!speaker?.alive || !props.player.alive) return false
+    return (
+        props.game?.isInteractionVisible(speaker.position, undefined, 48) === true ||
+        (allowSpeech && speaker.interactions?.speechReachable === true)
+    )
+}
 watch([() => props.snapshot.adventure?.dialogue, () => props.characters], () => {
     const dialogue = props.snapshot.adventure?.dialogue
     if (!dialogue || dialogue.kind === 'sign' || dialogue.kind === 'quest_board') {
@@ -146,11 +159,10 @@ watch([() => props.snapshot.adventure?.dialogue, () => props.characters], () => 
         return
     }
     const speaker = props.characters.find((actor) => actor.id === dialogue.npcId)
-    const valid =
-        speaker?.alive &&
-        props.player.alive &&
-        props.game?.isInteractionVisible(speaker.position, undefined, 48)
-    if (!valid && closingDialogue !== dialogue.npcId) {
+    if (
+        !dialogueReachable(speaker, dialogue.initialView === undefined) &&
+        closingDialogue !== dialogue.npcId
+    ) {
         closingDialogue = dialogue.npcId
         send({ type: 'dialogue_choice', choiceId: 'close' })
     }
@@ -225,11 +237,13 @@ defineExpose({
     />
     <ActionHotbar
         ref="hotbar"
-        :data-selected-target-key="selectedTarget?.key"
-        :data-selected-target-name="selectedTarget?.name"
+        :data-selected-target-key="selectedKey"
+        :data-selected-target-name="selectedKey ? focusedTarget?.name : undefined"
+        :data-focused-target-key="focusedTarget?.key"
         :player="player"
         :target="target"
         :grave="grave"
+        :approach-grave="grave !== undefined && selectedKey === undefined"
         :graves="snapshot.graves"
         :acquire-attack-target="acquireAttackTarget"
         :can-reach-grave="
@@ -238,9 +252,9 @@ defineExpose({
         "
         :object-target="
             Boolean(
-                selectedTarget &&
-                selectedTarget.kind !== 'character' &&
-                selectedTarget.kind !== 'grave'
+                focusedTarget &&
+                focusedTarget.kind !== 'character' &&
+                focusedTarget.kind !== 'grave'
             )
         "
         :characters="characters"

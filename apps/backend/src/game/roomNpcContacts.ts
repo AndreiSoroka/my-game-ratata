@@ -7,7 +7,7 @@ import type {
 
 import type { NpcAiCoordinator } from '../ai/coordinator'
 import type { AdventureService } from './adventure'
-import { resolveAdventureNpc } from './adventureNpc'
+import { conversationalNpcService, resolveAdventureNpc } from './adventureNpc'
 import type { GameCharacter } from './character'
 import { recruitableNpc } from './npcRoster'
 import type { GameRoom } from './room'
@@ -197,7 +197,8 @@ export class RoomNpcContacts {
             targetId,
             characters,
             now,
-            navigation
+            navigation,
+            conversationalNpcService(service)
         )
         if (!this.hears(actor, npc, now)) {
             this.notice(

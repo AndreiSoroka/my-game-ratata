@@ -84,14 +84,19 @@ export class RoomQuestDialogues {
         ).questOffer
         const issuerQuests = this.contracts(issuerId, recipientId, now)
         const player = this.environment.room.getCharacter(recipientId)
+        const request =
+            this.environment.parties.boardActiveJob(recipientId)?.workRequest
         return {
             questOffer: offer?.issuerId === issuerId ? offer : null,
             issuerQuests,
+            ...(request?.clerkId === issuerId
+                ? { activeWorkerRequest: request }
+                : {}),
             ...(issuerId !== questBoardIssuerId || player === undefined
                 ? {}
                 : {
                       availableOrders: this.turnIns.catalog
-                          .available(player, now)
+                          .offerable(player, now)
                           .map(({ entry }) => entry),
                   }),
             questHistory: this.environment.quests.journal.conversation(
@@ -124,8 +129,9 @@ export class RoomQuestDialogues {
                 this.turnIns.heard(actor, issuer, text, at)
             )
         }
+        const speech = questSpeech(text)
         const askedBy =
-            questSpeech(text) === 'yes'
+            speech === 'yes' || speech === 'report' || speech === undefined
                 ? this.turnIns.questionIssuer(actor, at)
                 : undefined
         if (askedBy !== undefined) {

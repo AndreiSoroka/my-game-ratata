@@ -18,6 +18,12 @@ export type CharacterAutoAction =
       }
     | { kind: 'attack'; targetId: string; target?: never; once: true }
     | {
+          kind: 'attack'
+          targetId?: never
+          target: import('./graves').WorldCombatTarget
+          once: true
+      }
+    | {
           kind: 'ability'
           abilityId: Exclude<AbilityId, PrayerActionId | AshRiteId>
           targetId?: string

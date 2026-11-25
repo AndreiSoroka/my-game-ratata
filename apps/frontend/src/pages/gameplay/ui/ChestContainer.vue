@@ -8,19 +8,20 @@ import {
     type ClientMessage,
     INVENTORY_CAPACITY,
 } from '@my-game-ratata/contracts'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 
 import { ChestPane } from '@/entities/items'
 import { dialogActionKeys } from '@/pages/gameplay/model/dialogActionKeys'
+import { gameUiSoundKey } from '@/pages/gameplay/model/gameUiSound'
 import { useEscapeOwner } from '@/pages/gameplay/model/uiEscapeOwners'
 import { focusPanelSurface } from '@/pages/gameplay/model/uiKeyboard'
 import { tGame } from '@/shared/lib/i18n'
-import { UiButton } from '@/shared/ui/common'
-import { UiFrame } from '@/shared/ui/common'
+import { darkPanelButtonColors, UiButton, UiFrame } from '@/shared/ui/common'
 
 const props = defineProps<{ chest: ChestContainerSnapshot; player: CharacterSnapshot }>()
 const emit = defineEmits<{ command: [message: ClientMessage]; close: [] }>()
 const panel = ref<HTMLElement>()
+const playUiSound = inject(gameUiSoundKey)
 useEscapeOwner({ active: () => true, escape: () => emit('close'), element: panel })
 const titleId = useId()
 const focusedId = ref('')
@@ -87,6 +88,9 @@ function trackFocus(event: FocusEvent): void {
     if (!(event.target instanceof HTMLElement)) return
     focusedId.value =
         event.target.dataset.dialogAction ?? `${event.target.dataset.chestPane ?? 'chest'}:`
+}
+function onKeydown(event: KeyboardEvent): void {
+    if (dialogActionKeys(event, panel.value, () => emit('close'))) playUiSound?.('uiSlotSelect')
 }
 function take(itemInstanceId: string): void {
     if (takeableItems.value.some((item) => item.instanceId === itemInstanceId))
@@ -160,7 +164,7 @@ onBeforeUnmount(() => {
             aria-modal="true"
             tabindex="-1"
             :aria-labelledby="titleId"
-            @keydown.stop="dialogActionKeys($event, panel, () => emit('close'))"
+            @keydown.stop="onKeydown"
             @keyup.stop
             @pointerdown.stop="focusPanelSurface($event, panel)"
             @click.stop
@@ -188,6 +192,8 @@ onBeforeUnmount(() => {
                 </div>
                 <UiButton
                     size="small"
+                    border="border-015"
+                    :colors="darkPanelButtonColors"
                     type="button"
                     data-dialog-action="close"
                     :aria-label="
@@ -238,6 +244,8 @@ onBeforeUnmount(() => {
                 >
                     <UiButton
                         size="small"
+                        border="border-015"
+                        :colors="darkPanelButtonColors"
                         v-if="hasGold"
                         type="button"
                         data-dialog-action="chest:gold"
@@ -247,6 +255,8 @@ onBeforeUnmount(() => {
                     </UiButton>
                     <UiButton
                         size="small"
+                        border="border-015"
+                        :colors="darkPanelButtonColors"
                         class="chest-take-all"
                         type="button"
                         data-dialog-action="all"

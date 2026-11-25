@@ -93,6 +93,21 @@ export function questContact(
     )
 }
 
+export function questTransferReachable(
+    actor: GameCharacter,
+    issuer: GameCharacter | undefined,
+    environment: Pick<NpcQuestEnvironment, 'navigationFor'>
+): boolean {
+    return (
+        questActorAvailable(actor) &&
+        questActorAvailable(issuer) &&
+        actor.locationId === issuer.locationId &&
+        environment
+            .navigationFor(actor)
+            .hasLineOfSight(actor.position, issuer.position)
+    )
+}
+
 export function movementFingerprint(actor: GameCharacter): string {
     return `${actor.locationId}:${String(actor.position.x)}:${String(actor.position.y)}`
 }
@@ -123,12 +138,9 @@ export function questOfferAvailable(
     return (
         issuer !== undefined &&
         recipient !== undefined &&
+        boardOfferStillAvailable(offer, recipient, environment) &&
         (offer.publication === undefined ||
             publicationAvailable(offer.publication, environment, now)) &&
-        (offer.boardGuildId === undefined ||
-            environment.parties
-                .boardDefinitions(recipient.id)
-                .some((definition) => definition.id === offer.boardGuildId)) &&
         (offer.view.authoredQuestId === undefined ||
             environment.adventure.storyOfferError(
                 issuer,
@@ -138,6 +150,25 @@ export function questOfferAvailable(
         offer.view.expiresAt > now &&
         issuer.deathSequence === offer.issuerDeath &&
         questContact(recipient, issuer, environment, now)
+    )
+}
+
+function boardOfferStillAvailable(
+    offer: QuestOfferRecord,
+    recipient: GameCharacter,
+    environment: NpcQuestEnvironment
+): boolean {
+    if (offer.boardOffer !== true || offer.view.authoredQuestId !== undefined) {
+        return true
+    }
+    const group = environment.parties.contractGroup(recipient.id)
+    return (
+        !group.occupied &&
+        group.leaderId === recipient.id &&
+        (offer.boardGuildId === undefined ||
+            environment.parties
+                .boardDefinitions(recipient.id)
+                .some((definition) => definition.id === offer.boardGuildId))
     )
 }
 

@@ -3,6 +3,7 @@ import type {
     QuestBoardEntry,
     QuestHistoryEntry,
     QuestOfferSnapshot,
+    WorkRequestSnapshot,
 } from '@my-game-ratata/contracts'
 
 export interface KnownContracts {
@@ -10,6 +11,7 @@ export interface KnownContracts {
     issuerQuests: NpcQuestSnapshot[]
     questHistory: QuestHistoryEntry[]
     availableOrders?: QuestBoardEntry[]
+    activeWorkerRequest?: WorkRequestSnapshot
 }
 /** The journal stays complete on the server; a model receives current contracts and relevant history. */
 export function projectContracts(
@@ -28,6 +30,9 @@ export function projectContracts(
         ...(value.availableOrders === undefined
             ? {}
             : { availableOrders: value.availableOrders }),
+        ...(value.activeWorkerRequest === undefined
+            ? {}
+            : { activeWorkerRequest: value.activeWorkerRequest }),
     }
 }
 function terminal(status: string): boolean {

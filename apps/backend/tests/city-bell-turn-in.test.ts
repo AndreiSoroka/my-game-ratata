@@ -188,6 +188,121 @@ it('binds yes to a delivered question about one contract and expires it', async 
     expect(f.player.actor.inventory).toHaveLength(3)
 })
 
+it.each([
+    {
+        locale: 'ru',
+        text: 'Дай что-нибудь простое',
+        finished: 'Я сделал задание',
+        details: [
+            'О чём эти задания?',
+            'о чем эти задания, расскеажи подробнее о чем задания',
+        ],
+        hunt: 'Зачистка троп',
+        bell: 'Сердца для колокола памяти',
+        frontier: 'Разведчики Пограничья',
+        description: 'Победите трёх враждебных слизней',
+        huntReward: '30 золота',
+        bellReward: '40 золота',
+        progress: 'Прогресс: 0 / 3',
+        occupied: 'действующий договор',
+    },
+    {
+        locale: 'en',
+        text: 'Give me an easy quest.',
+        finished: 'I finished the quest.',
+        details: [
+            'What are these quests about?',
+            'Tell me more about these orders.',
+        ],
+        hunt: 'Clear the Trails',
+        bell: 'Hearts for the Bell of Memory',
+        frontier: 'Scouts of the Borderlands',
+        description: 'Defeat three hostile slimes',
+        huntReward: '30 gold',
+        bellReward: '40 gold',
+        progress: 'Progress: 0 / 3',
+        occupied: 'active contract',
+    },
+] as const)(
+    'shows available terms and actual contract progress in $locale',
+    async (example) => {
+        const f = setup(miraId, 'city_coordinator')
+        placeForConversation(f, actor(f, miraId))
+        const whisper = () => required(clientView(f).social?.whisper)
+        const lastReply = () => required(whisper().messages.at(-1)).text
+        f.player.send({ type: 'set_locale', locale: example.locale })
+        for (const prompt of example.details) {
+            f.talk(prompt)
+            await f.advance()
+            const replies = whisper()
+                .messages.filter(({ senderId }) => senderId === miraId)
+                .slice(-4)
+            const hunt = required(
+                replies.find(({ text }) => text.startsWith(example.hunt))
+            )
+            expect(hunt.text).toContain(example.description)
+            expect(hunt.text.split('\n').at(-1)).toContain(example.huntReward)
+        }
+        f.talk(example.text)
+        await f.advance()
+        const first = required(clientView(f).social?.questOffer)
+        expect(first.guildQuestId).toBe('slime_hunt')
+        expect(clientView(f).party?.activeJob).toBeNull()
+        f.talk(example.text)
+        await f.advance()
+        expect(clientView(f).social?.questOffer?.id).toBe(first.id)
+
+        f.player.send({
+            type: 'quest_offer_answer',
+            offerId: first.id,
+            revision: first.revision,
+            accept: true,
+        })
+        await f.advance()
+        f.talk(example.finished)
+        await f.advance()
+        const progress = lastReply()
+        expect(progress).toContain(example.hunt)
+        expect(progress).toContain(example.progress)
+        expect(progress).not.toContain(example.frontier)
+        expect(clientView(f).social?.questTurnIn).toBeNull()
+
+        expect(
+            f.room.social
+                .conversation(miraId, f.player.actor.id, Date.now())
+                .availableOrders?.map(({ id }) => id)
+        ).toEqual([questId])
+        f.talk(example.details[0])
+        await f.advance()
+        const onlyAvailable = lastReply()
+        expect(onlyAvailable).toContain(example.bell)
+        expect(onlyAvailable.split('\n').at(-1)).toContain(example.bellReward)
+        expect(onlyAvailable).not.toContain(example.frontier)
+        f.talk(example.text)
+        await f.advance()
+        const bell = required(clientView(f).social?.questOffer)
+        expect(bell.authoredQuestId).toBe(questId)
+        f.player.send({
+            type: 'quest_offer_answer',
+            offerId: bell.id,
+            revision: bell.revision,
+            accept: true,
+        })
+        await f.advance()
+
+        f.talk('Какие у меня активные квесты?')
+        await f.advance()
+        const active = lastReply()
+        expect(active).toContain(example.hunt)
+        expect(active).toContain(example.bell)
+        expect(active).not.toContain(example.frontier)
+        f.talk(example.text)
+        await f.advance()
+        expect(clientView(f).social?.questOffer).toBeNull()
+        expect(lastReply()).toContain(example.occupied)
+    }
+)
+
 it('opens the right hand-in when the player answers a delivered model question', async () => {
     const f = setup(miraId, 'city_coordinator')
     placeForConversation(f, actor(f, miraId))

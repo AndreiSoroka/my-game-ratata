@@ -29,6 +29,7 @@ const props = defineProps<{
     player: CharacterSnapshot
     target?: CharacterSnapshot
     grave?: WorldGraveSnapshot
+    approachGrave?: boolean
     graves?: WorldGraveSnapshot[]
     objectTarget?: boolean
     acquireAttackTarget?: () => string | undefined

@@ -1,16 +1,69 @@
 import {
+    type CharacterSnapshot,
     DOOR_INTERACTION_RANGE,
     FARM_INTERACTION_RANGE,
     GRAVE_INTERACTION_RANGE,
     PORTAL_INTERACTION_TILES,
+    type WorldGraveSnapshot,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
 import { graveName } from '@/entities/graves'
+import { tGame } from '@/shared/lib/i18n'
 
-import type { AgentTarget } from './agentObservation'
+import { gravePrayerPreview } from '../ui/graveInteractions'
+import { type InteractionAction, nearbyInteractionTarget } from '../ui/nearbyInteractionActions'
+import type { AgentTarget, ObservationOptions } from './agentObservation'
 
 type TargetDescription = Omit<AgentTarget, 'key' | 'distance' | 'actions'>
+
+export function observedTargetActions(
+    snapshot: WorldSnapshot,
+    player: CharacterSnapshot,
+    characters: CharacterSnapshot[],
+    target: TargetDescription,
+    visibility: ObservationOptions
+): InteractionAction[] {
+    const nearby = nearbyInteractionTarget(
+        snapshot,
+        player,
+        characters,
+        visibility.isInteractionVisible,
+        `${target.kind}:${target.id}`,
+        true
+    )
+    if (!nearby) return []
+    const grave =
+        target.kind === 'grave' ? snapshot.graves?.find(({ id }) => id === target.id) : undefined
+    return grave ? [...graveCommands(player, grave), ...nearby.actions] : nearby.actions
+}
+
+/** The playtest interface includes the grave's ordinary hotbar commands. */
+function graveCommands(player: CharacterSnapshot, grave: WorldGraveSnapshot): InteractionAction[] {
+    const address = { kind: 'grave', id: grave.id } as const
+    const prayer = gravePrayerPreview(player, grave)
+    return [
+        {
+            id: `grave:attack:${grave.id}`,
+            label: tGame(
+                grave.phase === 'active' ? 'game.world.basicAttack' : 'game.world.graveDestroyed'
+            ),
+            disabled: grave.phase !== 'active',
+            command: { type: 'attack', target: address },
+        },
+        {
+            id: `grave:purify:${grave.id}`,
+            label: prayer.unavailableReason ?? tGame('game.world.cleanseGraveAction'),
+            disabled: prayer.unavailableReason !== null,
+            command: {
+                type: 'use_ability',
+                abilityId: 'pray',
+                intent: { mode: 'purify_grave', target: address },
+            },
+        },
+    ]
+}
+
 export function environmentTargets(snapshot: WorldSnapshot): TargetDescription[] {
     return [
         ...(snapshot.portals ?? [])

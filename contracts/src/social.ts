@@ -68,6 +68,8 @@ export interface CharacterInteractions {
     companionCanFight?: boolean
     whisper: boolean
     exchange: boolean
+    /** This observer can converse across an obstacle that blocks physical actions. */
+    speechReachable?: true
     /** Which companion actions this viewer can request. */
     companionRequests?: 'available' | 'occupied' | 'own'
 }

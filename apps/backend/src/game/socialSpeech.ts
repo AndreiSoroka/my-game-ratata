@@ -30,7 +30,7 @@ export function canHearSpeech(
         listener.locationId === speaker.locationId &&
         distance(listener.position, speaker.position) <=
             visibilityRadius(listener, speaker, radius, now) &&
-        navigation.hasLineOfSight(listener.position, speaker.position)
+        navigation.hasSpeechLine(listener.position, speaker.position)
     )
 }
 

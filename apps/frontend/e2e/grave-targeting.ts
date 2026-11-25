@@ -55,7 +55,7 @@ export async function approachObservedGrave(page: Page, key: string): Promise<vo
         }
         await faceGrave(page, source!.id)
         const selected = await selectGrave(page, key)
-        const prompt = page.getByRole('button', { name: /^F Могила / })
+        const prompt = page.getByRole('button', { name: /^F Могила(?:$| ·)/u })
         if (selected && (await prompt.isVisible())) return
         attempts.push({ offset, prompt: await page.locator('.nearby-prompt').allTextContents() })
     }

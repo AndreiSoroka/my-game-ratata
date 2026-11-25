@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
 import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
-import { UiButton } from '@/shared/ui/common'
+import { darkPanelButtonColors, UiButton } from '@/shared/ui/common'
 
 import ChestPane from './ChestPane.vue'
 
@@ -42,7 +42,11 @@ type Story = StoryObj<Args>
 export const Default: Story = {
     render({ footer, disabledItemId, ...props }) {
         const defaultSlot = storySlot(footer, 'Предметы можно забрать по одному.', () =>
-            h(UiButton, { size: 'small' }, { default: () => 'Забрать всё' })
+            h(
+                UiButton,
+                { size: 'small', border: 'border-015', colors: darkPanelButtonColors },
+                { default: () => 'Забрать всё' }
+            )
         )
         const isItemDisabled: Args['isItemDisabled'] = (item) => item.instanceId === disabledItemId
         const host = renderVueStory(

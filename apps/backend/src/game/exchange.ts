@@ -1,6 +1,7 @@
 import type {
     ExchangeClientMessage,
     ExchangeSnapshot,
+    ItemId,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -14,6 +15,7 @@ import {
     exchangeReachable,
     type ExchangeSession,
     pauseExchangeActor,
+    recentlyTransferredItem,
     viewExchangeOffer,
 } from './exchangeState'
 import {
@@ -116,6 +118,17 @@ export class ExchangeService {
                 : { receiptId: session.receiptId }),
             ...(session.notice === undefined ? {} : { notice: session.notice }),
         }
+    }
+
+    public recentlyTransferred(
+        senderId: string,
+        recipientId: string,
+        itemId: ItemId,
+        now: number
+    ): boolean {
+        return [...this.sessions.values()].some((session) =>
+            recentlyTransferredItem(session, senderId, recipientId, itemId, now)
+        )
     }
 
     public update(now: number): void {

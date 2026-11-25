@@ -58,7 +58,6 @@ export function suspendRuntimePresentation(view: RuntimePresentation | undefined
     view.audio.suspendWorld()
     view.canvas.style.visibility = 'hidden'
     view.sceneActors.clearDamage()
-    view.sceneActors.setInteractionTarget(undefined)
     view.sceneActors.setCombatTarget(undefined)
 }
 

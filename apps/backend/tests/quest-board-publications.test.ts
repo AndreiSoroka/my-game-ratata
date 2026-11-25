@@ -200,6 +200,12 @@ it('redeems an unaccepted delivery atomically and retains its offer on inventory
     expect(onlyPosting(f.service, 30).id).toBe(id)
     expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
     f.issuer.inventory.splice(0, 2)
+    f.putTableBetweenPlayerAndIssuer()
+    expect(redeem().accepted).toBe(false)
+    expect(countInventoryItem(f.player.inventory, 'bone')).toBe(2)
+    expect(onlyPosting(f.service, 30).id).toBe(id)
+    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    f.player.position = { ...f.issuer.position }
     expect(redeem().accepted).toBe(true)
     expect(countInventoryItem(f.player.inventory, 'bone')).toBe(0)
     expect(countInventoryItem(f.issuer.inventory, 'bone')).toBe(2)

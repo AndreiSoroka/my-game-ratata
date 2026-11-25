@@ -11,6 +11,54 @@ function oneAttack(targetId: string) {
     return { type: 'auto_action', action: { kind: 'attack', targetId, once: true } } as const
 }
 
+it('moves visual focus with the temporary target and gives the explicit choice priority', async () => {
+    const player = characterFixture('self')
+    const first = characterFixture('first', { position: { x: 18, y: 0 } })
+    const second = characterFixture('second', { position: { x: -18, y: 0 } })
+    const characters = [player, first, second]
+    const sendCommand = vi.fn<() => void>()
+    const setCombatTarget = vi.fn<() => void>()
+    const wrapper = mount(GameplayOverlay, {
+        props: {
+            player,
+            characters,
+            snapshot: worldFixture(characters),
+            blocked: false,
+            nearbyTargetKey: `character:${first.id}`,
+            game: { sendCommand, setCombatTarget } as never,
+        },
+        global: { stubs: { SpeechBubbles: true } },
+    })
+    try {
+        expect(wrapper.vm.selectedKey).toBeUndefined()
+        expect(setCombatTarget).toHaveBeenLastCalledWith(
+            expect.objectContaining({ key: `character:${first.id}` })
+        )
+        await wrapper.setProps({ nearbyTargetKey: `character:${second.id}` })
+        expect(setCombatTarget).toHaveBeenLastCalledWith(
+            expect.objectContaining({ key: `character:${second.id}` })
+        )
+        expect(sendCommand).not.toHaveBeenCalled()
+
+        wrapper.vm.select(first.id)
+        await wrapper.vm.$nextTick()
+        expect(wrapper.vm.selectedKey).toBe(`character:${first.id}`)
+        expect(setCombatTarget).toHaveBeenLastCalledWith(
+            expect.objectContaining({ key: `character:${first.id}` })
+        )
+        await wrapper.setProps({ nearbyTargetKey: undefined })
+        expect(setCombatTarget).toHaveBeenLastCalledWith(
+            expect.objectContaining({ key: `character:${first.id}` })
+        )
+
+        wrapper.vm.cancel(true)
+        await wrapper.vm.$nextTick()
+        expect(setCombatTarget).toHaveBeenLastCalledWith(undefined)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
 it('cycles non-hostile targets and enemies separately and toggles self with Q', async () => {
     const player = characterFixture('self'),
         friend = characterFixture('friend', { position: { x: 40, y: 0 } }),

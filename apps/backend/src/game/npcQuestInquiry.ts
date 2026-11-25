@@ -45,7 +45,8 @@ export function inquireNpcQuest(
         target.id,
         [target],
         now,
-        context.environment.navigationFor(actor)
+        context.environment.navigationFor(actor),
+        true
     )
     if (contact === undefined) {
         return rejected()

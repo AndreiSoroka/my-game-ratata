@@ -10,7 +10,6 @@ export const worldActionMessages = {
     alreadyCleansed: ['Могила уже очищена', 'Grave already cleansed'],
     askCombatHelp: ['Попросить помочь в бою: {name}', 'Ask {name} for help in combat'],
     assignSlotNumber: ['Назначить слот {number}', 'Assign slot {number}'],
-    attackGrave: ['Атаковать могилу', 'Attack grave'],
     attackOnCooldown: ['Атака восстанавливается', 'Attack on cooldown'],
     autoRepeat: ['Автоповтор', 'Auto-repeat'],
     autoRepeatEnabled: ['Автоповтор включён', 'Auto-repeat enabled'],
@@ -32,10 +31,6 @@ export const worldActionMessages = {
         'Cleanse grave · {cost} · {seconds} s{cancel}',
     ],
     cleanseGraveAction: ['Упокоить могилу', 'Cleanse grave'],
-    cleanseGraveCosts: [
-        'Упокоить могилу · {mana} MP · {seconds} с',
-        'Cleanse grave · {mana} MP · {seconds} s',
-    ],
     clearSlot: ['Очистить слот', 'Clear slot'],
     clearSlotNumber: ['Очистить слот {number}', 'Clear slot {number}'],
     cSneakSpaceDashFor: [
@@ -71,6 +66,14 @@ export const worldActionMessages = {
         'For a formal report, approach a guard in the city and press F.',
     ],
     graveDurability: ['Прочность могилы', 'Grave durability'],
+    graveSkeletons: [
+        'Из могил могут подниматься скелеты, поэтому их надо разрушить или очистить.',
+        'Skeletons can rise from graves, so graves must be destroyed or purified.',
+    ],
+    graveToolEffectiveness: [
+        'Киркой быстрее, оружием и магией дольше.',
+        'A pickaxe works fastest. Weapons and magic take longer.',
+    ],
     insufficientEnergy: ['Недостаточно энергии', 'Not enough energy'],
     interruptPrayer: ['Прервать молитву', 'Interrupt prayer'],
     learnAbility: ['Изучить: {ability}', 'Learn {ability}'],

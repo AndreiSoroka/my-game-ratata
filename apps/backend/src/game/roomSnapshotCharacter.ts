@@ -19,7 +19,7 @@ import { hasDeclaredHostility } from './personalHostility'
 import { prayerAuraEffects } from './prayerAuras'
 import { hasRoadPrayerRecovery } from './roadPrayerRecovery'
 import type { SnapshotContext } from './roomSnapshot'
-import { canHearSpeech } from './socialSpeech'
+import { canConverseWithNpc, canHearSpeech } from './socialSpeech'
 
 export function projectRoomCharacter(
     context: SnapshotContext,
@@ -30,7 +30,7 @@ export function projectRoomCharacter(
     const actor = context.characters.get(character.id)
     const activity = observedWorkerActivity(context, actor, view, playerId)
     const auraEffects = observedPrayerAuraEffects(actor, playerId, view)
-    const interactions = interactionsFor(context, actor, view.observer?.id)
+    const interactions = interactionsFor(context, actor, view)
     const observed = observeCharacterCombat(character, actor, view)
     const dashDiscountMsLeft =
         actor !== undefined && actor.id === playerId
@@ -84,13 +84,17 @@ function observedAshEffects(
 function interactionsFor(
     context: SnapshotContext,
     actor: GameCharacter | undefined,
-    viewerId: string | undefined
+    view: CombatObserver
 ): CharacterInteractions | undefined {
     if (context.social === undefined || actor === undefined) {
         return undefined
     }
     const interactions: CharacterInteractions =
         context.social.interactions(actor)
+    const viewerId = view.observer?.id
+    if (speakingThroughFurniture(actor, view)) {
+        interactions.speechReachable = true
+    }
     const companion = actor.soul.companion
     if (
         viewerId !== undefined &&
@@ -107,6 +111,18 @@ function interactionsFor(
                   : 'occupied'
     }
     return interactions
+}
+
+function speakingThroughFurniture(
+    actor: GameCharacter,
+    { observer, navigation, now }: CombatObserver
+): boolean {
+    return (
+        observer !== undefined &&
+        navigation?.grid.speechTransparent !== undefined &&
+        canConverseWithNpc(observer, actor, navigation, now, 48) &&
+        !navigation.hasLineOfSight(observer.position, actor.position)
+    )
 }
 
 function observedPrayerAuraEffects(

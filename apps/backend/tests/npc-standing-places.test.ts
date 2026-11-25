@@ -158,7 +158,7 @@ it('resolves standing overlap through ordinary movement without replacing explic
         navigation.grid.solid[y * 20 + 5] = false
     }
     const player = character('player', origin, 'network_player')
-    const npc = character('npc', origin)
+    const npc = character('npc_friendly_girl_1', origin)
     const yielding = new Set([npc.id])
     expect(canYieldWhileIdle(player, 0)).toBe(false)
     expect(canYieldWhileIdle(npc, 0)).toBe(true)

@@ -2,6 +2,7 @@ import type {
     ExchangeItemQuantity,
     ExchangeOfferSnapshot,
     ExchangeSnapshot,
+    ItemId,
     Vector2,
 } from '@my-game-ratata/contracts'
 
@@ -79,6 +80,7 @@ export interface ExchangeSession {
     paused: Map<string, PausedExchangeIntent>
     expiresAt: number
     receiptId?: string
+    settledAt?: number
     settledOffers?: [ExchangeOfferSnapshot, ExchangeOfferSnapshot]
     notice?: string
 }
@@ -278,4 +280,31 @@ export function closeExchange(
     session.status = status
     session.notice = notice
     resumeExchangeActors(session, env)
+}
+
+export function recentlyTransferredItem(
+    session: ExchangeSession,
+    senderId: string,
+    recipientId: string,
+    itemId: ItemId,
+    now: number
+): boolean {
+    if (
+        session.status !== 'completed' ||
+        session.receiptId === undefined ||
+        session.settledAt === undefined ||
+        session.settledAt > now ||
+        now - session.settledAt >= 600_000
+    ) {
+        return false
+    }
+    const own = session.actorIds[0] === senderId ? 0 : 1
+    const other = own === 0 ? 1 : 0
+    return (
+        session.actorIds[own] === senderId &&
+        session.actorIds[other] === recipientId &&
+        session.settledOffers?.[own].items.some(
+            (item) => item.itemId === itemId
+        ) === true
+    )
 }

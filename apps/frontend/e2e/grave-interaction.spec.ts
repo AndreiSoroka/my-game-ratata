@@ -51,11 +51,8 @@ for (const { mobile, direction, viewport } of cases) {
             await withdrawRangers(rangers, grave!.position)
             await approachObservedGrave(page, grave!.key)
             await page.screenshot({ path: info.outputPath('grave-active.png') })
-            await openGraveMenu(page, mobile)
-            await expect(page.getByRole('menu')).toBeVisible()
-            await expect(page.getByLabel('Состояние могилы').last()).toContainText('5% урона')
-            await page.screenshot({ path: info.outputPath('grave-menu.png') })
-            await page.getByRole('menuitem', { name: 'Упокоить могилу · 5 MP · 3 с' }).click()
+            await inspectGrave(page, mobile, info)
+            await startPurification(page, mobile)
             await expect.poll(() => purificationTargets).toEqual([grave!.id])
             await expect
                 .poll(() =>
@@ -105,8 +102,7 @@ for (const { mobile, direction, viewport } of cases) {
                 )
                 .toBe(0)
             await approachObservedGrave(page, grave!.key)
-            await openGraveMenu(page, mobile)
-            await page.getByRole('menuitem', { name: 'Упокоить могилу · 5 MP · 3 с' }).click()
+            await startPurification(page, mobile)
             await expect.poll(() => purificationTargets).toEqual([grave!.id, grave!.id])
             await completePurification(page, rangers, grave!.id, grave!.position)
             await expectLocalPrayerAreaCleared(page)
@@ -266,8 +262,8 @@ async function attachOutcome(
     })
 }
 
-async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
-    const prompt = page.getByRole('button', { name: /^F Могила / })
+async function inspectGrave(page: Page, mobile: boolean, info: TestInfo): Promise<void> {
+    const prompt = page.getByRole('button', { name: /^F Могила(?:$| ·)/u })
     await expect(prompt).toBeVisible()
     if (mobile) {
         const bounds = await prompt.boundingBox()
@@ -281,6 +277,22 @@ async function openGraveMenu(page: Page, mobile: boolean): Promise<void> {
         await page.keyboard.press('KeyF')
     }
     await expect(selectedWorldTarget(page)).toHaveAttribute('data-selected-target-key', /^grave:/)
+    const dialog = page.getByRole('dialog', { name: 'Могила' })
+    await expect(dialog.getByLabel('Состояние могилы')).toContainText('Киркой быстрее')
+    await expect(dialog.getByRole('menuitem')).toHaveCount(0)
+    await page.screenshot({ path: info.outputPath('grave-menu.png') })
+    if (mobile) await dialog.getByRole('button', { name: 'Закрыть действия' }).click()
+    else await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+}
+
+async function startPurification(page: Page, mobile: boolean): Promise<void> {
+    const prayer = page.locator('.hotbar__tray').getByRole('button', { name: /^2: /u })
+    if (mobile) await prayer.click()
+    else {
+        await page.locator('canvas[data-game-canvas=true]').focus()
+        await page.keyboard.press('Digit2')
+    }
 }
 
 async function cancelRitual(page: Page, mobile: boolean): Promise<void> {
@@ -296,7 +308,7 @@ async function cancelRitual(page: Page, mobile: boolean): Promise<void> {
 async function shootGrave(
     page: Page,
     ranger: Page,
-    grave: { id: string; key: string },
+    grave: { id: string; key: string; position: Vector2 },
     events: GameEventPayload[]
 ): Promise<void> {
     const first = events.length
@@ -307,23 +319,24 @@ async function shootGrave(
         grave.id
     )
     expect(before.kind).toBe('percent')
-    const actorId = await ranger.evaluate(async (key) => {
+    const actorId = await ranger.evaluate(async ({ id, key, position }) => {
         const api = window.__ratataTest!
-        const grave = api.observe().targets.find((target) => target.key === key)!
         // Interaction reach is wider than Shot's lane; line up with the source.
         const approach = await api.navigate(
-            { x: grave.position.x, y: grave.position.y + 48 },
+            { x: position.x, y: position.y + 48 },
             { timeoutMs: 15_000, tolerance: 2 }
         )
         if (approach.status !== 'arrived')
             throw new Error(`Shot approach ${approach.status}: ${approach.reason}`)
+        if (!api.observe().targets.some((target) => target.key === key))
+            throw new Error('The ranger cannot see the grave from the firing position')
         api.send({
             type: 'use_ability',
             abilityId: 'shot',
-            target: { kind: 'grave', id: grave.id },
+            target: { kind: 'grave', id },
         })
         return api.getState().localPlayerId
-    }, grave.key)
+    }, grave)
     const matchingHit = () =>
         events
             .slice(first)

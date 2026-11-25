@@ -65,9 +65,13 @@ function parseSingleAttack(
         return undefined
     }
     const reference = parseCombatReference(record)
-    return reference?.targetId === undefined
-        ? undefined
-        : { kind: 'attack', targetId: reference.targetId, once: true }
+    if (reference?.target !== undefined) {
+        return { kind: 'attack', target: reference.target, once: true }
+    }
+    if (reference?.targetId !== undefined) {
+        return { kind: 'attack', targetId: reference.targetId, once: true }
+    }
+    return undefined
 }
 function parseAutomaticAbility(
     record: Record<string, unknown>

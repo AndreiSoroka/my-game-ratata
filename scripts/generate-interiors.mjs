@@ -71,7 +71,14 @@ export function addInteriorBuilding(ctx, definition) {
             solid[i] = perimeter && !entry ? 1 : 0
         }
     const protectedTiles = [occupant, ...(definition.extraOccupants ?? [])]
-    function furniture(dx, dy, columns, rows, tiles) {
+    function furniture(
+        dx,
+        dy,
+        columns,
+        rows,
+        tiles,
+        speechTransparent = false
+    ) {
         for (let row = 0; row < rows; row += 1)
             for (let column = 0; column < columns; column += 1) {
                 const px = x + dx + column,
@@ -94,13 +101,24 @@ export function addInteriorBuilding(ctx, definition) {
                 objects[i] = gids[row * columns + column]
                 solid[i] = 1
             }
-        recordProp(ctx, x + dx, y + dy, columns, rows, gids, 'furniture')
+        recordProp(
+            ctx,
+            x + dx,
+            y + dy,
+            columns,
+            rows,
+            gids,
+            'furniture',
+            undefined,
+            speechTransparent
+        )
         return true
     }
     // Stamp complete assets atomically. A narrow room gets the complete two-tile
     // bench rather than a three-tile table with its central segment cut away.
     furniture(1, 1, 1, 2, [44, 60])
-    if (!furniture(1, 3, 3, 1, [9, 10, 11])) furniture(1, 3, 2, 1, [19, 20])
+    if (!furniture(1, 3, 3, 1, [9, 10, 11], true))
+        furniture(1, 3, 2, 1, [19, 20], true)
     if (['inn', 'home'].includes(kind)) {
         furniture(w - 2, 1, 1, 2, [43, 59])
     } else if (kind === 'library') {

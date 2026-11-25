@@ -85,6 +85,32 @@ it('changes nothing when delivery plus reward cannot fit', () => {
     expect(f.service.snapshot(f.player.id, 30).quest?.status).toBe('ready')
 })
 
+it('allows discussing a delivery across a table but requires physical access to hand it in', () => {
+    const f = npcQuestFixture()
+    f.putTableBetweenPlayerAndIssuer()
+    const bone = createItemInstance('bone')
+    f.player.inventory.push(bone)
+    const id = f.accept(
+        f.draft({
+            objectives: [
+                {
+                    kind: 'deliver',
+                    itemId: 'bone',
+                    quantity: 1,
+                    recipientId: f.issuer.id,
+                },
+            ],
+        })
+    )
+    expect(f.turnIn(id).accepted).toBe(false)
+    expect(f.player.inventory).toEqual([bone])
+    expect(f.issuer.inventory).toEqual([])
+    expect(f.adventure.walletFor(f.player.id).gold).toBe(0)
+    f.player.position = { ...f.issuer.position }
+    expect(f.turnIn(id).accepted).toBe(true)
+    expect(f.issuer.inventory).toEqual([bone])
+})
+
 it('delivers accepted city supplies into the real warehouse beyond ordinary procurement capacity', () => {
     const f = npcQuestFixture()
     const warehouse = f.adventure.economy.questInventory(f.issuer.locationId)

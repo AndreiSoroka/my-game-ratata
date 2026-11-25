@@ -2,22 +2,24 @@ import { type NavigationDirection, navigationDirection } from '@/shared/lib/inpu
 
 import { activateFocusedButton } from './uiKeyboard'
 
-/** A modal owns confirmations, vertical selection, side switching and Tab focus. */
+/** Returns whether directional navigation moved focus. */
 export function dialogActionKeys(
     event: KeyboardEvent,
     panel: HTMLElement | undefined,
     close: () => void
-): void {
+): boolean {
     if (event.code === 'Escape' || event.key === 'Escape') {
         event.preventDefault()
         close()
-        return
+        return false
     }
-    if (activateFocusedButton(event, panel)) return
+    if (activateFocusedButton(event, panel)) return false
     const direction = navigationDirection(event)
-    if ((direction === 'left' || direction === 'right') && switchPane(event, panel, direction))
-        return
-    moveDialogFocus(event, panel, direction)
+    const previous = document.activeElement
+    const switchedPane =
+        (direction === 'left' || direction === 'right') && switchPane(event, panel, direction)
+    if (!switchedPane) moveDialogFocus(event, panel, direction)
+    return direction !== undefined && document.activeElement !== previous
 }
 function moveDialogFocus(
     event: KeyboardEvent,
