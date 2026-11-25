@@ -1,7 +1,7 @@
 import type { AbilityId } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
-import { expect, it } from 'vitest'
-import { defineComponent, ref } from 'vue'
+import { afterEach, expect, it } from 'vitest'
+import { defineComponent, type Ref, ref } from 'vue'
 
 import { characterFixture } from '../../../game/testing/characterFixture'
 import { clickWithPointer } from '../../../game/testing/clickWithPointer'
@@ -12,15 +12,19 @@ function setup(
     original = characterFixture('living-hero', {
         heroClass: 'arcanist',
         abilities: { known: ['spark'], cooldowns: {}, casting: null, barrier: null },
-    })
+    }),
+    serverEpoch?: Ref<string>
 ) {
     const player = ref(original),
         visible = ref(true)
+    let session: ReturnType<typeof provideHotbarSession>
     const wrapper = mount(
         defineComponent({
             components: { ActionHotbar },
             setup() {
-                provideHotbarSession()
+                session = provideHotbarSession(
+                    serverEpoch === undefined ? undefined : () => serverEpoch.value
+                )
                 return { player, visible }
             },
             template:
@@ -45,7 +49,17 @@ function setup(
         }
         await flushPromises()
     }
-    return { wrapper, hotbar, labels, pickerButton, observe, player, visible, original }
+    return {
+        wrapper,
+        hotbar,
+        labels,
+        pickerButton,
+        observe,
+        player,
+        visible,
+        original,
+        session: session!,
+    }
 }
 async function assignThird(wrapper: ReturnType<typeof setup>['wrapper']): Promise<void> {
     await wrapper.getComponent(ActionHotbar).vm.edit(2)
@@ -196,5 +210,75 @@ it('forgets the retired identity instead of handing its preferences to a later l
         expect(wrapper.findAll('.hotbar-slot')[2]!.attributes('aria-label')).toContain('Пусто')
     } finally {
         wrapper.unmount()
+    }
+})
+
+afterEach(() => {
+    for (const key of Object.keys(sessionStorage)) {
+        if (key.startsWith('ratata:hotbar:')) sessionStorage.removeItem(key)
+    }
+})
+
+it('restores manual choices and seen abilities in a fresh application in the same tab', async () => {
+    const epoch = ref('world-reload')
+    const initial = setup(undefined, epoch)
+    try {
+        await assignThird(initial.wrapper)
+        await initial.observe(['spark', 'barrier', 'fireball'])
+        await clickWithPointer(initial.wrapper.get('[aria-label="Очистить слот 2"]').element)
+    } finally {
+        initial.wrapper.unmount()
+    }
+
+    const resumed = setup(initial.player.value, epoch)
+    try {
+        expect(resumed.labels()).toEqual(['1: Удар ножом', '2: Пусто', '3: Искра', '4: Барьер'])
+        await resumed.observe(['fireball', 'spark', 'barrier', 'chains'])
+        expect(resumed.labels()).toEqual(['1: Удар ножом', '2: Оковы', '3: Искра', '4: Барьер'])
+    } finally {
+        resumed.wrapper.unmount()
+    }
+})
+
+it('uses the new player and world identity when snapshots arrive together', async () => {
+    const epoch = ref('world-old')
+    const { wrapper, player, original, labels } = setup(undefined, epoch)
+    try {
+        await assignThird(wrapper)
+        player.value = { ...original, id: 'another-hero' }
+        await flushPromises()
+        expect(labels()[2]).toBe('3: Пусто')
+        epoch.value = 'world-new'
+        player.value = {
+            ...original,
+            abilities: { known: ['barrier'], cooldowns: {}, casting: null, barrier: null },
+        }
+        await flushPromises()
+        expect(labels()).toEqual(['1: Удар ножом', '2: Барьер', '3: Пусто', '4: Пусто'])
+        epoch.value = 'world-old'
+        player.value = original
+        await flushPromises()
+        expect(labels()).toEqual(['1: Удар ножом', '2: Искра', '3: Искра', '4: Пусто'])
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('removes persisted presets on final defeat before the retired snapshot arrives', async () => {
+    const epoch = ref('world-death')
+    const initial = setup(undefined, epoch)
+    try {
+        await assignThird(initial.wrapper)
+        initial.session.clear()
+        await initial.observe(['spark', 'barrier'])
+    } finally {
+        initial.wrapper.unmount()
+    }
+
+    const resumed = setup(initial.original, epoch)
+    try {
+        expect(resumed.labels()).toEqual(['1: Удар ножом', '2: Искра', '3: Пусто', '4: Пусто'])
+    } finally {
+        resumed.wrapper.unmount()
     }
 })

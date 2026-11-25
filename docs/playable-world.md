@@ -21,7 +21,9 @@ loading, fortifications and shared story rules.
 
 The world and Excalibur Storybook previews render with WebGL2 and pixel-art
 filtering. The browser must support WebGL2. Canvas 2D is used to draw source
-textures for terrain and effects.
+textures for terrain and effects. If the browser loses its graphics context,
+the game rebuilds the renderer while keeping the character connected. If that
+attempt fails, «Восстановить графику» starts another attempt.
 
 ## Play
 
@@ -43,7 +45,9 @@ are included with the frontend build.
 A generated proposal sends `join.createOnly: true`: the server rejects an existing normalized name,
 including a disconnected character. An error or cancelled connection keeps the proposal and that
 flag. Manual edits and a confirmed server join clear it; leaving and rejoining under an accepted
-name restores the same identity. Returning to the form retains its name during the app session.
+name from the same browser restores the same identity using its saved credential.
+Refreshing an active tab resumes that character automatically. Using the game's
+exit button returns to the form and clears automatic entry for that tab.
 The form and input request [`autocomplete="off"`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete).
 
 WASD/arrows move; clicking empty ground walks to a point. **C** toggles sneaking,
@@ -320,7 +324,7 @@ The tools are `ratata_observe` (optional `locationId`) and `ratata_act` (`actorI
 
 ## Hotbar, target focus and combat feedback
 
-The four 48px action slots reset for each new character identity. Slot 1 starts with basic melee attack. Ranger starts with Quick Shot and Sniper Shot in slots 2 and 3, Arcanist with Spark and Barrier, and Cleric with Prayer in slot 2. Vanguard starts with slot 1 only. The panel tries to place each newly known active ability in the first free slot once per character in the current app session. If all slots are full, the ability stays available for manual assignment. Clearing a slot keeps it empty until a new ability fills it or you assign something manually. Reconnecting within the same app session keeps your assignments.
+The four 48px action slots reset for each new character identity. Slot 1 starts with basic melee attack. Ranger starts with Quick Shot and Sniper Shot in slots 2 and 3, Arcanist with Spark and Barrier, and Cleric with Prayer in slot 2. Vanguard starts with slot 1 only. The panel tries to place each newly known active ability in the first free slot once per character. If all slots are full, the ability stays available for manual assignment. Clearing a slot keeps it empty until a new ability fills it or you assign something manually. Reloading the same tab keeps that character's assignments in the current world.
 
 Use Shift+1–4 to choose basic attack, a known ability, an apple, or clear a slot. A second press on the same slot within 300 ms enables server repetition without an extra immediate cast; another press stops it. Held keys do not repeat. Only one slot repeats at a time, even if the same ability is bound twice. A food double press consumes one apple and never enables repetition. The active slot has an outline and ↻ marker, plus written status showing whether the server is approaching, casting, or waiting for cooldowns or resources. Switching repetition off prevents future applications; an already-started cast follows the normal interruption rules. Each prayer repeats its selected spell, original target and intent, stops after healing or resurrection is complete, and never switches to an unrelated ally or farms practice through plain devotion. Apples bind by item type, consume a real inventory instance and retain their icon at zero quantity. Cooldowns and resource requirements are checked again by the server. A bound prayer shows its exact target, cost and possible allied/self victims before pressing its key; its harmful 48px wave is outlined in the world, with warning markers on visible affected allies and yourself.
 

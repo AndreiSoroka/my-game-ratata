@@ -91,11 +91,17 @@ export function createGameCanvas(container: HTMLElement): HTMLCanvasElement {
     return canvas
 }
 
-export function createGameEngine(canvas: HTMLCanvasElement): Engine {
+export function createGameEngine(canvas: HTMLCanvasElement, onContextLost: () => void): Engine {
     return createWebglEngine({
         backgroundColor: Color.Black,
         canvasElement: canvas,
         displayMode: DisplayMode.FillContainer,
         suppressPlayButton: true,
+        handleContextLost: (event) => {
+            event.preventDefault()
+            // Let Excalibur finish handling the event before retiring this context.
+            queueMicrotask(onContextLost)
+        },
+        handleContextRestored: () => undefined,
     })
 }

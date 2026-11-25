@@ -18,7 +18,6 @@ import { focusWorldInput } from '../../../game/ui/keyboardOwnership'
 import { dialogActionKeys } from '../model/dialogActionKeys'
 import { objectTargetUnavailable } from '../model/hotbarActions'
 import type { HotbarBinding as Binding } from '../model/hotbarBindings'
-import { hotbarIdentityKey } from '../model/hotbarSession'
 import { worldHudButtonAttrs } from '../model/uiKeyboard'
 import { useDialogEscape } from '../model/useDialogEscape'
 import { useFooterHeight } from '../model/useFooterHeight'
@@ -48,6 +47,7 @@ const emit = defineEmits<{
 }>()
 const {
     bindings,
+    identity,
     count,
     saplings,
     known,
@@ -108,7 +108,7 @@ const pickerButtonColors: UiButtonColors = {
 useShotPreview(props, bindings, emit)
 const editing = ref<number>()
 watch(
-    () => hotbarIdentityKey(props.player),
+    identity,
     () => {
         editing.value = undefined
     },

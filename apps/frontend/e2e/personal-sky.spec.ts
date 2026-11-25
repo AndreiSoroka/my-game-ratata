@@ -52,11 +52,7 @@ for (const width of [390, 1280]) {
             })
             await page.keyboard.press('Escape')
             await page.reload()
-            await page.waitForFunction(() => Boolean(window.__ratataTest))
-            await page.evaluate(
-                ({ name, heroClass }) => window.__ratataTest!.join(name, heroClass),
-                { name, heroClass }
-            )
+            await page.waitForFunction(() => window.__ratataTest?.getState().mapReady)
             const restored = await page.evaluate(() => {
                 const player = window.__ratataTest!.getState().player!
                 return { identity: player.id, layout: player.progression!.constellations!.layout }

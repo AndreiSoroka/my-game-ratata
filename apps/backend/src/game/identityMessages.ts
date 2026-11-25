@@ -2,6 +2,7 @@ import {
     type CharacterArchetype,
     heroClasses,
     isGameLocale,
+    isPlayerResumeToken,
     type JoinClientMessage,
 } from '@my-game-ratata/contracts'
 
@@ -33,11 +34,16 @@ export function parseJoin(record: Record<string, unknown>): ParseResult {
     if ('error' in parsed) {
         return parsed
     }
+    const resume = parseResumeOptions(record)
+    if ('error' in resume) {
+        return resume
+    }
     return {
         message: {
             nickname: nickname.trim().normalize('NFC').slice(0, 24),
             type: 'join',
             ...parsed.options,
+            ...resume.options,
         },
     }
 }
@@ -68,6 +74,30 @@ function parseJoinOptions(
             ...(heroClass === undefined ? {} : { heroClass }),
             ...(locale === undefined ? {} : { locale }),
             ...(archetype === undefined ? {} : { archetype }),
+        },
+    }
+}
+
+function parseResumeOptions(
+    record: Record<string, unknown>
+):
+    | { options: Pick<JoinClientMessage, 'requestResumeToken' | 'resumeToken'> }
+    | { error: string } {
+    const requestResumeToken = record['requestResumeToken']
+    if (
+        requestResumeToken !== undefined &&
+        typeof requestResumeToken !== 'boolean'
+    ) {
+        return { error: 'join.requestResumeToken must be a boolean' }
+    }
+    const resumeToken = record['resumeToken']
+    if (resumeToken !== undefined && !isPlayerResumeToken(resumeToken)) {
+        return { error: 'Invalid player resume token format' }
+    }
+    return {
+        options: {
+            ...(requestResumeToken === undefined ? {} : { requestResumeToken }),
+            ...(resumeToken === undefined ? {} : { resumeToken }),
         },
     }
 }

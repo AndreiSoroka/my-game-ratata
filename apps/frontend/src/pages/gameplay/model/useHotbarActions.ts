@@ -23,10 +23,10 @@ import {
 import { type HotbarBinding, prayerDescription } from './hotbarBindings'
 import { createGestures } from './hotbarGestures'
 import { actionTooltip, bindingLabel } from './hotbarPresentation'
-import { hotbarIdentityKey, useSavedHotbarBindings } from './hotbarSession'
+import { useSavedHotbarBindings } from './hotbarSession'
 
 export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
-    const bindings = useSavedHotbarBindings(() => props.player)
+    const { bindings, identity } = useSavedHotbarBindings(() => props.player)
     const food = computed(() => props.player.inventory.filter((item) => item.itemId === 'food'))
     const count = computed(() => food.value.reduce((sum, item) => sum + (item.quantity ?? 1), 0))
     const saplings = computed(() =>
@@ -50,6 +50,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const preview = computed(() => previewFor(selectedPrayer.value))
     watchPrayerHighlight(props, emit, prayerAssigned, preview)
     const gestures = createGestures(props, emit, () => bindings.value)
+    watch(identity, () => gestures.reset())
     watchGestureChanges(props, gestures)
     const cooldown = (binding: HotbarBinding | null) => bindingCooldown(binding, props)
     const unavailable = (binding: HotbarBinding | null) =>
@@ -73,6 +74,7 @@ export function useHotbarActions(props: HotbarProps, emit: HotbarEmit) {
     const waiting = computed(() => controlWaitingLabel(props.player.control))
     return {
         bindings,
+        identity,
         food,
         count,
         saplings,
@@ -173,10 +175,6 @@ function watchGestureChanges(
     props: HotbarProps,
     gestures: ReturnType<typeof createGestures>
 ): void {
-    watch(
-        () => hotbarIdentityKey(props.player),
-        () => gestures.reset()
-    )
     watch(
         () => props.target?.id,
         (targetId) => gestures.syncTarget(targetId)

@@ -1,4 +1,4 @@
-import type { GameLocale, HeroClass } from '@my-game-ratata/contracts'
+import type { JoinClientMessage } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { EchoController } from './echoController'
@@ -35,6 +35,7 @@ export function createRoomPlayerConnections(context: PlayerConnections) {
     }
     const identity: JoinContext = {
         ...context,
+        resumeTokens: new WeakMap(),
         createPlayer: createRoomPlayerFactory(
             characters,
             nicknames,
@@ -53,23 +54,8 @@ export function createRoomPlayerConnections(context: PlayerConnections) {
         onDetached,
     }
     return {
-        join(
-            ws: RoomSocket,
-            nickname: string,
-            archetype: GameCharacter['archetype'],
-            heroClass?: HeroClass,
-            createOnly?: boolean,
-            locale?: GameLocale
-        ): void {
-            joinRoom(
-                identity,
-                ws,
-                nickname,
-                archetype,
-                heroClass,
-                createOnly,
-                locale
-            )
+        join(ws: RoomSocket, message: JoinClientMessage): void {
+            joinRoom(identity, ws, message)
         },
         leave(ws: RoomSocket): void {
             leaveRoom(

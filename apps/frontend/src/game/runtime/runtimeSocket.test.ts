@@ -7,6 +7,7 @@ import { resolveWorldMapUrl, RuntimeSocket } from './runtimeSocket'
 afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
+    vi.useRealTimers()
 })
 it.each([undefined, false, true])(
     'sends createOnly only for an explicitly generated proposal (%s)',
@@ -39,10 +40,55 @@ it.each([undefined, false, true])(
             type: 'join',
             nickname: 'Hero',
             heroClass: 'ranger',
+            requestResumeToken: true,
             ...(createOnly === true ? { createOnly: true } : {}),
         })
     }
 )
+
+it('bounds retries with the same authenticated join when the previous socket is still attached', () => {
+    vi.useFakeTimers()
+    const sockets: EventTarget[] = []
+    const send = vi.fn<(data: string) => void>()
+    class TestSocket extends EventTarget {
+        public static readonly OPEN = 1
+        public readonly readyState = 1
+        public send = send
+        public close(): void {}
+        public constructor() {
+            super()
+            sockets.push(this)
+        }
+    }
+    vi.stubGlobal('WebSocket', TestSocket)
+    const onError = vi.fn<(message: string, code?: string) => void>()
+    const runtime = new RuntimeSocket({
+        isStopped: () => false,
+        onError,
+        onEvent: vi.fn<() => void>(),
+        onSnapshot: vi.fn<() => void>(),
+        onStatus: vi.fn<() => void>(),
+        onWorldInit: vi.fn<() => void>(),
+    })
+    runtime.connect('Hero', 'ranger', false, 'A'.repeat(43))
+    const socket = sockets[0]!
+    socket.dispatchEvent(new Event('open'))
+    const busy = () =>
+        socket.dispatchEvent(
+            new MessageEvent('message', {
+                data: JSON.stringify({ type: 'error', code: 'resume_busy' }),
+            })
+        )
+    for (const delay of [100, 250, 500, 1_000]) {
+        busy()
+        vi.advanceTimersByTime(delay)
+    }
+    busy()
+    expect(send).toHaveBeenCalledTimes(5)
+    expect(send.mock.calls.every(([payload]) => payload === send.mock.calls[0]?.[0])).toBe(true)
+    expect(onError).toHaveBeenCalledExactlyOnceWith(expect.any(String), 'resume_busy')
+    runtime.close()
+})
 it.each(['0.1.0', '0.2.0', '0.15.0'])(
     'rejects protocol %s before delivering legacy resource snapshots to presentation',
     (protocolVersion) => {
@@ -215,6 +261,7 @@ it('does not deliver snapshots or animation events before the authoritative worl
     expect(onEvent).not.toHaveBeenCalled()
     const map = { id: 'map-2-2', asset: { url: '/world/maps/world/map-2-2.json', revision: 'a' } }
     const snapshot = worldFixture([])
+    const resumeToken = 'A'.repeat(43)
     receive({
         type: 'world_init',
         streamId: 1,
@@ -224,13 +271,15 @@ it('does not deliver snapshots or animation events before the authoritative worl
         snapshot,
         map,
         tickMs: 50,
+        resumeToken,
     })
     expect(onWorldInit).toHaveBeenCalledExactlyOnceWith(
         'hero',
         snapshot,
         map,
         { streamId: 1, seq: 0 },
-        50
+        50,
+        resumeToken
     )
     receive({ type: 'snapshot', streamId: 1, seq: 1, snapshot })
     expect(onSnapshot).toHaveBeenCalledOnce()

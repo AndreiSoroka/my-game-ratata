@@ -34,7 +34,11 @@ function joiningFixture() {
         closeConversations: vi.fn(),
     }
     const join = (createOnly = false) =>
-        joinRoom(context, f.socket, 'Hero', 'human', undefined, createOnly)
+        joinRoom(context, f.socket, {
+            type: 'join',
+            nickname: 'Hero',
+            createOnly,
+        })
     return { ...f, context, join, observer }
 }
 

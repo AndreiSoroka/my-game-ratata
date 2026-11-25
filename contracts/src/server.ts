@@ -11,6 +11,7 @@ export interface WorldInitServerMessage {
     seq: number
     map: MapSummary
     playerId: string
+    resumeToken?: string
     protocolVersion: ContractProtocolVersion
     snapshot: WorldSnapshot
     tickMs: number

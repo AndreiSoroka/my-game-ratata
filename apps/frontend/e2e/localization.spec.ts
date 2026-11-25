@@ -65,8 +65,10 @@ test('chooses a locale and translates the same public chat receipt for each list
             .toContainEqual({ type: 'set_locale', locale: 'ru' })
         expect(await en.evaluate(() => window.__ratataTest!.getState().connected)).toBe(true)
         await en.reload()
+        await en.waitForFunction(() => window.__ratataTest?.getState().mapReady)
         await expect(en.locator('html')).toHaveAttribute('lang', 'ru')
-        await expect(en.getByLabel('Язык интерфейса')).toHaveValue('ru')
+        await en.keyboard.press('Escape')
+        await expect(en.getByRole('button', { name: 'Язык интерфейса: English' })).toBeVisible()
     } finally {
         await Promise.all(contexts.map((context) => context.close()))
     }
@@ -118,7 +120,11 @@ async function speechFixture(
     await page.routeWebSocket(/\/ws$/, (socket) => {
         const server = socket.connectToServer()
         socket.onMessage((raw) => {
-            if (typeof raw === 'string') commands.push(JSON.parse(raw) as ClientMessage)
+            if (typeof raw === 'string') {
+                const command = JSON.parse(raw) as ClientMessage
+                if (command.type === 'join') delete command.resumeToken
+                commands.push(command)
+            }
             server.send(raw)
         })
         server.onMessage((raw) => {

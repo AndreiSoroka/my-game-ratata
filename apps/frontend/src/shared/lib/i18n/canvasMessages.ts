@@ -29,6 +29,16 @@ export const canvasMessages = {
     energy: ['Энергия', 'Energy'],
     missingMap: ['Сервер не передал данные карты.', 'The server did not send the map data.'],
     failedMap: ['Map loading failed', 'Could not load the map'],
+    graphicsLost: [
+        'Браузер потерял графический контекст WebGL.',
+        'The browser lost its WebGL graphics context.',
+    ],
+    graphicsRecovering: ['Восстанавливаем изображение…', 'Restoring the graphics…'],
+    graphicsRecoveryFailed: [
+        'Не удалось восстановить изображение. Игровой сеанс остаётся открытым.',
+        'Graphics recovery failed. Your game session remains connected.',
+    ],
+    retryGraphics: ['Восстановить графику', 'Restore graphics'],
     protocol: [
         'Несовместимая версия сервера. Перезапустите сервер и обновите страницу.',
         'Incompatible server version. Restart the server and refresh the page.',
@@ -37,6 +47,14 @@ export const canvasMessages = {
     nameTaken: [
         'Это имя уже занято. Сгенерируйте другое или введите своё',
         'That name is taken. Generate another one or enter your own',
+    ],
+    resumeBusy: [
+        'Персонаж уже подключён. Закройте другую сессию и попробуйте снова.',
+        'This character is already connected. Close the other session and try again.',
+    ],
+    resumeInvalid: [
+        'Не удалось восстановить персонажа. Проверьте имя и войдите снова.',
+        'Could not restore this character. Check the name and sign in again.',
     ],
     notJoined: ['Сначала войдите в игру', 'Join the game before sending commands'],
     missingSurface: ['Игровая область не готова', 'Game surface is not ready'],

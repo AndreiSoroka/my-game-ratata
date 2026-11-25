@@ -16,7 +16,8 @@ import { WorldAmbienceSounds } from './worldAmbienceSounds'
 export function createRuntimePresentation(
     container: HTMLElement,
     map: RenderedTiledMap,
-    locationId: string
+    locationId: string,
+    onContextLost: () => void
 ) {
     // Keep the canvas parent available to Excalibur's FillContainer cleanup after detaching it.
     const surface = document.createElement('div')
@@ -24,7 +25,7 @@ export function createRuntimePresentation(
     container.append(surface)
     const canvas = createGameCanvas(surface)
     canvas.style.visibility = 'hidden'
-    const run = new EngineRun(canvas, () => createGameEngine(canvas), surface)
+    const run = new EngineRun(canvas, () => createGameEngine(canvas, onContextLost), surface)
     const { engine } = run
     try {
         const resources = createCharacterResources()

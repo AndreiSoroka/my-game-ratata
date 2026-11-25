@@ -64,9 +64,7 @@ for (const width of [320, 390, 1280]) {
     })
 }
 
-test('does not take over an active or disconnected namesake and allows explicit manual resumption', async ({
-    page,
-}) => {
+test('does not take over a protected namesake when active or disconnected', async ({ page }) => {
     test.setTimeout(60_000)
     const joins = captureJoins(page)
     await page.goto('/?test=1')
@@ -93,17 +91,13 @@ test('does not take over an active or disconnected namesake and allows explicit 
         expect(joins.at(-1)).toMatchObject({ nickname: suggested, createOnly: true })
         await expect(page.locator('canvas[data-game-canvas=true]')).toHaveCount(0)
 
-        await page.getByRole('button', { name: 'Сгенерировать другое имя', exact: true }).click()
-        await expect(input).not.toHaveValue(suggested)
+        await input.fill(suggested.toLocaleUpperCase('ru-RU'))
         await expect(collision).toHaveCount(0)
-
-        // The explicit public test join is a manual request, even when the
-        // supplied spelling names the guest while the input has a new suggestion.
-        await page.evaluate((name) => window.__ratataTest!.join(name, 'vanguard'), suggested)
-        const resumed = await currentPlayer(page)
-        expect(resumed.id).toBe(guest.playerId)
+        await submit.click()
+        await expect(collision).toBeVisible()
         expect(joins.at(-1)?.createOnly).not.toBe(true)
-        await leave(page)
+        await expect(page.locator('canvas[data-game-canvas=true]')).toHaveCount(0)
+
         await page.getByRole('button', { name: 'Сгенерировать другое имя', exact: true }).click()
         await expect(input).not.toHaveValue(suggested)
         const next = await input.inputValue()
@@ -138,7 +132,14 @@ function connectGuest(nickname: string): Promise<{ socket: WebSocket; playerId: 
         }
         socket.addEventListener('message', receive)
         socket.addEventListener('open', () =>
-            socket.send(JSON.stringify({ type: 'join', nickname, heroClass: 'vanguard' }))
+            socket.send(
+                JSON.stringify({
+                    type: 'join',
+                    nickname,
+                    heroClass: 'vanguard',
+                    requestResumeToken: true,
+                })
+            )
         )
     })
 }
@@ -158,7 +159,10 @@ function captureJoins(page: Page): JoinCommand[] {
         socket.on('framesent', (frame) => {
             if (typeof frame.payload !== 'string') return
             const message = JSON.parse(frame.payload) as ClientMessage
-            if (message.type === 'join') joins.push(message)
+            if (message.type === 'join') {
+                delete message.resumeToken
+                joins.push(message)
+            }
         })
     })
     return joins

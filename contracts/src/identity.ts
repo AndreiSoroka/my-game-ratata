@@ -9,6 +9,8 @@ export interface JoinClientMessage {
     locale?: GameLocale
     archetype?: CharacterArchetype
     nickname: string
+    requestResumeToken?: boolean
+    resumeToken?: string
     type: 'join'
 }
 
@@ -21,4 +23,8 @@ export interface WorldPosition {
     x: number
     y: number
     z?: number
+}
+
+export function isPlayerResumeToken(value: unknown): value is string {
+    return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/u.test(value)
 }

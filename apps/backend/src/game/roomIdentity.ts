@@ -2,6 +2,7 @@ import {
     type GameEventPayload,
     type GameLocale,
     type HeroClass,
+    type JoinClientMessage,
     type MapSummary,
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
@@ -13,10 +14,14 @@ import {
     type CharacterController,
     NetworkPlayerController,
 } from './controllers'
-import { normalizeNickname } from './identity'
 import { cancelMagicChannel } from './magicState'
 import { cancelMovementMode } from './movementActions'
 import { prepareConstellationLayout } from './personalConstellationSky'
+import {
+    isPlayerConnected,
+    requestedResumeToken,
+    resolveJoin,
+} from './playerResume'
 import { cancelPrayerCast } from './prayerCancellation'
 import {
     broadcastEvent,
@@ -41,6 +46,7 @@ export interface JoinContext {
     ) => GameCharacter
     mapFor: (character: GameCharacter) => MapSummary
     nicknames: Map<string, string>
+    resumeTokens?: WeakMap<GameCharacter, string>
     snapshotFor: (character: GameCharacter) => WorldSnapshot
     closeConversations?: (characterId: string) => void
     onJoined?: (socket: RoomSocket, locale: GameLocale) => void
@@ -54,43 +60,26 @@ export interface JoinContext {
 export function joinRoom(
     context: JoinContext,
     ws: RoomSocket,
-    nickname: string,
-    archetype: GameCharacter['archetype'],
-    heroClass: HeroClass | undefined,
-    createOnly?: boolean,
-    locale: GameLocale = 'ru'
+    message: JoinClientMessage
 ): void {
+    const resolved = resolveJoin(context, ws, message)
+    if ('code' in resolved) {
+        sendError(ws, resolved.code, resolved.message)
+        return
+    }
+    const { nicknameKey, existingCharacter, savedToken } = resolved
     const now = context.now ?? Date.now
     clearSocketViewport(ws)
-    const nicknameKey = normalizeNickname(nickname)
-    if (createOnlyNameTaken(context.characters, nicknameKey, createOnly)) {
-        sendError(
-            ws,
-            'name_taken',
-            'Это имя уже занято. Сгенерируйте другое или введите своё'
-        )
-        return
-    }
-    const existingPlayerId = context.nicknames.get(nicknameKey)
-    if (
-        existingPlayerId !== undefined &&
-        isPlayerConnected(context.connections, existingPlayerId, ws)
-    ) {
-        sendError(
-            ws,
-            'name_taken',
-            'Это имя уже занято. Сгенерируйте другое или введите своё'
-        )
-        return
-    }
-    detachPreviousHero(context, ws, existingPlayerId, now())
-    const existingCharacter =
-        existingPlayerId === undefined
-            ? undefined
-            : context.characters.get(existingPlayerId)
+    detachPreviousHero(context, ws, existingCharacter?.id, now())
     const character =
         existingCharacter ??
-        context.createPlayer(nickname, nicknameKey, archetype, heroClass)
+        context.createPlayer(
+            message.nickname,
+            nicknameKey,
+            message.archetype ?? 'human',
+            message.heroClass
+        )
+    const resumeToken = savedToken ?? requestedResumeToken(context, message)
     prepareConstellationLayout(character)
     character.tags.delete('offline')
     character.connected = true
@@ -98,9 +87,9 @@ export function joinRoom(
     stopAndPublish(character, context.connections.keys(), now())
     context.controllers.set(character.id, new NetworkPlayerController())
     context.connections.set(ws, character.id)
-    context.onJoined?.(ws, locale)
+    context.onJoined?.(ws, message.locale ?? 'ru')
     context.onAttached?.()
-    if (!initializeJoinedPlayer(context, ws, character, now)) {
+    if (!initializeJoinedPlayer(context, ws, character, now, resumeToken)) {
         return
     }
     broadcastEvent(
@@ -135,32 +124,6 @@ function detachPreviousHero(
             markDetached(existingCharacter, now, context.onDetached)
         }
     }
-}
-
-function createOnlyNameTaken(
-    characters: ReadonlyMap<string, GameCharacter>,
-    nicknameKey: string,
-    createOnly: boolean | undefined
-): boolean {
-    return (
-        createOnly === true &&
-        [...characters.values()].some(
-            (character) => normalizeNickname(character.nickname) === nicknameKey
-        )
-    )
-}
-
-function isPlayerConnected(
-    connections: Map<RoomSocket, string | undefined>,
-    playerId: string,
-    exceptWs: RoomSocket
-): boolean {
-    for (const [connection, connectedPlayerId] of connections) {
-        if (connection !== exceptWs && connectedPlayerId === playerId) {
-            return true
-        }
-    }
-    return false
 }
 
 export function stopCharacterMovement(
@@ -237,21 +200,30 @@ function initializeJoinedPlayer(
     context: JoinContext,
     ws: RoomSocket,
     character: GameCharacter,
-    now: () => number
+    now: () => number,
+    resumeToken: string | undefined
 ): boolean {
-    const initialized = sendInitialRoomState(context, ws, character)
-    if (!initialized) {
-        leaveRoom(
-            context.connections,
-            context.characters,
-            ws,
-            (id) => context.closeChestViews?.(id),
-            context.closeConversations,
-            now(),
-            context.onDetached
-        )
-        closeSnapshotSocket(ws)
-        return false
+    const initialized = sendInitialRoomState(
+        context,
+        ws,
+        character,
+        resumeToken
+    )
+    if (initialized) {
+        if (resumeToken !== undefined) {
+            context.resumeTokens?.set(character, resumeToken)
+        }
+        return true
     }
-    return true
+    leaveRoom(
+        context.connections,
+        context.characters,
+        ws,
+        (id) => context.closeChestViews?.(id),
+        context.closeConversations,
+        now(),
+        context.onDetached
+    )
+    closeSnapshotSocket(ws)
+    return false
 }

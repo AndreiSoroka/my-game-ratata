@@ -6,6 +6,7 @@ import { provideDarkPanelTheme } from '@/shared/ui/theme'
 
 import { useHeroName } from '../../../game/names/useHeroName'
 import type { RatataGame } from '../../../game/runtime/ratataGame'
+import type { GraphicsRecoveryState } from '../../../game/runtime/runtimeGraphicsRecovery'
 import { useGameTestControls } from '../../../game/testing/useGameTestControls'
 import type GameplayOverlay from '../ui/GameplayOverlay.vue'
 import type GameWindows from '../ui/GameWindows.vue'
@@ -17,6 +18,7 @@ import { useAppChat } from './useAppChat'
 import { useAppSession } from './useAppSession'
 import { useAppWindows } from './useAppWindows'
 import { useCharacterApproach } from './useCharacterApproach'
+import { useCharacterEntry } from './useCharacterEntry'
 import { useCharacterViews } from './useCharacterViews'
 import { useChestSession } from './useChestSession'
 import { useInventoryUi } from './useInventoryUi'
@@ -25,7 +27,27 @@ import { useLifeChoice } from './useLifeChoice'
 export function useGameplaySession(isStarted: Ref<boolean>, canEnterWorld: () => Promise<boolean>) {
     const state = useGameplayState(isStarted)
     const { game, snapshot, localCharacter, heroName, heroClass } = state
-    const inventory = useGameplayInventory(state, () => windows.automationPanels.value?.close())
+    const { joinGame, pauseEntry, retireCharacter } = useCharacterEntry({
+        heroName,
+        canEnterWorld,
+        started: () => isStarted.value,
+        activate: (entry) =>
+            startAppRuntime({
+                ...state,
+                ...entry,
+                heroClass: heroClass.value,
+                container: () => state.gameHost.value,
+                gameplay: () => state.gameplay.value,
+                characterApproach,
+                confirmDeath: () => {
+                    retireLocalCharacter()
+                    life.confirmDeath()
+                },
+                cleanupFailedJoin,
+                ...windows,
+            }),
+    })
+    const { inventory, windows } = useGameplayWindows(state, () => leaveSession('nickname'))
     const life = useLifeChoice({
         character: () => localCharacter.value,
         connected: () => state.status.value === 'Connected',
@@ -33,21 +55,13 @@ export function useGameplaySession(isStarted: Ref<boolean>, canEnterWorld: () =>
         newLife: () => leaveSession('hero-class'),
         defeated: state.defeated,
     })
-    const windows = useAppWindows({
-        ...state,
-        ...inventory,
-        characterId: () => localCharacter.value?.id,
-        social: state.gameWindows,
-        toggleInventory: inventory.toggleInventory,
-        leave: () => leaveSession('nickname'),
-    })
     const test = useGameTestControls({
         ...state,
         ...inventory,
         setNickname: heroName.setManually,
         joinGame,
     })
-    const { leaveSession, cleanupFailedJoin } = useAppSession({
+    const { leaveSession: exitSession, cleanupFailedJoin } = useAppSession({
         ...state,
         ...inventory,
         ...windows,
@@ -64,20 +78,17 @@ export function useGameplaySession(isStarted: Ref<boolean>, canEnterWorld: () =>
         open: windows.openNearbyMenu,
     })
 
-    async function joinGame(): Promise<void> {
-        if (!(await canEnterWorld())) return
-        await startAppRuntime({
-            ...state,
-            ...heroName.attempt(),
-            heroClass: heroClass.value,
-            container: () => state.gameHost.value,
-            gameplay: () => state.gameplay.value,
-            characterApproach,
-            confirmDeath: life.confirmDeath,
-            cleanupFailedJoin,
-            ...windows,
-        })
+    function retireLocalCharacter(): void {
+        const nickname = localCharacter.value?.nickname
+        if (nickname !== undefined) retireCharacter(nickname)
     }
+
+    function leaveSession(focusId: string): void {
+        if (focusId === 'hero-class') retireLocalCharacter()
+        pauseEntry()
+        exitSession(focusId)
+    }
+
     const { canSelectTarget, isPositionVisible } = windows.dialogueSwitch
     return {
         ...state,
@@ -95,6 +106,19 @@ export function useGameplaySession(isStarted: Ref<boolean>, canEnterWorld: () =>
         leaveSession,
         joinGame,
     }
+}
+
+function useGameplayWindows(state: ReturnType<typeof useGameplayState>, leave: () => void) {
+    const inventory = useGameplayInventory(state, () => windows.automationPanels.value?.close())
+    const windows = useAppWindows({
+        ...state,
+        ...inventory,
+        characterId: () => state.localCharacter.value?.id,
+        social: state.gameWindows,
+        toggleInventory: inventory.toggleInventory,
+        leave,
+    })
+    return { inventory, windows }
 }
 
 function useGameplayState(isStarted: Ref<boolean>) {
@@ -121,12 +145,13 @@ function useGameplayState(isStarted: Ref<boolean>) {
         defeated: ref(false),
         isJoining: ref(false),
         status: ref('Ready'),
+        graphicsRecovery: ref<GraphicsRecoveryState>(),
         gameHost: ref<HTMLElement>(),
         gameplay: ref<InstanceType<typeof GameplayOverlay>>(),
         interaction: ref<InstanceType<typeof NearbyInteraction>>(),
         gameWindows: ref<InstanceType<typeof GameWindows>>(),
         notices: createTransientNotices((text) => (notice.value = text)),
-        hotbarSession: provideHotbarSession(),
+        hotbarSession: provideHotbarSession(() => snapshot.value?.serverEpoch),
         ...useAppChat(snapshot, localPlayerId),
     }
 }

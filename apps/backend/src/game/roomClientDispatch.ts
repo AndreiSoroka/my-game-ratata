@@ -1,8 +1,6 @@
 import type {
-    CharacterArchetype,
     ClientMessage,
-    GameLocale,
-    HeroClass,
+    JoinClientMessage,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -30,14 +28,7 @@ import {
 } from './stopCorrection'
 
 interface DispatchContext extends ClientContext {
-    join(
-        ws: RoomSocket,
-        nickname: string,
-        archetype: CharacterArchetype,
-        heroClass: HeroClass | undefined,
-        createOnly?: boolean,
-        locale?: GameLocale
-    ): void
+    join(ws: RoomSocket, message: JoinClientMessage): void
     abandon(actor: GameCharacter): void
 }
 export function createRoomMessageHandler(
@@ -89,14 +80,7 @@ function dispatchRoomClientMessage(
     now: number
 ): void {
     if (message.type === 'join') {
-        context.join(
-            ws,
-            message.nickname,
-            message.archetype ?? 'human',
-            message.heroClass,
-            message.createOnly,
-            message.locale
-        )
+        context.join(ws, message)
         return
     }
     const player = context.characters.get(context.connections.get(ws) ?? '')

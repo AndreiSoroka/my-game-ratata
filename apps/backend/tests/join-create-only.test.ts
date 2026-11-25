@@ -67,14 +67,13 @@ describe('create-only rejection is atomic for every existing identity', () => {
                 nicknames: new Map(f.context.nicknames),
             }
             for (let attempt = 0; attempt < 3; attempt++) {
-                joinRoom(
-                    f.context,
-                    f.request.socket,
-                    '  каПЛя  ',
-                    'human',
-                    'cleric',
-                    true
-                )
+                joinRoom(f.context, f.request.socket, {
+                    type: 'join',
+                    nickname: '  каПЛя  ',
+                    archetype: 'human',
+                    heroClass: 'cleric',
+                    createOnly: true,
+                })
             }
             expect(f.request.sent).toEqual(
                 Array.from({ length: 3 }, () => ({

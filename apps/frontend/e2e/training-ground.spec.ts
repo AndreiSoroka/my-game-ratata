@@ -206,9 +206,7 @@ for (const mobile of [false, true]) {
         await page.evaluate(() => window.__ratataTest!.send({ type: 'cancel_control' }))
         const identity = await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)
         await page.reload()
-        await page.waitForFunction(() => Boolean(window.__ratataTest))
-        await expect(page.locator('canvas[data-training-guides]')).toHaveCount(0)
-        await page.evaluate((name) => window.__ratataTest!.join(name, 'ranger'), name)
+        await page.waitForFunction(() => window.__ratataTest?.getState().mapReady)
         expect(await page.evaluate(() => window.__ratataTest!.getState().localPlayerId)).toBe(
             identity
         )

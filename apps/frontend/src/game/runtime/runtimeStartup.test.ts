@@ -17,6 +17,55 @@ it('starts the current scene, controls, audio and socket once', async () => {
     expect(container.children).toHaveLength(0)
 })
 
+it('replaces a lost canvas during startup without reconnecting or refetching the map', async () => {
+    const oldLoader = new Future<void>()
+    calls.start.mockReturnValueOnce(oldLoader.promise)
+    const { game, container, onGraphicsRecovery, onMapError } = setup()
+    try {
+        await game.start()
+        initialize()
+        await vi.waitFor(() => expect(calls.start).toHaveBeenCalledOnce())
+        const original = container.querySelector('canvas')!
+        original.dispatchEvent(new Event('webglcontextlost'))
+        expect(onGraphicsRecovery).toHaveBeenCalledWith('recovering')
+        expect(container.contains(original)).toBe(false)
+        await vi.waitFor(() => expect(calls.music).toHaveBeenCalledOnce())
+        const replacement = container.querySelector('canvas')
+        expect(replacement).not.toBeNull()
+        expect(replacement).not.toBe(original)
+        expect(onGraphicsRecovery).toHaveBeenLastCalledWith(undefined)
+        expect(calls.load).toHaveBeenCalledOnce()
+        expect(calls.connect).toHaveBeenCalledOnce()
+        expect(calls.send).toHaveBeenCalledWith({ type: 'release_input' })
+        oldLoader.resolve()
+        await vi.waitFor(() => expect(calls.engineDispose).toHaveBeenCalledOnce())
+        expect(container.querySelector('canvas')).toBe(replacement)
+        expect(onMapError).not.toHaveBeenCalledWith(expect.any(String))
+    } finally {
+        oldLoader.resolve()
+        game.stop()
+    }
+})
+
+it('keeps the character connected when graphics recovery fails and can be retried', async () => {
+    const { game, container, onGraphicsRecovery, onError, onMapError } = setup()
+    try {
+        await startWorld(game)
+        calls.start.mockRejectedValueOnce(new Error('Graphics context still unavailable'))
+        container.querySelector('canvas')!.dispatchEvent(new Event('webglcontextlost'))
+        await vi.waitFor(() => expect(onGraphicsRecovery).toHaveBeenLastCalledWith('failed'))
+        expect(container.children).toHaveLength(0)
+        expect(onError).not.toHaveBeenCalled()
+        expect(onMapError).not.toHaveBeenCalledWith(expect.any(String))
+        game.retryGraphics()
+        await vi.waitFor(() => expect(calls.music).toHaveBeenCalledTimes(2))
+        expect(onGraphicsRecovery).toHaveBeenLastCalledWith(undefined)
+        expect(calls.connect).toHaveBeenCalledOnce()
+    } finally {
+        game.stop()
+    }
+})
+
 it('sends fresh movement when the same direction is pressed after a UI input release', async () => {
     const { game } = setup()
     await startWorld(game)

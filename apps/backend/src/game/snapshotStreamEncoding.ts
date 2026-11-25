@@ -45,6 +45,9 @@ export function encodeWorldInit(
         protocolVersion: message.protocolVersion,
         map: message.map,
         playerId: message.playerId,
+        ...(message.resumeToken === undefined
+            ? {}
+            : { resumeToken: message.resumeToken }),
         tickMs: message.tickMs,
         streamId,
         seq: 0,

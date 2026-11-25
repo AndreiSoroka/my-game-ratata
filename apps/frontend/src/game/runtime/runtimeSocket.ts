@@ -3,6 +3,7 @@ import type {
     GameEventPayload,
     GameLocale,
     HeroClass,
+    JoinClientMessage,
     MapSummary,
     PlantTreePreview,
     ServerMessage,
@@ -24,7 +25,7 @@ import {
 
 interface RuntimeSocketHandlers {
     isStopped: () => boolean
-    onError: (message: string) => void
+    onError: (message: string, code?: string) => void
     onEvent: (event: GameEventPayload, serverTime: number) => void
     onSpeechTranslation?: (translation: SpeechTranslationServerMessage) => void
     getLocale?: () => GameLocale
@@ -38,9 +39,12 @@ interface RuntimeSocketHandlers {
         snapshot: WorldSnapshot,
         map: MapSummary,
         reference: SnapshotReference,
-        tickMs: number
+        tickMs: number,
+        resumeToken?: string
     ) => void
 }
+
+const resumeRetryDelays = [100, 250, 500, 1_000]
 
 export class RuntimeSocket {
     private readonly handlers: RuntimeSocketHandlers
@@ -51,6 +55,9 @@ export class RuntimeSocket {
     private readonly snapshots = new RuntimeSnapshotStream(import.meta.env.DEV || testMode())
     private readonly motionProbes = new MotionReceiptProbes((message) => this.send(message))
     private resyncTimer: ReturnType<typeof setTimeout> | undefined
+    private pendingJoin: JoinClientMessage | undefined
+    private resumeRetry: ReturnType<typeof setTimeout> | undefined
+    private resumeAttempts = 0
 
     public constructor(handlers: RuntimeSocketHandlers) {
         this.handlers = handlers
@@ -59,7 +66,13 @@ export class RuntimeSocket {
     public readonly estimateMotionReceiptTime = (localTime: number): number | undefined =>
         this.motionProbes.estimateReceiptTime(localTime)
 
-    public connect(nickname: string, heroClass?: HeroClass, createOnly = false): void {
+    public connect(
+        nickname: string,
+        heroClass?: HeroClass,
+        createOnly = false,
+        resumeToken?: string,
+        requestResumeToken = true
+    ): void {
         if (this.handlers.isStopped()) return
         this.close()
         this.handlers.onStatus('Connecting')
@@ -75,21 +88,27 @@ export class RuntimeSocket {
             if (this.handlers.isStopped() || this.socket !== socket) return
             const locale = this.handlers.getLocale?.()
             this.sentLocale = locale
-            this.send({
+            this.pendingJoin = {
                 nickname,
                 type: 'join',
+                ...(requestResumeToken ? { requestResumeToken: true } : {}),
                 ...(locale === undefined ? {} : { locale }),
                 ...(heroClass === undefined ? {} : { heroClass }),
                 ...(createOnly ? { createOnly: true } : {}),
-            })
+                ...(resumeToken === undefined ? {} : { resumeToken }),
+            }
+            this.send(this.pendingJoin)
         })
         socket.addEventListener('message', (event) => {
             if (this.socket === socket) this.handleSocketMessage(event)
         })
         socket.addEventListener('close', () => {
             if (this.socket !== socket) return
+            const waitingForJoin = !this.initialized
             this.disconnect()
-            if (!this.handlers.isStopped()) this.handlers.onStatus('Disconnected')
+            if (this.handlers.isStopped()) return
+            this.handlers.onStatus('Disconnected')
+            if (waitingForJoin) this.handlers.onError(tGame('game.canvas.connection'))
         })
         socket.addEventListener('error', () => {
             if (!this.handlers.isStopped() && this.socket === socket) {
@@ -110,6 +129,7 @@ export class RuntimeSocket {
         this.sentLocale = undefined
         this.stopLocaleWatch?.()
         this.stopLocaleWatch = undefined
+        this.clearJoin()
         this.clearResync()
         this.snapshots.clear()
         this.motionProbes.stop()
@@ -137,9 +157,33 @@ export class RuntimeSocket {
         }
 
         if (message.type === 'world_init') return this.initialize(message)
-        if (message.type === 'error') return this.handlers.onError(errorText(message))
+        if (message.type === 'error') {
+            if (message.code === 'resume_busy' && this.retryResumeJoin()) return
+            return this.handlers.onError(errorText(message), message.code)
+        }
         if (!this.initialized) return
         this.handleInitializedMessage(message)
+    }
+
+    private retryResumeJoin(): boolean {
+        const join = this.pendingJoin
+        if (!join?.resumeToken) return false
+        if (this.resumeRetry !== undefined) return true
+        const delay = resumeRetryDelays[this.resumeAttempts]
+        if (delay === undefined) return false
+        this.resumeAttempts++
+        this.resumeRetry = setTimeout(() => {
+            this.resumeRetry = undefined
+            this.send(join)
+        }, delay)
+        return true
+    }
+
+    private clearJoin(): void {
+        clearTimeout(this.resumeRetry)
+        this.resumeRetry = undefined
+        this.pendingJoin = undefined
+        this.resumeAttempts = 0
     }
 
     private handleInitializedMessage(message: ServerMessage): void {
@@ -210,6 +254,7 @@ export class RuntimeSocket {
             this.handlers.onStatus('Disconnected')
             return
         }
+        this.clearJoin()
         this.clearResync()
         this.motionProbes.stop()
         this.handlers.onStreamReset?.()
@@ -220,7 +265,8 @@ export class RuntimeSocket {
             receipt.snapshot,
             message.map,
             receipt.reference,
-            message.tickMs
+            message.tickMs,
+            message.resumeToken
         )
         this.startMotionProbes()
     }
@@ -256,6 +302,10 @@ function errorText(message: Extract<ServerMessage, { type: 'error' }>): string {
     switch (message.code) {
         case 'name_taken':
             return tGame('game.canvas.nameTaken')
+        case 'resume_busy':
+            return tGame('game.canvas.resumeBusy')
+        case 'resume_invalid':
+            return tGame('game.canvas.resumeInvalid')
         case 'not_joined':
             return tGame('game.canvas.notJoined')
         default:

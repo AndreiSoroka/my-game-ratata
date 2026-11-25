@@ -16,7 +16,7 @@ import { UiButton } from '@/shared/ui/common'
 import { renderVueStory } from '../../../game/stories/renderVueStory'
 import { characterFixture } from '../../../game/testing/characterFixture'
 import type { HotbarBinding } from '../model/hotbarBindings'
-import { hotbarIdentityKey, provideHotbarSession } from '../model/hotbarSession'
+import { provideHotbarSession } from '../model/hotbarSession'
 import ActionHotbar from './ActionHotbar.vue'
 
 type Props = InstanceType<typeof ActionHotbar>['$props']
@@ -107,10 +107,11 @@ function bladeStory(guard: boolean): HTMLElement {
 function savedHotbar(player: CharacterSnapshot, bindings: HotbarBinding[]): HTMLElement {
     const Preview = defineComponent({
         setup() {
-            provideHotbarSession().set(hotbarIdentityKey(player), {
-                bindings: ref(bindings),
-                seen: new Set(player.abilities?.known),
-            })
+            const session = provideHotbarSession()
+            session.entries.set(
+                session.identity(player),
+                ref({ bindings, seen: [...(player.abilities?.known ?? [])] })
+            )
             return () => h(ActionHotbar, { player, characters: [player], blocked: false })
         },
     })

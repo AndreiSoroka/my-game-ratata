@@ -51,6 +51,7 @@ export class RuntimeMapLoading {
     private pending: string | undefined
     private applied: string | undefined
     private failure: string | undefined
+    private loaded: { key: string; map: RenderedTiledMap } | undefined
     private generation = 0
     private applyQueue = Promise.resolve()
     public constructor(private readonly handlers: MapLoadingHandlers) {}
@@ -86,9 +87,12 @@ export class RuntimeMapLoading {
         this.observe(this.desired)
     }
     public stop(): void {
+        this.invalidatePresentation()
+        this.desired = this.loaded = undefined
+    }
+    public invalidatePresentation(): void {
         this.generation += 1
         this.pending = this.applied = this.failure = undefined
-        this.desired = undefined
         this.applyQueue = Promise.resolve()
     }
     private launch(request: RuntimeMapRequest): void {
@@ -99,7 +103,10 @@ export class RuntimeMapLoading {
         this.handlers.loading()
         let loading: Promise<RenderedTiledMap>
         try {
-            loading = (this.handlers.load ?? loadRuntimeMap)(request.map)
+            loading =
+                this.loaded?.key === request.key
+                    ? Promise.resolve(this.loaded.map)
+                    : (this.handlers.load ?? loadRuntimeMap)(request.map)
         } catch (error) {
             loading = Promise.reject(error)
         }
@@ -107,6 +114,7 @@ export class RuntimeMapLoading {
             .then(async (map) => {
                 const apply = async () => {
                     if (!current()) return
+                    this.loaded = { key: request.key, map }
                     this.applied = undefined
                     await this.handlers.apply(map, request)
                     if (current()) {

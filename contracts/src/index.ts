@@ -89,6 +89,7 @@ import type { HealthSnapshot } from './health'
 export * from './health'
 import type { CharacterResourceChecks, ResourceSnapshot } from './resources'
 export * from './exchange'
+export { isPlayerResumeToken } from './identity'
 import type { JoinClientMessage } from './identity'
 export * from './authoredText'
 export type {

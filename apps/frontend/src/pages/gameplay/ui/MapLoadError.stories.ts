@@ -11,9 +11,16 @@ const meta = {
     argTypes: {
         message: { control: 'text' },
         status: { control: 'select', options: ['Map loading failed', 'Disconnected'] },
+        graphics: { control: 'select', options: [undefined, 'recovering', 'failed'] },
     },
     render: (args) => renderVueStory(MapLoadError, args),
 } satisfies Meta<StoryArgs>
 export default meta
 
 export const Default: StoryObj<StoryArgs> = {}
+export const RestoringGraphics: StoryObj<StoryArgs> = {
+    args: { graphics: 'recovering', status: 'Loading map' },
+}
+export const GraphicsRetry: StoryObj<StoryArgs> = {
+    args: { graphics: 'failed', status: 'Graphics recovery failed' },
+}

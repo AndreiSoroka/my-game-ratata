@@ -40,6 +40,7 @@ const {
     interaction,
     gameWindows,
     errorMessage,
+    graphicsRecovery,
     nickname,
     heroName,
     heroClass,
@@ -183,7 +184,13 @@ const {
                     :entries="chatHistory.entries.value"
                     @draft="game?.updateChatDraft($event)"
                 />
-                <MapLoadError :message="errorMessage" :status="status" @retry="game?.retryMap()" />
+                <MapLoadError
+                    :message="errorMessage"
+                    :status="status"
+                    :graphics="graphicsRecovery"
+                    @retry="game?.retryMap()"
+                    @retry-graphics="game?.retryGraphics()"
+                />
             </div>
             <GameWindows
                 ref="gameWindows"

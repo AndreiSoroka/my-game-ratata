@@ -20,6 +20,7 @@ interface PresentationLifecycle {
     mounted: (view: RuntimePresentation) => void
     current: (view: RuntimePresentation) => boolean
     removed: (view: RuntimePresentation) => void
+    contextLost: (view: RuntimePresentation) => void
 }
 
 /** Socket initialization owns when this begins; disposing an old scene never disposes a new one. */
@@ -30,7 +31,9 @@ export async function initializeRuntimePresentation(
     planting: PlantingPreview,
     lifecycle: PresentationLifecycle
 ): Promise<void> {
-    const created = createRuntimePresentation(container, map, locationId)
+    const created = createRuntimePresentation(container, map, locationId, () => {
+        if (view.run.active) lifecycle.contextLost(view)
+    })
     const { run, canvas, engine, loader } = created
     const viewport = new RuntimeViewport(lifecycle.send, lifecycle.viewportLocation)
     const view = { ...created, viewport }

@@ -1,11 +1,34 @@
 <script setup lang="ts">
 import { tGame } from '@/shared/lib/i18n'
 import { UiButton, UiFrame } from '@/shared/ui/common'
-defineProps<{ message: string; status: string }>()
-const emit = defineEmits<{ retry: [] }>()
+
+import type { GraphicsRecoveryState } from '../../../game/runtime/runtimeGraphicsRecovery'
+
+defineProps<{ message: string; status: string; graphics?: GraphicsRecoveryState | undefined }>()
+const emit = defineEmits<{ retry: []; retryGraphics: [] }>()
 </script>
 <template>
-    <p v-if="message" class="game-error game-frame-host" role="alert">
+    <div
+        v-if="graphics"
+        class="game-error game-frame-host graphics-recovery"
+        :role="graphics === 'recovering' ? 'status' : 'alert'"
+    >
+        <UiFrame variant="panel" />
+        <strong>{{ tGame('game.canvas.graphicsLost') }}</strong>
+        <span>
+            {{
+                tGame(
+                    graphics === 'recovering'
+                        ? 'game.canvas.graphicsRecovering'
+                        : 'game.canvas.graphicsRecoveryFailed'
+                )
+            }}
+        </span>
+        <UiButton v-if="graphics === 'failed'" size="small" @click="emit('retryGraphics')">
+            {{ tGame('game.canvas.retryGraphics') }}
+        </UiButton>
+    </div>
+    <p v-else-if="message" class="game-error game-frame-host" role="alert">
         <UiFrame variant="panel" />
         {{ status === 'Map loading failed' ? tGame('game.world.mapLoadFailed') : message }}
         <UiButton size="small" v-if="status === 'Map loading failed'" @click="emit('retry')">
@@ -26,5 +49,9 @@ const emit = defineEmits<{ retry: [] }>()
     margin: 0;
     overflow-wrap: anywhere;
     transform: translate(-50%, -50%);
+}
+
+.graphics-recovery {
+    color: var(--game-ui-text);
 }
 </style>

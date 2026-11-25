@@ -5,6 +5,7 @@ import { tGame } from '@/shared/lib/i18n'
 
 import type { ChatInputState } from '../../../game/runtime/chatInput'
 import { RatataGame } from '../../../game/runtime/ratataGame'
+import type { GraphicsRecoveryState } from '../../../game/runtime/runtimeGraphicsRecovery'
 import type GameplayOverlay from '../ui/GameplayOverlay.vue'
 import { createOutcomeSounds } from './outcomeSounds'
 import type { createTransientNotices } from './transientNotices'
@@ -14,6 +15,10 @@ interface AppRuntimeOptions {
     container: () => HTMLElement | undefined
     nickname: string
     createOnly?: boolean
+    requestResumeToken: boolean
+    resumeToken?: string | undefined
+    onResumeToken?: (nickname: string, token: string) => void
+    onJoinRejected?: (code: string | undefined) => void
     onJoinAccepted?: () => void
     heroClass: HeroClass
     gameplay: () => InstanceType<typeof GameplayOverlay> | undefined
@@ -24,6 +29,7 @@ interface AppRuntimeOptions {
     isJoining: Ref<boolean>
     isStarted: Ref<boolean>
     status: Ref<string>
+    graphicsRecovery: Ref<GraphicsRecoveryState | undefined>
     notices: ReturnType<typeof createTransientNotices>
     confirmDeath: () => void
     hotbarSession?: { clear: () => void }
@@ -56,12 +62,11 @@ export async function startAppRuntime(options: AppRuntimeOptions): Promise<void>
     })
 }
 
-function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): RatataGame {
+function createNoticeObserver(options: Pick<AppRuntimeOptions, 'game' | 'notices'>) {
     const outcomes = createOutcomeSounds()
     let noticeSession = ''
-    let accepted = false
 
-    function observeNotices(snapshot: WorldSnapshot, playerId: string | undefined): void {
+    return (snapshot: WorldSnapshot, playerId: string | undefined) => {
         const session = JSON.stringify([snapshot.serverEpoch ?? '', playerId])
         if (session !== noticeSession) {
             noticeSession = session
@@ -79,12 +84,23 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         options.notices.observe('constellations', outcome?.constellationNotice)
         if (outcome?.sound) options.game.value?.playUiSound(outcome.sound)
     }
+}
+
+function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): RatataGame {
+    const observeNotices = createNoticeObserver(options)
+    let accepted = false
 
     return new RatataGame({
         container,
         nickname: options.nickname.trim(),
         ...(options.createOnly === true ? { createOnly: true } : {}),
+        requestResumeToken: options.requestResumeToken,
+        ...(options.resumeToken === undefined ? {} : { resumeToken: options.resumeToken }),
+        ...(options.onResumeToken === undefined ? {} : { onResumeToken: options.onResumeToken }),
         heroClass: options.heroClass,
+        onGraphicsRecovery: (state) => {
+            options.graphicsRecovery.value = state
+        },
         onDefeat: () => {
             options.hotbarSession?.clear()
             options.confirmDeath()
@@ -92,7 +108,8 @@ function createAppRuntime(options: AppRuntimeOptions, container: HTMLElement): R
         onChatState: (state) => {
             options.chatInput.value = state
         },
-        onError: (message) => {
+        onError: (message, code) => {
+            if (!accepted) options.onJoinRejected?.(code)
             options.errorMessage.value = message
             options.cleanupFailedJoin()
         },

@@ -59,7 +59,8 @@ vi.mock('./runtimePresentation', () => ({
     createRuntimePresentation: (
         container: HTMLElement,
         _map: RenderedTiledMap,
-        locationId: string
+        locationId: string,
+        onContextLost: () => void
     ) => {
         calls.present(locationId)
         const canvas = document.createElement('canvas')
@@ -87,6 +88,8 @@ vi.mock('./runtimePresentation', () => ({
             },
         } as unknown as Engine
         const run = new EngineRun(canvas, () => engine)
+        canvas.addEventListener('webglcontextlost', onContextLost)
+        run.addCleanup(() => canvas.removeEventListener('webglcontextlost', onContextLost))
         run.addCleanup(calls.dispose)
         run.addCleanup(calls.stopAudio)
         return {
@@ -174,17 +177,19 @@ export function setup() {
     const onError = vi.fn<(message: string) => void>()
     const onChatState = vi.fn<RatataGameOptions['onChatState']>()
     const onMapError = vi.fn<(message: string | null) => void>()
+    const onGraphicsRecovery = vi.fn<NonNullable<RatataGameOptions['onGraphicsRecovery']>>()
     const game = new RatataGame({
         container,
         nickname: 'Cancelled startup',
         onError,
         onMapError,
+        onGraphicsRecovery,
         onChatState,
         onInventoryToggle: vi.fn<RatataGameOptions['onInventoryToggle']>(),
         onSnapshot: vi.fn<RatataGameOptions['onSnapshot']>(),
         onStatus: vi.fn<RatataGameOptions['onStatus']>(),
     })
-    return { game, container, onError, onMapError, onChatState }
+    return { game, container, onError, onMapError, onChatState, onGraphicsRecovery }
 }
 export function initialize(epoch = 'a', locationId = 'map-2-2'): void {
     const map: MapSummary = {

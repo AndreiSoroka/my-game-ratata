@@ -7,11 +7,14 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { ChatInputState } from './chatInput'
+import type { GraphicsRecoveryState } from './runtimeGraphicsRecovery'
 
 export interface RatataGameOptions {
     container: HTMLElement
     nickname: string
     createOnly?: boolean
+    requestResumeToken?: boolean
+    resumeToken?: string
     heroClass?: HeroClass
     onCharacterClick?: (id: string) => void
     onCharacterDoubleClick?: (id: string) => void
@@ -19,7 +22,9 @@ export interface RatataGameOptions {
     onEvent?: (event: GameEventPayload) => void
     onSpeechTranslation?: (translation: SpeechTranslationServerMessage) => void
     onChatState: (state: ChatInputState) => void
-    onError: (message: string) => void
+    onError: (message: string, code?: string) => void
+    onResumeToken?: (nickname: string, token: string) => void
+    onGraphicsRecovery?: (state: GraphicsRecoveryState | undefined) => void
     onMapError?: (message: string | null) => void
     onInventoryToggle: () => void
     onCharacterToggle?: () => void

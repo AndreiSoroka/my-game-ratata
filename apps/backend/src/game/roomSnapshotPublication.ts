@@ -69,7 +69,8 @@ export function sendInitialRoomState(
         'mapFor' | 'snapshotFor' | 'tickMs' | 'clockResumeRevision'
     >,
     socket: RoomSocket,
-    character: GameCharacter
+    character: GameCharacter,
+    resumeToken?: string
 ): boolean {
     resetStopCorrectionStream(socket, character)
     return sendWorldInit(
@@ -77,6 +78,7 @@ export function sendInitialRoomState(
         {
             map: context.mapFor(character),
             playerId: character.id,
+            ...(resumeToken === undefined ? {} : { resumeToken }),
             protocolVersion: CONTRACT_PROTOCOL_VERSION,
             snapshot: context.snapshotFor(character),
             tickMs: context.tickMs,

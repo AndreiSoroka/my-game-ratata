@@ -1,5 +1,4 @@
 import {
-    CENTER_LOCATION_ID,
     type ClientMessage,
     type GameEventPayload,
     type MapSummary,
@@ -14,7 +13,7 @@ import { gameLocale } from '@/shared/lib/i18n'
 import type { UiSoundId } from '../assets/soundCatalog'
 import { focusWorldInput } from '../ui/keyboardOwnership'
 import type { WorldSelectionTarget } from '../ui/worldTargetSelection'
-import { type BuildingEntrance, BuildingEntrances } from './buildingEntrances'
+import type { BuildingEntrance } from './buildingEntrances'
 import type { TargetHighlight } from './interactionTargetViews'
 import type { MotionTiming } from './ownerMotionLead'
 import { PlantingPreview } from './plantingPreview'
@@ -24,25 +23,21 @@ import { RuntimeChatInput } from './runtimeChatInput'
 import { updateRuntimeDebug } from './runtimeDebug'
 import { isLocalDeath, runtimeEventFeedback } from './runtimeEventFeedback'
 import { handleRuntimeKeyDown } from './runtimeKeyDown'
-import { RuntimeMapLoading, runtimeMapRequest } from './runtimeMapLoading'
+import { runtimeMapRequest } from './runtimeMapLoading'
 import { RuntimeMovementControls } from './runtimeMovementControls'
 import type { RatataGameOptions } from './runtimeOptions'
 import { createRuntimePointerHandlers } from './runtimePointer'
 import {
     applyMotionTiming,
-    initializeRuntimePresentation,
     observeRuntimeAudio,
-    type RuntimePresentation,
-    suspendRuntimePresentation,
     updateRuntimeScene,
 } from './runtimePresentationLifecycle'
 import { runtimeCanSelect, runtimeSelectionVisible } from './runtimeSelection'
 import type { SnapshotReference } from './runtimeSnapshotStream'
 import { RuntimeSocket } from './runtimeSocket'
-import type { RenderedTiledMap } from './tiledMap'
+import { RuntimeWorldPresentation } from './runtimeWorldPresentation'
 
 export class RatataGame {
-    private view: RuntimePresentation | undefined
     private localPlayerId: string | undefined
     private snapshot: WorldSnapshot | undefined
     private snapshotReference: SnapshotReference | undefined
@@ -50,14 +45,11 @@ export class RatataGame {
     private motionTiming: MotionTiming | undefined
     private connected = false
     private stopped = false
-    private mapId: string = CENTER_LOCATION_ID
     private initialMap: MapSummary | undefined
-    private readonly maps: RuntimeMapLoading
-    private readonly buildingEntrances = new BuildingEntrances()
+    private readonly world: RuntimeWorldPresentation
     private readonly movement = new RuntimeMovementControls((command) => this.send(command))
     private readonly chat: RuntimeChatInput
     private readonly socket: RuntimeSocket
-    public selectionTileSize = 16
     public readonly planting = new PlantingPreview(() => this.releaseInputs())
     private readonly pointerHandlers = createRuntimePointerHandlers(() => ({
         engine: this.view?.engine,
@@ -80,17 +72,26 @@ export class RatataGame {
             (message) => this.send(message),
             () => focusWorldInput(true)
         )
-        this.maps = new RuntimeMapLoading({
-            apply: async (map, request) => {
-                if (this.view) this.applyMap(request.locationId, map)
-                else await this.startPresentation(map, request.locationId)
+        this.world = new RuntimeWorldPresentation(options, this.planting, {
+            send: this.send,
+            inputs: {
+                keyDown: this.handleKeyDown,
+                keyUp: this.handleKeyUp,
+                release: this.releaseInputs,
+                ...this.pointerHandlers,
             },
-            loading: () => this.suspendMap(),
-            ready: () => this.resumeMap(),
-            failed: (message) => {
-                this.options.onStatus('Map loading failed')
-                ;(this.options.onMapError ?? this.options.onError)(message)
+            active: () => this.connected && !this.stopped,
+            suspendInput: (keepChatDraft) => {
+                if (!keepChatDraft) this.chat.cancel()
+                this.releaseInputs()
             },
+            latest: () => ({
+                snapshot: this.snapshot,
+                playerId: this.localPlayerId,
+                reference: this.snapshotReference,
+                motionTiming: this.motionTiming,
+                audioValid: this.audioSnapshotValid,
+            }),
         })
         this.socket = new RuntimeSocket({
             isStopped: () => this.stopped,
@@ -105,16 +106,17 @@ export class RatataGame {
             onStatus: (status) => {
                 this.connected = status === 'Connected'
                 if (status !== 'Connected') {
-                    this.maps.stop()
                     this.chat.stopActivity()
-                    void this.view?.run.cancel()
+                    this.world.stop()
                 }
                 options.onStatus(status)
             },
-            onWorldInit: (playerId, snapshot, map, reference, tickMs) => {
+            onWorldInit: (playerId, snapshot, map, reference, tickMs, resumeToken) => {
                 this.initialMap = map
                 this.connected = true
                 this.localPlayerId = playerId
+                const owner = snapshot.characters.find((character) => character.id === playerId)
+                if (owner && resumeToken) options.onResumeToken?.(owner.nickname, resumeToken)
                 this.motionTiming = applyMotionTiming(this.view, tickMs, this.movement, this.socket)
                 this.applySnapshot(snapshot, reference)
             },
@@ -123,45 +125,24 @@ export class RatataGame {
 
     public start(): Promise<void> {
         this.stopped = false
-        this.socket.connect(this.options.nickname, this.options.heroClass, this.options.createOnly)
+        this.socket.connect(
+            this.options.nickname,
+            this.options.heroClass,
+            this.options.createOnly,
+            this.options.resumeToken,
+            this.options.requestResumeToken
+        )
         return Promise.resolve()
-    }
-
-    private startPresentation(map: RenderedTiledMap, mapId: string): Promise<void> {
-        return initializeRuntimePresentation(this.options.container, map, mapId, this.planting, {
-            send: this.send,
-            viewportLocation: () => (this.isMapReady ? this.mapId : undefined),
-            inputs: {
-                keyDown: this.handleKeyDown,
-                keyUp: this.handleKeyUp,
-                release: this.releaseInputs,
-                ...this.pointerHandlers,
-            },
-            mounted: (view) => {
-                this.view = view
-                if (this.motionTiming) view.sceneActors.setMotionTiming(this.motionTiming)
-                this.selectionTileSize = map.tileWidth
-                this.buildingEntrances.replace(mapId, map.buildings)
-                this.mapId = mapId
-            },
-            current: (view) => !this.stopped && this.view === view,
-            removed: (view) => {
-                if (this.view === view) this.view = undefined
-            },
-        })
     }
 
     public stop(): void {
         if (this.stopped) return
         this.chat.stopActivity()
         this.stopped = true
-        this.maps.stop()
         this.releaseInputs()
         this.socket.close()
-        void this.view?.run.cancel()
-        this.view = undefined
+        this.world.stop()
         this.planting.dispose()
-        this.buildingEntrances.clear()
 
         if (import.meta.env.DEV) delete window.__ratataGameDebug
     }
@@ -231,11 +212,11 @@ export class RatataGame {
     })
 
     private get isMapReady(): boolean {
-        return this.connected && !this.stopped && this.maps.isReady
+        return this.world.ready
     }
 
     public readonly getBuildings = (): BuildingEntrance[] =>
-        this.isMapReady ? this.buildingEntrances.read(this.snapshot?.location?.id) : []
+        this.isMapReady ? this.world.entrances.read(this.snapshot?.location?.id) : []
 
     public sendCommand(message: ClientMessage): void {
         this.movement.sendCommand(message)
@@ -248,7 +229,7 @@ export class RatataGame {
         const player = snapshot.characters.find((character) => character.id === this.localPlayerId)
         if (!player?.alive) this.chat.cancel()
         if (this.movement.observe(player)) this.releaseInputs()
-        this.maps.observe(runtimeMapRequest(snapshot, this.initialMap))
+        this.world.observe(runtimeMapRequest(snapshot, this.initialMap))
         if (this.isMapReady) updateRuntimeScene(this.view, snapshot, this.localPlayerId, reference)
         this.options.onSnapshot(snapshot, this.localPlayerId)
         if (this.isMapReady) observeRuntimeAudio(this.view, snapshot, this.localPlayerId)
@@ -261,34 +242,16 @@ export class RatataGame {
         this.view?.audio.invalidateWorld(motion === undefined)
     }
 
-    public readonly retryMap = (): void => this.maps.retry()
+    public readonly retryMap = (): void => this.world.retryMap()
 
-    private suspendMap(): void {
-        this.chat.cancel()
-        this.releaseInputs()
-        suspendRuntimePresentation(this.view)
-        this.options.onMapError?.(null)
-        this.options.onStatus('Loading map')
+    public readonly retryGraphics = (): void => this.world.retryGraphics()
+
+    public get selectionTileSize(): number {
+        return this.world.selectionTileSize
     }
 
-    private resumeMap(): void {
-        if (this.stopped || !this.view || !this.snapshot) return
-        this.view.canvas.style.visibility = ''
-        this.options.onMapError?.(null)
-        this.options.onStatus('Connected')
-        this.view.sceneActors.update(this.snapshot, this.localPlayerId, this.snapshotReference)
-        this.view.audio.resumeWorld()
-        if (this.audioSnapshotValid)
-            observeRuntimeAudio(this.view, this.snapshot, this.localPlayerId)
-    }
-
-    private applyMap(mapId: string, map: RenderedTiledMap): void {
-        this.selectionTileSize = map.tileWidth
-        this.view?.audio?.setMap(map, mapId)
-        this.view?.sceneActors?.addMap(map)
-        this.buildingEntrances.replace(mapId, map.buildings)
-        this.mapId = mapId
-        updateRuntimeScene(this.view, this.snapshot, this.localPlayerId, this.snapshotReference)
+    private get view() {
+        return this.world.view
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {

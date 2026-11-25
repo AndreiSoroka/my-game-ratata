@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, type Ref } from 'vue'
 
 import type { ChatInputState } from '../../../game/runtime/chatInput'
 import type { RatataGame } from '../../../game/runtime/ratataGame'
+import type { GraphicsRecoveryState } from '../../../game/runtime/runtimeGraphicsRecovery'
 import type AutomationPanels from '../ui/AutomationPanels.vue'
 import { recoverFailedJoin } from './failedJoin'
 import type { TransientNotices } from './transientNotices'
@@ -25,6 +26,7 @@ interface AppSessionOptions {
     chatInput: Ref<ChatInputState>
     isStarted: Ref<boolean>
     status: Ref<string>
+    graphicsRecovery: Ref<GraphicsRecoveryState | undefined>
 }
 export function useAppSession(options: AppSessionOptions) {
     function resetGameSession(): void {
@@ -36,6 +38,7 @@ export function useAppSession(options: AppSessionOptions) {
         options.game.value = undefined
         options.snapshot.value = undefined
         options.localPlayerId.value = undefined
+        options.graphicsRecovery.value = undefined
         options.inventoryOpen.value = false
         options.planting.value = false
         options.chatInput.value = { active: false, draft: '', maxLength: 100 }
