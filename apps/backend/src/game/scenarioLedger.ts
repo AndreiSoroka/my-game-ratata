@@ -12,7 +12,15 @@ export class ScenarioLedger {
         const next = counts(inventory)
         for (const [id, quantity] of this.quantities) {
             const lost = Math.max(0, quantity - (next.get(id) ?? 0))
-            this.earned.set(id, Math.max(0, (this.earned.get(id) ?? 0) - lost))
+            const earned = this.earned.get(id)
+            if (earned === undefined || lost === 0) {
+                continue
+            }
+            if (lost >= earned) {
+                this.earned.delete(id)
+            } else {
+                this.earned.set(id, earned - lost)
+            }
         }
         this.quantities = next
     }

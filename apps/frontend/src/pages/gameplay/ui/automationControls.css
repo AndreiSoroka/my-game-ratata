@@ -16,12 +16,20 @@
     gap: 4px;
     min-width: 0;
 }
+.automation-form .automation-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .automation-form p {
     margin: 0;
 }
 .automation-muted {
     color: var(--ui-dark-panel-muted, var(--ui-dark-panel-text));
     font-size: 12px;
+}
+.automation-error {
+    color: var(--ui-dark-panel-warning);
 }
 .automation-card {
     display: grid;
@@ -30,6 +38,6 @@
     padding: 12px;
     border: 1px solid transparent;
 }
-.automation-card h3 {
+.automation-form h3 {
     margin: 0;
 }

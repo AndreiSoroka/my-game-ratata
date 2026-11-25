@@ -96,8 +96,9 @@ describe('common scheduler ownership over retained NPC policies', () => {
                         id: 'hold',
                         name: 'Hold',
                         repeat: null,
-                        threat: 'continue',
-                        steps: [
+                        sequences: [],
+                        reactions: [],
+                        main: [
                             { id: 'wait', kind: 'wait', durationMs: 10_000 },
                         ],
                     },

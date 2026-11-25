@@ -3,7 +3,16 @@ import { ref, watch } from 'vue'
 
 import UiInput from './UiInput.vue'
 
-const props = defineProps<{ modelValue: number; label: string; min: number; max: number }>()
+const props = withDefaults(
+    defineProps<{
+        modelValue: number
+        label: string
+        min: number
+        max: number
+        decimals?: number
+    }>(),
+    { decimals: 0 }
+)
 const emit = defineEmits<{ 'update:modelValue': [value: number] }>()
 const draft = ref(String(props.modelValue))
 watch(
@@ -16,12 +25,15 @@ function input(event: Event): void {
     draft.value = (event.target as HTMLInputElement).value
     const value = Number(draft.value)
     if (draft.value && Number.isFinite(value) && value >= props.min && value <= props.max)
-        emit('update:modelValue', Math.round(value))
+        emit('update:modelValue', rounded(value))
+}
+function rounded(value: number): number {
+    return Number(value.toFixed(props.decimals))
 }
 function commit(): void {
     const parsed = draft.value ? Number(draft.value) : props.modelValue
     const value = Number.isFinite(parsed)
-        ? Math.max(props.min, Math.min(props.max, Math.round(parsed)))
+        ? Math.max(props.min, Math.min(props.max, rounded(parsed)))
         : props.modelValue
     draft.value = String(value)
     emit('update:modelValue', value)
@@ -36,7 +48,7 @@ function commit(): void {
             v-model="draft"
             :min="min"
             :max="max"
-            step="1"
+            :step="10 ** -decimals"
             @input="input"
             @blur="commit"
         />

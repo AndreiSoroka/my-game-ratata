@@ -10,8 +10,9 @@ function definition(steps: unknown[]) {
         id: 'pinned',
         name: 'Pinned work',
         repeat: 1,
-        threat: 'continue',
-        steps,
+        sequences: [],
+        reactions: [],
+        main: steps,
     }
 }
 function steps(locationId: unknown, explicit = true) {

@@ -220,8 +220,9 @@ it('accepts a bounded 64-step scenario larger than the old single-action body li
                     id: 'bridge-work',
                     name: 'Bridge work',
                     repeat: 1,
-                    threat: 'continue',
-                    steps: Array.from({ length: 64 }, (_, index) => ({
+                    sequences: [],
+                    reactions: [],
+                    main: Array.from({ length: 64 }, (_, index) => ({
                         id: `step-${String(index)}-${'x'.repeat(70)}`,
                         kind: 'wait',
                         durationMs: 100,

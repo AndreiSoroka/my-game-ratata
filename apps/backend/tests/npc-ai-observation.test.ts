@@ -1,6 +1,8 @@
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+import { parseNpcAiReply } from '../src/ai/npcCliProtocol'
+import { configureNpcScenario } from '../src/ai/npcScenarios'
 import { buildNpcAiObservation } from '../src/ai/observation'
 import type { GameCharacter } from '../src/game/character'
 import { readMapBuildings } from '../src/game/mapBuildings'
@@ -75,6 +77,66 @@ it('keeps stock and hidden residents out of initial Kaplya context but exposes a
         mapCollision: true,
         automaticEnemyAvoidance: false,
         conditionalDangerTriggers: false,
+    })
+})
+
+it('binds a companion template to their own observation and rejects invented destinations', () => {
+    const room = openRoom()
+    const actor = npc(room, 'npc_princess_1')
+    const advisor = npc(room, 'npc_smith_1')
+    const now = Date.now()
+    const reply = parseNpcAiReply({
+        done: true,
+        waitMs: 0,
+        memory: '',
+        decision: {
+            type: 'configure_scenario',
+            templateId: 'retreat',
+            parameters: { shelterMarkerId: 'here', abilityId: null },
+            start: true,
+        },
+    })
+    const decision = reply.decision
+    if (decision?.type !== 'configure_scenario') {
+        throw new Error('Expected a typed scenario decision')
+    }
+    expect(
+        buildNpcAiObservation(room, advisor, 'advisor', now).scenarios
+    ).toBeUndefined()
+    expect(
+        configureNpcScenario(room, advisor, 'advisor', decision, now).accepted
+    ).toBe(false)
+    expect(
+        configureNpcScenario(
+            room,
+            actor,
+            'companion',
+            {
+                ...decision,
+                parameters: { shelterMarkerId: 'unknown-private-marker' },
+            },
+            now
+        ).accepted
+    ).toBe(false)
+    expect(room.scenarios.snapshot(actor, now).scenarios).toEqual([])
+    expect(
+        configureNpcScenario(room, actor, 'companion', decision, now).accepted
+    ).toBe(true)
+    expect(
+        buildNpcAiObservation(room, actor, 'companion', now).scenarios?.run
+    ).toMatchObject({
+        status: 'running',
+        scenarioId: 'npc-template-retreat',
+    })
+    expect(
+        room.scenarios.snapshot(actor, now).scenarios[0]?.sequences[0]?.steps[0]
+    ).toMatchObject({
+        kind: 'go',
+        destination: {
+            kind: 'point',
+            locationId: actor.locationId,
+            position: actor.position,
+        },
     })
 })
 

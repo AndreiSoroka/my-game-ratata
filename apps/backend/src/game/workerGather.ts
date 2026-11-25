@@ -5,19 +5,27 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { resourceApproach } from './resourcePlacement'
 import type { GameRoom } from './room'
+import { scenarioGatherCommand } from './scenarioWork'
 import { recordWorkerActivity } from './workerActivityState'
 import { WorkerBrushwood } from './workerBrushwood'
 import { executeWorkerAdventure } from './workerCommands'
 import { hasNoRoute } from './workerFarm'
 import { recordGatherPause } from './workerGatherActivity'
-import { approach, reachedResource, sourceCost, stop } from './workerNavigation'
+import {
+    reachedResource,
+    sourceCost,
+    stop,
+    WorkerFieldRoute,
+} from './workerNavigation'
 import type { WorkerJob } from './workerSpawns'
 
 export class WorkerGather {
     public selected: AdventureResourceNode | undefined
     public readonly nextWorkAt = new Map<string, number>()
     private readonly brushwood = new WorkerBrushwood()
+    private readonly fieldRoute = new WorkerFieldRoute()
     public constructor(private readonly job: WorkerJob) {}
     public update(actor: GameCharacter, room: GameRoom, now: number): void {
         const service = room.adventureForWorkers()
@@ -63,9 +71,7 @@ export class WorkerGather {
         const reached = reachedResource(actor, live, navigation)
         if (reached) {
             stop(actor)
-        } else if (
-            !approach(actor, room, target.locationId, target.position, 8)
-        ) {
+        } else if (!this.approach(actor, room, live, now)) {
             if (hasNoRoute(actor)) {
                 recordWorkerActivity(
                     actor,
@@ -84,7 +90,7 @@ export class WorkerGather {
         const result = executeWorkerAdventure(
             actor,
             room,
-            { type: 'gather', nodeId: target.id },
+            scenarioGatherCommand(live.id),
             now
         )
         if (result.accepted) {
@@ -96,6 +102,35 @@ export class WorkerGather {
             this.gatherBrushwood(actor, room, now)
         }
         this.selected = undefined
+    }
+
+    private approach(
+        actor: GameCharacter,
+        room: GameRoom,
+        target: AdventureResourceNode,
+        now: number
+    ): boolean {
+        const localBounds =
+            actor.locationId === target.locationId ? target.bounds : undefined
+        const point =
+            localBounds === undefined
+                ? target.position
+                : resourceApproach(
+                      actor,
+                      localBounds,
+                      room.navigationFor(actor)
+                  )
+        if (point === undefined) {
+            stop(actor)
+            return false
+        }
+        return this.fieldRoute.advance(
+            actor,
+            room,
+            { ...target, position: point },
+            localBounds === undefined ? 8 : 2,
+            now
+        )
     }
 
     private select(

@@ -39,8 +39,9 @@ function setup(monster: boolean, crossing: boolean) {
         id: 'travel',
         name: 'Travel',
         repeat: 1,
-        threat: 'continue',
-        steps: [{ id: 'go', kind: 'go', destination }],
+        main: [{ id: 'go', kind: 'go', destination }],
+        sequences: [],
+        reactions: [],
     }
     const run = createScenarioRun(actor, actor.id, definition, 0)
     const room = {
@@ -98,6 +99,16 @@ it('crosses to an adjacent location through ordinary collision-resolved movement
     expect(actor.locationId).toBe('map-2-2')
     tick(100)
     expect(actor.position).toEqual({ x: 88, y: 40 })
+    expect(run.snapshot.results[0]?.status).toBe('succeeded')
+})
+
+it('finishes walking to an exact destination in the same tile after a movement interruption', () => {
+    const { actor, run, tick } = setup(false, false)
+    actor.position = { x: 126.4, y: 40 }
+    tick(50)
+    tick(100)
+    tick(150)
+    expect(actor.position).toEqual({ x: 120, y: 40 })
     expect(run.snapshot.results[0]?.status).toBe('succeeded')
 })
 

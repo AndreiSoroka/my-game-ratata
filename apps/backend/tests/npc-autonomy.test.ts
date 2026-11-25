@@ -109,3 +109,40 @@ it('yields a self activity to an actual request and stops when its observers lea
     f.presence.mockReturnValue(false)
     expect(npcSelfActivityInterrupted(f.room, f.state, 301_100)).toBe(true)
 })
+
+it('reviews its own scenario after three failing passes without counting a pass twice', () => {
+    const f = fixture('npc_princess_1')
+    vi.spyOn(f.room.scenarios, 'busy').mockReturnValue(true)
+    const run = vi.spyOn(f.room.scenarios, 'ownRunForReview')
+    const pass = (
+        iteration: number,
+        status: 'succeeded' | 'failed',
+        at: number
+    ) => {
+        run.mockReturnValue({
+            scenarioId: 'npc-template-patrol',
+            status: 'running',
+            phase: 'between_passes',
+            iteration,
+            results: [{ stepId: 'first', status, reason: null, failures: 0 }],
+        })
+        f.review(at)
+    }
+    pass(1, 'failed', 1_000)
+    pass(1, 'failed', 1_100)
+    pass(2, 'succeeded', 6_000)
+    pass(3, 'failed', 11_000)
+    pass(4, 'failed', 16_000)
+    expect(f.state.task).toBeNull()
+    pass(5, 'failed', 21_000)
+    expect(f.state.task).toMatchObject({
+        background: 'scenario_review',
+        requesterId: null,
+    })
+    expect(f.state.events).toHaveLength(1)
+    f.state.task = null
+    pass(6, 'failed', 26_000)
+    pass(7, 'failed', 31_000)
+    pass(8, 'failed', 36_000)
+    expect(f.state.task).toBeNull()
+})

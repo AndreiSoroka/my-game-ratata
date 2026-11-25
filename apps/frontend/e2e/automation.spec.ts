@@ -51,7 +51,6 @@ test.describe('routes, private markers and scenario editor', () => {
             const editor = page.getByRole('dialog', { name: 'Сценарии', exact: true })
             const name = `Wait scenario ${mode}`
             await editor.getByLabel('Название сценария', { exact: true }).fill(name)
-            await editor.getByLabel('Если рядом враг').selectOption('continue')
             await editor.getByLabel('Новый шаг').selectOption('wait')
             await editor.getByRole('button', { name: 'Добавить шаг', exact: true }).click()
             await editor.getByLabel('Секунд', { exact: true }).fill('30')
@@ -69,7 +68,7 @@ test.describe('routes, private markers and scenario editor', () => {
                                 .snapshot?.automation?.scenarios.find(
                                     (scenario) => scenario.name === scenarioName
                                 )
-                                ?.steps.map((step) => (step.kind === 'wait' ? step.durationMs : 0)),
+                                ?.main.map((step) => (step.kind === 'wait' ? step.durationMs : 0)),
                         name
                     )
                 )
@@ -90,6 +89,22 @@ test.describe('routes, private markers and scenario editor', () => {
             await expectRun(page, 'running')
             await editor.getByRole('button', { name: 'Остановить', exact: true }).click()
             await expectRun(page, 'stopped')
+
+            await editor.getByRole('button', { name: 'Готовые сценарии', exact: true }).click()
+            await editor
+                .getByRole('combobox', { name: 'Шаблон', exact: true })
+                .selectOption('follow')
+            await editor.getByRole('button', { name: 'Создать копию', exact: true }).click()
+            await expect(
+                editor.getByLabel('Только если ни за кем не следую', { exact: true })
+            ).toBeChecked()
+            await expect(
+                editor.getByRole('button', { name: 'Запустить', exact: true })
+            ).toBeDisabled()
+            await editor.getByRole('button', { name: 'Псевдокод', exact: true }).click()
+            await expect(
+                editor.getByRole('textbox', { name: 'Псевдокод', exact: true })
+            ).toHaveValue(/on friendly_nearby\(5 tiles\) while not_following/)
         })
     }
 })

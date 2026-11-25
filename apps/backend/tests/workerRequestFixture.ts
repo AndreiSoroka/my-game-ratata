@@ -3,6 +3,7 @@ import {
     type AdventureResourceNode,
     CENTER_LOCATION_ID,
     FARM_PLOTS,
+    type GameEventPayload,
     type WorkerWorkTarget,
     type WorkRequestSnapshot,
 } from '@my-game-ratata/contracts'
@@ -35,6 +36,7 @@ export class WorkerSimulation {
     public readonly worksite: WorkerWorkTarget
     public readonly room: GameRoom
     public movedPixels = 0
+    public readonly reports: GameEventPayload[] = []
     public readonly commands: Array<{
         message: AdventureClientMessage
         result: AdventureActionResult
@@ -173,7 +175,11 @@ export class WorkerSimulation {
                 })
                 return result
             },
-            publishEvents: () => undefined,
+            publishEvents: (events: GameEventPayload[]) => {
+                this.reports.push(
+                    ...events.filter(({ kind }) => kind === 'chat')
+                )
+            },
         } as unknown as GameRoom
     }
 

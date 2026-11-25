@@ -2,6 +2,7 @@ import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
 import { GameCharacter } from '../src/game/character'
+import { snapshotControl } from '../src/game/characterControl'
 import {
     addInventoryItems,
     countInventoryItem,
@@ -27,33 +28,261 @@ it('searches without walking, marks an impossible stage and advances after ten s
         failures: 1,
     })
 })
-it('preserves three remaining failure seconds through fleeing and conversation pauses', () => {
+it('preserves three remaining failure seconds through conversation pauses', () => {
     const f = scenarioFixture()
-    f.start({
-        ...definition([{ id: 'search', kind: 'search', target: 'stone' }]),
-        threat: 'flee',
-    })
+    f.start(definition([{ id: 'search', kind: 'search', target: 'stone' }]))
     f.tick(140)
     expect(f.snapshot().run?.remainingFailureMs).toBe(3000)
-    const enemy = new GameCharacter({
-        id: 'enemy',
-        nickname: 'Враг',
-        archetype: 'slime',
-        controllerKind: 'mob1',
-        locationId: CENTER_LOCATION_ID,
-        spawnPosition: { x: 80, y: 24 },
-    })
-    f.setThreat(enemy)
-    f.tick(300)
+    f.tick(300, true)
     expect(f.snapshot().run?.remainingFailureMs).toBe(3000)
-    expect(f.snapshot().run?.interruption).toBe('enemy')
-    f.setThreat(undefined)
-    f.tick(20, true)
-    expect(f.snapshot().run?.remainingFailureMs).toBe(3000)
+    expect(f.snapshot().run?.interruption).toBe('conversation')
     f.tick(59)
     expect(f.snapshot().run?.status).toBe('running')
     f.tick()
     expect(f.snapshot().run?.results[0]?.status).toBe('failed')
+})
+
+it('keeps a five-second listening window and prevents stop/start from opening a new pass early', () => {
+    const f = scenarioFixture()
+    f.start(definition([{ id: 'ready', kind: 'wait', durationMs: 0 }]))
+    f.tick()
+    expect(f.snapshot().run).toMatchObject({
+        phase: 'between_passes',
+        nextPassAt: 6000,
+    })
+    f.command({ type: 'scenario_stop' })
+    f.command({ type: 'scenario_start', scenarioId: 'test' })
+    f.tick(98)
+    expect(f.snapshot().run?.results[0]?.status).toBe('pending')
+    f.tick()
+    expect(f.snapshot().run).toMatchObject({
+        status: 'running',
+        nextPassAt: 11000,
+    })
+    expect(f.snapshot().run?.results[0]?.status).toBe('succeeded')
+    f.tick(100)
+    expect(f.snapshot().run?.status).toBe('completed')
+})
+
+it('picks one ordered reaction, aborts the main work and rearms only on the next pass', () => {
+    const f = scenarioFixture()
+    f.start({
+        ...definition([
+            { id: 'ready', kind: 'wait', durationMs: 0 },
+            { id: 'work', kind: 'wait', durationMs: 10_000 },
+        ]),
+        repeat: null,
+        sequences: [
+            {
+                id: 'leave',
+                name: 'Leave',
+                steps: [{ id: 'stop', kind: 'wait', durationMs: 300 }],
+            },
+        ],
+        reactions: [
+            {
+                id: 'wolf',
+                trigger: { kind: 'enemy_visible', distanceTiles: 5 },
+                sequenceId: 'leave',
+                notification: 'wolf',
+            },
+            {
+                id: 'ready-result',
+                trigger: {
+                    kind: 'step_result',
+                    stepId: 'ready',
+                    status: 'succeeded',
+                },
+                sequenceId: 'leave',
+                notification: 'ready',
+            },
+        ],
+    })
+    f.tick()
+    f.setThreat(
+        new GameCharacter({
+            id: 'enemy',
+            nickname: 'Enemy',
+            archetype: 'slime',
+            controllerKind: 'mob1',
+            spawnPosition: { x: 68, y: 24 },
+        })
+    )
+    f.tick()
+    expect(f.snapshot().run).toMatchObject({
+        phase: 'reaction',
+        reactionId: 'wolf',
+    })
+    expect(f.snapshot().run?.results.map((result) => result.status)).toEqual([
+        'succeeded',
+        'skipped',
+        'running',
+    ])
+    f.tick(5)
+    expect(f.snapshot().run?.results[2]?.status).toBe('running')
+    f.tick()
+    expect(f.snapshot().run?.results[2]?.status).toBe('succeeded')
+    f.tick(91)
+    expect(
+        f.events
+            .filter((event) => event.kind === 'notice')
+            .map((event) => event.text)
+    ).toEqual(['wolf'])
+    f.tick()
+    expect(
+        f.events
+            .filter((event) => event.kind === 'notice')
+            .map((event) => event.text)
+    ).toEqual(['wolf', 'wolf'])
+})
+
+it('arms checks after the delay and ignores earlier observations and step results', () => {
+    const f = scenarioFixture()
+    const enemy = new GameCharacter({
+        id: 'enemy',
+        nickname: 'Enemy',
+        archetype: 'slime',
+        controllerKind: 'mob1',
+        spawnPosition: { x: 68, y: 24 },
+    })
+    f.setThreat(enemy)
+    f.start({
+        ...definition([{ id: 'early', kind: 'wait', durationMs: 0 }]),
+        sequences: [
+            {
+                id: 'leave',
+                name: 'Leave',
+                steps: [{ id: 'wait', kind: 'wait', durationMs: 0 }],
+            },
+        ],
+        reactions: [
+            {
+                id: 'reaction',
+                sequenceId: 'leave',
+                delayMs: 1000,
+                trigger: { kind: 'enemy_visible', distanceTiles: 5 },
+            },
+            {
+                id: 'early-result',
+                sequenceId: 'leave',
+                delayMs: 1000,
+                trigger: {
+                    kind: 'step_result',
+                    stepId: 'early',
+                    status: 'succeeded',
+                },
+            },
+        ],
+    })
+    f.tick(19)
+    expect(f.snapshot().run?.results).toHaveLength(1)
+    f.setThreat(undefined)
+    f.tick()
+    expect(f.snapshot().run?.results).toHaveLength(1)
+    f.setThreat(enemy)
+    f.tick()
+    expect(f.snapshot().run?.results).toHaveLength(2)
+    expect(f.snapshot().run?.results[1]?.status).toBe('succeeded')
+})
+
+it('keeps the same validated follow action through the listening window and cancels it on pause', () => {
+    const f = scenarioFixture()
+    const friendly = new GameCharacter({
+        id: 'friendly',
+        nickname: 'Friendly',
+        archetype: 'human',
+        controllerKind: 'network_player',
+        spawnPosition: { x: 100, y: 24 },
+    })
+    f.characters.set(friendly.id, friendly)
+    f.start({
+        ...definition([{ id: 'work', kind: 'wait', durationMs: 10_000 }]),
+        sequences: [
+            {
+                id: 'meet',
+                name: 'Meet',
+                steps: [
+                    { id: 'follow', kind: 'follow', target: 'reaction_target' },
+                ],
+            },
+        ],
+        reactions: [
+            {
+                id: 'friend',
+                sequenceId: 'meet',
+                trigger: {
+                    kind: 'friendly_nearby',
+                    distanceTiles: 6,
+                    onlyWhenNotFollowing: true,
+                },
+            },
+        ],
+    })
+    f.tick()
+    expect(snapshotControl(f.actor)).toMatchObject({
+        mode: 'follow',
+        targetId: friendly.id,
+    })
+    expect(f.snapshot().run?.phase).toBe('between_passes')
+    f.tick(20)
+    expect(f.actor.position.x).toBeGreaterThan(24)
+    f.command({ type: 'scenario_pause' })
+    expect(snapshotControl(f.actor)).toMatchObject({
+        mode: 'none',
+        targetId: null,
+    })
+    expect(f.actor.hasPath()).toBe(false)
+})
+
+it('does not replace a reaction target lost during a sequence with another visible friendly', () => {
+    const f = scenarioFixture()
+    const friend = new GameCharacter({
+        id: 'friend',
+        nickname: 'Friend',
+        archetype: 'human',
+        controllerKind: 'network_player',
+        spawnPosition: { x: 60, y: 24 },
+    })
+    const other = new GameCharacter({
+        id: 'other',
+        nickname: 'Other',
+        archetype: 'human',
+        controllerKind: 'network_player',
+        spawnPosition: { x: 80, y: 24 },
+    })
+    f.characters.set(friend.id, friend)
+    f.characters.set(other.id, other)
+    f.start({
+        ...definition([]),
+        sequences: [
+            {
+                id: 'meet',
+                name: 'Meet',
+                steps: [
+                    { id: 'wait', kind: 'wait', durationMs: 100 },
+                    { id: 'follow', kind: 'follow', target: 'reaction_target' },
+                ],
+            },
+        ],
+        reactions: [
+            {
+                id: 'friend',
+                sequenceId: 'meet',
+                trigger: { kind: 'friendly_nearby', distanceTiles: 6 },
+            },
+        ],
+    })
+    f.tick()
+    friend.locationId = 'map-2-1'
+    f.tick(3)
+    expect(f.snapshot().run).toMatchObject({
+        phase: 'reaction',
+        reactionId: 'friend',
+    })
+    expect(snapshotControl(f.actor)).toMatchObject({
+        mode: 'none',
+        targetId: null,
+    })
 })
 it('walks for longer than ten seconds without consuming its failure budget', () => {
     const f = scenarioFixture([], 100)

@@ -35,11 +35,11 @@ it('binds explicit visible targets to their authored location when saving', () =
         f.command({ type: 'scenario_save', scenario: definition(steps) })
     ).toBeNull()
     const saved = f.snapshot().scenarios[0]
-    expect(saved?.steps[0]).toMatchObject({
+    expect(saved?.main[0]).toMatchObject({
         destination: { locationId: CENTER_LOCATION_ID },
     })
-    expect(saved?.steps[1]).toMatchObject({ locationId: CENTER_LOCATION_ID })
-    expect(saved?.steps[2]).not.toHaveProperty('locationId')
+    expect(saved?.main[1]).toMatchObject({ locationId: CENTER_LOCATION_ID })
+    expect(saved?.main[2]).not.toHaveProperty('locationId')
 })
 
 it('never replaces a pinned chest with an equal ID in another location', () => {

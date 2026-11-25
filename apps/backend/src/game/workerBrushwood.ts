@@ -7,13 +7,15 @@ import type { GameCharacter } from './character'
 import { distance } from './math'
 import { resourceApproach, resourceReachable } from './resourcePlacement'
 import type { GameRoom } from './room'
+import { scenarioGatherCommand } from './scenarioWork'
 import { recordWorkerActivity } from './workerActivityState'
 import { executeWorkerAdventure } from './workerCommands'
-import { stop } from './workerNavigation'
+import { stop, WorkerFieldRoute } from './workerNavigation'
 
 /** A separate work budget; incidental tree drops never spend it. */
 export class WorkerBrushwood {
     private nextWorkAt = 0
+    private readonly fieldRoute = new WorkerFieldRoute()
 
     public update(actor: GameCharacter, room: GameRoom, now: number): void {
         if (!this.available(actor, room, now)) {
@@ -49,8 +51,12 @@ export class WorkerBrushwood {
             }
             recordBrushwoodSite(actor, node, now)
             if (!resourceReachable(actor, bounds, navigation)) {
-                actor.setPath(
-                    navigation.findPathWorld(actor.position, approach)
+                this.fieldRoute.advance(
+                    actor,
+                    room,
+                    { ...node, position: approach },
+                    2,
+                    now
                 )
                 return
             }
@@ -58,7 +64,7 @@ export class WorkerBrushwood {
             const result = executeWorkerAdventure(
                 actor,
                 room,
-                { type: 'gather', nodeId: node.id },
+                scenarioGatherCommand(node.id),
                 now
             )
             if (result.accepted) {

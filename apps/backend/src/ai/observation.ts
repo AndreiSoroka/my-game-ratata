@@ -17,6 +17,7 @@ import type { NavigationService } from '../game/navigation'
 import { NPC_OBSERVATION_RADIUS, visibilityRadius } from '../game/queries'
 import { observeCity } from './cityObservation'
 import { knownGuidePlaces } from './guideTargets'
+import { addNpcScenarioObservation } from './npcScenarios'
 import { observedCharacterAttack, observedGraves } from './observationCombat'
 import { environmentTargets } from './observationEnvironment'
 import { buildingTargets, landmarkTargets } from './observationPlaces'
@@ -99,6 +100,7 @@ export function buildNpcAiObservation(
         capabilities: npcAiCapabilities(role, targets, dialogue, actor),
     }
     Object.assign(observation, { social: snapshot.social })
+    addNpcScenarioObservation(observation, actor, role, snapshot.automation)
     updateNpcAiSocialCapabilities(observation)
     return structuredClone(observation)
 }

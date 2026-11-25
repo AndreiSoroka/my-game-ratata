@@ -68,11 +68,12 @@ const destination = {
 }
 const steps = {
     type: 'array',
-    minItems: 1,
     maxItems: 64,
     items: {
         oneOf: [
-            step('go', { destination }),
+            step('go', { destination, dash: { type: 'boolean' } }, [
+                'destination',
+            ]),
             step('search', { target: search, itemId }, ['target']),
             step('gather', {
                 resource: {
@@ -93,7 +94,23 @@ const steps = {
                     ],
                 },
             }),
-            step('attack'),
+            step(
+                'attack',
+                { target: { enum: ['visible_enemy', 'reaction_target'] } },
+                []
+            ),
+            step('follow', {
+                target: { enum: ['nearest_friendly', 'reaction_target'] },
+            }),
+            step('cast', {
+                abilityId: { enum: scenarioAbilityIds },
+                target: { enum: ['self', 'visible_enemy', 'reaction_target'] },
+            }),
+            step('farm', {
+                action: { enum: ['sow', 'harvest'] },
+                plotId: id,
+                locationId,
+            }),
             step('pickup', { itemId }, []),
             step(
                 'deposit',
@@ -123,6 +140,30 @@ const steps = {
         ],
     },
 }
+const tileDistance = { type: 'integer', minimum: 1, maximum: 64 }
+const scenarioTrigger = {
+    oneOf: [
+        object({
+            kind: { const: 'enemy_visible' },
+            distanceTiles: tileDistance,
+        }),
+        object(
+            {
+                kind: { const: 'friendly_nearby' },
+                distanceTiles: tileDistance,
+                onlyWhenNotFollowing: { type: 'boolean' },
+            },
+            ['kind', 'distanceTiles']
+        ),
+        object({ kind: { const: 'inventory_full' } }),
+        object({ kind: { const: 'plot_ripe' }, plotId: id, locationId }),
+        object({
+            kind: { const: 'step_result' },
+            stepId: id,
+            status: { enum: ['succeeded', 'failed'] },
+        }),
+    ],
+}
 export const scenarioDecisionSchemas = [
     command('marker_create', { name }, []),
     command('marker_rename', { markerId: id, name }),
@@ -131,14 +172,40 @@ export const scenarioDecisionSchemas = [
         scenario: object({
             id,
             name,
-            steps,
+            main: steps,
             repeat: {
                 oneOf: [
                     { type: 'null' },
                     { type: 'integer', minimum: 1, maximum: 10000 },
                 ],
             },
-            threat: { enum: ['continue', 'attack', 'flee'] },
+            sequences: {
+                type: 'array',
+                maxItems: 64,
+                items: object({ id, name, steps: { ...steps, minItems: 1 } }),
+            },
+            reactions: {
+                type: 'array',
+                maxItems: 64,
+                items: object(
+                    {
+                        id,
+                        trigger: scenarioTrigger,
+                        sequenceId: id,
+                        delayMs: {
+                            type: 'integer',
+                            minimum: 0,
+                            maximum: 3600000,
+                        },
+                        notification: {
+                            type: 'string',
+                            minLength: 1,
+                            maxLength: 160,
+                        },
+                    },
+                    ['id', 'trigger', 'sequenceId']
+                ),
+            },
         }),
     }),
     command('scenario_delete', { scenarioId: id }),
@@ -148,4 +215,5 @@ export const scenarioDecisionSchemas = [
     ),
     command('release_input'),
 ]
+import { scenarioAbilityIds } from '../contracts/src/scenarios.ts'
 import { WORLD_LOCATION_DEFINITIONS } from '../contracts/src/world.ts'

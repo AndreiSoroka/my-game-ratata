@@ -52,7 +52,7 @@ test('MCP exposes bounded ordinary scenario commands and route appends', () => {
         (entry) => entry.properties.type.const === 'scenario_save'
     )
     assert.equal(save.additionalProperties, false)
-    assert.equal(save.properties.scenario.properties.steps.maxItems, 64)
+    assert.equal(save.properties.scenario.properties.main.maxItems, 64)
     assert.equal(save.properties.scenario.additionalProperties, false)
     const start = decisions.find(
         (entry) => entry.properties.type.const === 'scenario_start'
@@ -74,7 +74,7 @@ test('MCP qualifies explicit scenario targets by authored location while nearest
     const save = act.inputSchema.properties.decision.oneOf.find(
         (entry) => entry.properties.type.const === 'scenario_save'
     )
-    const choices = save.properties.scenario.properties.steps.items.oneOf
+    const choices = save.properties.scenario.properties.main.items.oneOf
     const go = choices.find((entry) => entry.properties.kind.const === 'go')
     const visible = go.properties.destination.oneOf.filter(
         (entry) => entry.properties.kind.const === 'visible'

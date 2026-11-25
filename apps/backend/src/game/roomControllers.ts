@@ -1,6 +1,8 @@
 import type { GameCharacter } from './character'
 import { advanceCharacterControl } from './characterControl'
+import type { CharacterController } from './controllers'
 import { EchoController } from './echoController'
+import { EconomyWorkerController } from './economyWorkers'
 import { canYieldWhileIdle } from './idleNpcSpacing'
 import type { GameRoom } from './room'
 import type { SimulationContext } from './roomSimulation'
@@ -44,9 +46,14 @@ export function advanceControllers(
             continue
         }
         if (
-            room.scenarios.advance(character, room, now, conversations.has(id))
+            scenarioOwnsTick(
+                controller,
+                character,
+                room,
+                conversations.has(id),
+                now
+            )
         ) {
-            pauseWorkerActivity(character, 'scenario', now)
             continue
         }
         if (conversations.has(id)) {
@@ -65,6 +72,29 @@ export function advanceControllers(
         recordIdleYield(character, room, now, yielding)
     }
     return yielding
+}
+
+function scenarioOwnsTick(
+    controller: CharacterController,
+    actor: GameCharacter,
+    room: GameRoom,
+    conversing: boolean,
+    now: number
+): boolean {
+    if (
+        !conversing &&
+        controller instanceof EconomyWorkerController &&
+        room.scenarios.busy(actor.id) &&
+        controller.advanceIncident(actor, room, now)
+    ) {
+        room.scenarios.defer(actor.id, now)
+        return true
+    }
+    if (!room.scenarios.advance(actor, room, now, conversing)) {
+        return false
+    }
+    pauseWorkerActivity(actor, 'scenario', now)
+    return true
 }
 
 function recordIdleYield(

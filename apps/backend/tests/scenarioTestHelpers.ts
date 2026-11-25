@@ -1,28 +1,34 @@
 import {
+    type AbilityClientMessage,
     type AdventureClientMessage,
     type AdventureResourceNode,
     CENTER_LOCATION_ID,
+    type CharacterControlCommand,
     type GameEventPayload,
     type ScenarioDefinition,
 } from '@my-game-ratata/contracts'
 
+import { handleAbilityCommand } from '../src/game/abilityCommands'
 import { AdventureService } from '../src/game/adventure'
 import { GameCharacter } from '../src/game/character'
+import { setCharacterControl } from '../src/game/characterControl'
 import { executeContainerCommand } from '../src/game/containerCommands'
 import { createItemInstance, equipDirect } from '../src/game/inventory'
 import { advanceCharacter } from '../src/game/movement'
 import { NavigationService } from '../src/game/navigation'
+import { findVisibleTarget } from '../src/game/queries'
 import type { GameRoom } from '../src/game/room'
 import { ScenarioService } from '../src/game/scenarios'
 import { WorldInventory } from '../src/game/worldInventory'
 
 export function scenarioFixture(
     nodes: AdventureResourceNode[] = [],
-    width = 30
+    width = 30,
+    height = 30
 ) {
     let now = 1000
     let threat: GameCharacter | undefined
-    const navigation = fixtureNavigation(width)
+    const navigation = fixtureNavigation(width, height)
     const actor = new GameCharacter({
         id: 'player-1',
         nickname: 'Тест',
@@ -40,45 +46,13 @@ export function scenarioFixture(
     const inventory = new WorldInventory(navigation, CENTER_LOCATION_ID)
     const events: GameEventPayload[] = []
     const scenarios = fixtureScenarios(characters)
-    const room = {
-        getCharacter: (id: string) => characters.get(id),
-        navigationFor: () => navigation,
-        adventureForWorkers: () => adventure,
-        findVisibleTarget: () => threat,
-        scenarioEnvironment: () => ({
-            chests: inventory.snapshotChests(),
-            items: inventory.snapshotItems(),
-        }),
-        requestAdventure: (
-            character: GameCharacter,
-            command: AdventureClientMessage,
-            at: number
-        ) =>
-            adventure.handleResult(
-                character,
-                command,
-                [...characters.values()],
-                navigation,
-                at
-            ),
-        publishEvents: (next: GameEventPayload[]) => events.push(...next),
-        requestPickup: (character: GameCharacter, id: string, at: number) =>
-            inventory.pickupItem(character, id, at),
-        chestActions: {
-            handleResult: (
-                character: GameCharacter,
-                message: Parameters<typeof executeContainerCommand>[2],
-                at: number
-            ) =>
-                executeContainerCommand(
-                    inventory.containers,
-                    character,
-                    message,
-                    at
-                ),
-        },
-        requestAttack: () => undefined,
-    } as unknown as GameRoom
+    const room = fixtureRoom(
+        characters,
+        navigation,
+        adventure,
+        inventory,
+        events
+    )
     return {
         actor,
         characters,
@@ -89,7 +63,13 @@ export function scenarioFixture(
         room,
         navigation,
         setThreat(value: GameCharacter | undefined) {
+            if (threat !== undefined) {
+                characters.delete(threat.id)
+            }
             threat = value
+            if (value !== undefined) {
+                characters.set(value.id, value)
+            }
         },
         snapshot: () => scenarios.snapshot(actor, now),
         command: (command: Parameters<ScenarioService['handle']>[1]) =>
@@ -130,15 +110,95 @@ export function scenarioFixture(
         },
     }
 }
+function fixtureRoom(
+    characters: Map<string, GameCharacter>,
+    navigation: NavigationService,
+    adventure: AdventureService,
+    inventory: WorldInventory,
+    events: GameEventPayload[]
+): GameRoom {
+    const room = {
+        getCharacter: (id: string) => characters.get(id),
+        navigationFor: () => navigation,
+        adventureForWorkers: () => adventure,
+        charactersFor: (character: GameCharacter) =>
+            [...characters.values()].filter(
+                (other) => other.locationId === character.locationId
+            ),
+        findVisibleTarget: (
+            character: GameCharacter,
+            radius: number,
+            at: number
+        ) =>
+            findVisibleTarget(
+                characters.values(),
+                navigation,
+                character,
+                radius,
+                at
+            ),
+        requestControl: (
+            character: GameCharacter,
+            command: CharacterControlCommand,
+            at: number
+        ): boolean => setCharacterControl(character, command, room, at),
+        requestAbility: (
+            character: GameCharacter,
+            message: AbilityClientMessage,
+            at: number
+        ) =>
+            handleAbilityCommand(character, message, {
+                characters: [...characters.values()],
+                navigation,
+                now: at,
+            }),
+        scenarioEnvironment: () => ({
+            chests: inventory.snapshotChests(),
+            items: inventory.snapshotItems(),
+        }),
+        requestAdventure: (
+            character: GameCharacter,
+            command: AdventureClientMessage,
+            at: number
+        ) =>
+            adventure.handleResult(
+                character,
+                command,
+                [...characters.values()],
+                navigation,
+                at
+            ),
+        publishEvents: (next: GameEventPayload[]) => events.push(...next),
+        requestPickup: (character: GameCharacter, id: string, at: number) =>
+            inventory.pickupItem(character, id, at),
+        chestActions: {
+            handleResult: (
+                character: GameCharacter,
+                message: Parameters<typeof executeContainerCommand>[2],
+                at: number
+            ) =>
+                executeContainerCommand(
+                    inventory.containers,
+                    character,
+                    message,
+                    at
+                ),
+        },
+        requestAttack: () => undefined,
+    } as unknown as GameRoom
+    return room
+}
+
 export function definition(
-    steps: ScenarioDefinition['steps']
+    main: ScenarioDefinition['main']
 ): ScenarioDefinition {
     return {
         id: 'test',
         name: 'Тестовый сценарий',
         repeat: 1,
-        threat: 'continue',
-        steps,
+        main,
+        sequences: [],
+        reactions: [],
     }
 }
 export function treeNode(): AdventureResourceNode {
@@ -156,15 +216,15 @@ export function treeNode(): AdventureResourceNode {
     }
 }
 
-function fixtureNavigation(width: number): NavigationService {
+function fixtureNavigation(width: number, height: number): NavigationService {
     return new NavigationService({
         id: 'scenario-test',
         width,
-        height: 30,
+        height,
         tileWidth: 16,
         tileHeight: 16,
         solidLayerNames: [],
-        solid: Array<boolean>(width * 30).fill(false),
+        solid: Array<boolean>(width * height).fill(false),
     })
 }
 

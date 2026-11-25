@@ -2,7 +2,6 @@ import type { GameCharacter } from './character'
 import type { CharacterController } from './controllers'
 import {
     advanceNecromancerHeartRite,
-    approachStudyLandmark,
     canActAsNecromancer,
     moveNecromancer,
     performNecromancerCombatIntent,
@@ -25,6 +24,7 @@ import {
     NecromancerPlanning,
 } from './necromancerPlanning'
 import { NecromancerRetinue } from './necromancerRetinue'
+import { NecromancerScenario } from './necromancerScenario'
 import { NecromancerSpeech } from './necromancerSpeech'
 import {
     type NecromancerModelDecision,
@@ -44,17 +44,17 @@ export class NecromancerController implements CharacterController {
     private readonly planning = new NecromancerPlanning()
     private readonly speech = new NecromancerSpeech()
     public readonly journal = this.planning.journal
-    private readonly visited = new Map<string, string | undefined>()
     private readonly offeredHelp = new Set<string>()
     private nextStepAt = -Infinity
-    private nextRestAt = -Infinity
     private recovering = false
     private activity = 0
     private scene: NecromancerScene | undefined
     private readonly retinue: NecromancerRetinue
+    private readonly scenario: NecromancerScenario
 
     public constructor(private readonly refuge: NecromancerRefuge) {
         this.retinue = new NecromancerRetinue(refuge)
+        this.scenario = new NecromancerScenario(refuge.home)
     }
 
     public update(actor: GameCharacter, room: GameRoom, now: number): void {
@@ -75,10 +75,12 @@ export class NecromancerController implements CharacterController {
             actor,
             scene,
             () => this.options(actor, room, scene, now),
-            now
+            now,
+            (edit, offer) => this.scenario.queueEdit(edit, offer)
         )
         this.speech.advance(actor, room, scene, now, remark)
         if (canActAsNecromancer(actor, now)) {
+            this.scenario.applyPending(actor, scene, now)
             this.act(actor, room, scene, now)
         }
     }
@@ -105,10 +107,10 @@ export class NecromancerController implements CharacterController {
         if (phase === undefined) {
             return undefined
         }
-        const findings = [...this.visited.values()].filter(
+        const findings = [...this.scenario.visited.values()].filter(
             (clue) => clue !== undefined
         )
-        return this.planning.offer(
+        const offer = this.planning.offer(
             actor,
             room,
             scene,
@@ -118,6 +120,8 @@ export class NecromancerController implements CharacterController {
             this.options(actor, room, scene, now),
             now
         )
+        offer.context.scenario = this.scenarioObservation(actor)
+        return offer
     }
 
     public reserve(offer: NecromancerOffer): void {
@@ -133,6 +137,13 @@ export class NecromancerController implements CharacterController {
 
     public discardPendingAdvice(): void {
         this.planning.discardPendingAdvice()
+        this.scenario.discardPending()
+    }
+
+    public scenarioObservation(
+        actor: GameCharacter
+    ): NonNullable<NecromancerOffer['context']['scenario']> {
+        return this.scenario.observe(actor)
     }
 
     private options(
@@ -148,7 +159,7 @@ export class NecromancerController implements CharacterController {
             {
                 favoriteId: this.planning.favoriteId,
                 offeredHelp: this.offeredHelp,
-                ...(this.visited.size >= this.refuge.landmarks.length
+                ...(this.scenario.visited.size >= this.refuge.landmarks.length
                     ? { questChest: this.refuge.chestId }
                     : {}),
             },
@@ -185,8 +196,11 @@ export class NecromancerController implements CharacterController {
             defendNecromancer(actor, room, scene, scene.threat, options, now)
             return
         }
-        if (!tryNecromancerAid(actor, room, options, now)) {
-            this.study(actor, room, now)
+        if (
+            !tryNecromancerAid(actor, room, options, now) &&
+            this.scenario.study(actor, room, this.refuge.landmarks, now)
+        ) {
+            this.activity += 1
         }
     }
 
@@ -213,7 +227,7 @@ export class NecromancerController implements CharacterController {
         if (plan.tactic === 'rest' || plan.tactic === 'keep_distance') {
             if (!moveNecromancer(actor, room, this.refuge.home, false, now)) {
                 this.planning.plan = undefined
-                this.nextRestAt = now + 5_000
+                this.scenario.nextRestAt = now + 5_000
                 this.activity += 1
             }
             return true
@@ -252,6 +266,7 @@ export class NecromancerController implements CharacterController {
             plan?.tactic === 'hide'
         ) {
             this.recovering = true
+            this.scenario.quiet()
             seekNecromancerSafety(
                 actor,
                 room,
@@ -261,6 +276,9 @@ export class NecromancerController implements CharacterController {
                 plan?.tactic === 'hide',
                 now
             )
+            return true
+        }
+        if (this.scenario.combat(actor, room, threat, now)) {
             return true
         }
         return (
@@ -288,25 +306,5 @@ export class NecromancerController implements CharacterController {
             this.planning.plan = undefined
         }
         return targeted && performNecromancerTactic(actor, room, plan, now)
-    }
-
-    private study(actor: GameCharacter, room: GameRoom, now: number): void {
-        if (now < this.nextRestAt) {
-            return
-        }
-        const next = this.refuge.landmarks.find(
-            ({ id }) => !this.visited.has(id)
-        )
-        if (next === undefined) {
-            if (!moveNecromancer(actor, room, this.refuge.home, false, now)) {
-                this.nextRestAt = now + 30_000
-                this.activity += 1
-            }
-            return
-        }
-        if (approachStudyLandmark(actor, room, next, now)) {
-            this.visited.set(next.id, next.ashClue)
-            this.activity += 1
-        }
     }
 }

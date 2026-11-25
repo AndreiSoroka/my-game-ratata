@@ -1,4 +1,7 @@
-import { isBladeAbility } from '@my-game-ratata/contracts'
+import {
+    isBladeAbility,
+    parseConfigureScenario,
+} from '@my-game-ratata/contracts'
 
 import { parseAgentDecision } from '../game/agentDecisionParsing'
 import { type NpcServiceOffer, npcServiceOffers } from '../game/npcRoster'
@@ -40,6 +43,19 @@ export function parseNpcAiReply(input: unknown): NpcAiReply {
 function parseNpcDecision(input: unknown): NpcAiReply['decision'] | undefined {
     if (isObject(input)) {
         switch (input['type']) {
+            case 'configure_scenario': {
+                const parameters = input['parameters']
+                return parseConfigureScenario({
+                    ...input,
+                    parameters: isObject(parameters)
+                        ? Object.fromEntries(
+                              Object.entries(parameters).filter(
+                                  ([, value]) => value !== null
+                              )
+                          )
+                        : parameters,
+                })
+            }
             case 'travel_to':
                 return validDecisionId(input['targetKey']) &&
                     typeof input['inviteEscort'] === 'boolean'
@@ -178,6 +194,7 @@ const allowedDecisionTypes = new Set([
     'leave_companion',
     'propose_follow',
     'start_following',
+    'configure_scenario',
     'attack',
     'interact',
     'dialogue_choice',

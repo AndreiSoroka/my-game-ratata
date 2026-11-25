@@ -1,4 +1,7 @@
-import type { WorldEmptyMode } from '@my-game-ratata/contracts'
+import {
+    SCENARIO_PASS_MS,
+    type WorldEmptyMode,
+} from '@my-game-ratata/contracts'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { advanceEchoReturn } from '../src/game/echoReturn'
@@ -109,12 +112,17 @@ it('lets the active scenario decide about enemies and starts the minute at its d
     expect(returning).not.toHaveBeenCalled()
     setDeclaredHostility(player.actor, enemy.actor, false)
     for (
-        let tick = 0;
-        tick < 80 && world.scenarios.running(player.actor.id);
-        tick += 1
+        let elapsed = roomTickMs;
+        elapsed < SCENARIO_PASS_MS - roomTickMs;
+        elapsed += roomTickMs
     ) {
-        step(50)
+        step(roomTickMs)
     }
+    expect(player.view().run).toMatchObject({
+        status: 'running',
+        phase: 'between_passes',
+    })
+    step(roomTickMs)
 
     expect(player.view().run?.status).toBe('completed')
     expect(returning).not.toHaveBeenCalled()

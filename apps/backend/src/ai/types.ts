@@ -48,7 +48,8 @@ export interface NpcAiActorConfig {
 }
 
 export interface NpcAiTask {
-    background?: 'greeting' | 'self_activity' | 'combat_reaction'
+    background?:
+        'greeting' | 'self_activity' | 'combat_reaction' | 'scenario_review'
     cityReviewIntervalMs?: number
     targetId?: string
     deadline?: number

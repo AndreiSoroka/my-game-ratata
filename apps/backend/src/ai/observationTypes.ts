@@ -64,6 +64,9 @@ export interface NpcAiTarget {
 
 export interface NpcAiObservation {
     knownPlaces?: Array<import('./guideTargets').NpcKnownPlace>
+    scenarios?: NonNullable<
+        ReturnType<typeof import('./npcScenarios').observeNpcScenarios>
+    >
     contracts?: import('./contractProjection').KnownContracts
     itemDefinitions?: Partial<
         Record<import('@my-game-ratata/contracts').ItemId, { name: string }>

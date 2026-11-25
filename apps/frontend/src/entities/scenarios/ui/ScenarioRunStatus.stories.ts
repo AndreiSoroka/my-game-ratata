@@ -13,6 +13,11 @@ const run: ScenarioRunSnapshot = {
     status: 'running',
     stepIndex: 1,
     iteration: 1,
+    phase: 'main',
+    sequenceId: null,
+    sequenceName: null,
+    reactionId: null,
+    nextPassAt: null,
     remainingFailureMs: 0,
     reason: null,
     interruption: null,
@@ -27,6 +32,7 @@ type Args = {
     actorName?: string
     compact?: boolean
     canControl?: boolean
+    serverTime?: number
 }
 const meta = {
     title: 'Entities/scenarios/ScenarioRunStatus',
@@ -41,4 +47,18 @@ export const Default: Story = {}
 export const Compact: Story = { args: { compact: true } }
 export const Paused: Story = {
     args: { run: { ...run, status: 'paused', reason: 'В рюкзаке нет места для добычи.' } },
+}
+export const ActiveReaction: Story = {
+    args: {
+        actorName: undefined,
+        run: {
+            ...run,
+            phase: 'reaction',
+            sequenceId: 'retreat',
+            sequenceName: 'Отступление',
+            reactionId: 'enemy',
+            stepIndex: 0,
+            results: [{ stepId: 'shelter', status: 'running', failures: 0, reason: null }],
+        },
+    },
 }

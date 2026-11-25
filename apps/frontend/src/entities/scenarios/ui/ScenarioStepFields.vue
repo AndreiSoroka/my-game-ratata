@@ -5,43 +5,36 @@ import {
     type ItemId,
     itemIds,
     type MarkerDefinition,
+    type ScenarioAbilityId,
     type ScenarioStep,
 } from '@my-game-ratata/contracts'
 import { computed } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
-import { UiNumberInput } from '@/shared/ui/common'
-import { UiSelect } from '@/shared/ui/common'
+import { UiInput, UiNumberInput, UiSelect } from '@/shared/ui/common'
 
-import {
-    scenarioTargetKey,
-    scenarioTargetLabel,
-    type ScenarioVisibleTarget,
-} from '../model/scenarioDestination'
+import { type ScenarioFarmPlot, type ScenarioVisibleTarget } from '../model/scenarioDestination'
 import { newScenarioStep, scenarioSearchLabels, scenarioStepLabels } from '../model/scenarioEditor'
+import ScenarioCombatStepFields from './ScenarioCombatStepFields.vue'
+import ScenarioDepositStepFields from './ScenarioDepositStepFields.vue'
 import ScenarioDestinationEditor from './ScenarioDestinationEditor.vue'
+import ScenarioFarmPlotField from './ScenarioFarmPlotField.vue'
 
-const props = defineProps<{
-    modelValue: ScenarioStep
-    markers: MarkerDefinition[]
-    targets: ScenarioVisibleTarget[]
-}>()
+const props = withDefaults(
+    defineProps<{
+        modelValue: ScenarioStep
+        markers: MarkerDefinition[]
+        targets: ScenarioVisibleTarget[]
+        plots?: ScenarioFarmPlot[]
+        abilities?: ScenarioAbilityId[]
+        kinds?: ScenarioStep['kind'][]
+        allowReactionTarget?: boolean
+    }>(),
+    { plots: () => [], abilities: () => [] }
+)
 const emit = defineEmits<{ 'update:modelValue': [value: ScenarioStep] }>()
-const chests = computed(() => props.targets.filter((entry) => entry.kind === 'chest'))
-const explicitChestKey = computed(() => {
-    const step = props.modelValue
-    return step.kind === 'deposit' && step.chestId
-        ? scenarioTargetKey({ id: step.chestId, locationId: step.locationId })
-        : ''
-})
-const missingChest = computed(() => {
-    const step = props.modelValue
-    return (
-        step.kind === 'deposit' &&
-        step.chestId &&
-        !chests.value.some((entry) => scenarioTargetKey(entry) === explicitChestKey.value)
-    )
-})
+const allKinds = Object.keys(scenarioStepLabels) as ScenarioStep['kind'][]
+const kinds = computed(() => props.kinds ?? allKinds)
 const resources = {
     get wood() {
         return tGame('game.character.timber')
@@ -69,8 +62,13 @@ function value(event: Event): string {
     return (event.target as HTMLInputElement).value
 }
 function kind(event: Event): void {
-    const replacement = newScenarioStep(value(event) as ScenarioStep['kind'], props.markers)
-    emit('update:modelValue', { ...replacement, id: props.modelValue.id })
+    const replacement = newScenarioStep(
+        value(event) as ScenarioStep['kind'],
+        props.markers,
+        props.plots,
+        props.abilities
+    )
+    if (replacement) emit('update:modelValue', { ...replacement, id: props.modelValue.id })
 }
 function patch(fields: Record<string, unknown>): void {
     emit('update:modelValue', { ...props.modelValue, ...fields } as ScenarioStep)
@@ -81,23 +79,8 @@ function optionalItem(event: Event): void {
     delete step.itemId
     emit('update:modelValue', { ...step, ...(itemId ? { itemId: itemId as ItemId } : {}) })
 }
-function chest(event: Event): void {
-    if (props.modelValue.kind !== 'deposit') return
-    const key = value(event)
-    const candidate = chests.value.find((entry) => scenarioTargetKey(entry) === key)
-    if (key && !candidate) return
-    const step = { ...props.modelValue }
-    delete step.chestId
-    delete step.locationId
-    emit('update:modelValue', {
-        ...step,
-        ...(candidate
-            ? {
-                  chestId: candidate.id,
-                  ...(candidate.locationId ? { locationId: candidate.locationId } : {}),
-              }
-            : {}),
-    })
+function dash(event: Event): void {
+    patch({ dash: (event.target as HTMLInputElement).checked || undefined })
 }
 </script>
 
@@ -106,18 +89,26 @@ function chest(event: Event): void {
         <label>
             {{ tGame('game.automation.action') }}
             <UiSelect :border-width="4" :value="modelValue.kind" @change="kind">
-                <option v-for="(label, id) in scenarioStepLabels" :key="id" :value="id">
-                    {{ label }}
+                <option v-if="!kinds.includes(modelValue.kind)" :value="modelValue.kind" disabled>
+                    {{ scenarioStepLabels[modelValue.kind] }}
+                </option>
+                <option v-for="kindId in kinds" :key="kindId" :value="kindId">
+                    {{ scenarioStepLabels[kindId] }}
                 </option>
             </UiSelect>
         </label>
-        <ScenarioDestinationEditor
-            v-if="modelValue.kind === 'go'"
-            :model-value="modelValue.destination"
-            :markers="markers"
-            :targets="targets"
-            @update:model-value="patch({ destination: $event })"
-        />
+        <template v-if="modelValue.kind === 'go'">
+            <ScenarioDestinationEditor
+                :model-value="modelValue.destination"
+                :markers="markers"
+                :targets="targets"
+                @update:model-value="patch({ destination: $event })"
+            />
+            <label class="automation-checkbox">
+                <UiInput type="checkbox" :checked="modelValue.dash === true" @change="dash" />
+                {{ tGame('game.automation.dash') }}
+            </label>
+        </template>
         <template v-else-if="modelValue.kind === 'search'">
             <label>
                 {{ tGame('game.automation.whatLookFor') }}
@@ -165,65 +156,55 @@ function chest(event: Event): void {
                 v-if="modelValue.amount !== 'depleted'"
                 :label="tGame('game.trade.quantity')"
                 :min="1"
-                :max="1000"
+                :max="10000"
                 :model-value="modelValue.amount"
                 @update:model-value="patch({ amount: $event })"
             />
         </template>
-        <p v-else-if="modelValue.kind === 'attack'" class="automation-muted">
-            {{ tGame('game.automation.attacksValidVisibleEnemyUsing') }}
-        </p>
-        <template v-else-if="modelValue.kind === 'deposit'">
+        <ScenarioCombatStepFields
+            v-else-if="
+                modelValue.kind === 'attack' ||
+                modelValue.kind === 'cast' ||
+                modelValue.kind === 'follow'
+            "
+            :model-value="modelValue"
+            :abilities="abilities"
+            :allow-reaction-target="allowReactionTarget"
+            @update:model-value="emit('update:modelValue', $event)"
+        />
+        <template v-else-if="modelValue.kind === 'farm'">
             <label>
-                {{ tGame('game.automation.chest') }}
-                <UiSelect :border-width="4" :value="explicitChestKey" @change="chest">
-                    <option value="">{{ tGame('game.automation.nearestVisible') }}</option>
-                    <option
-                        v-for="target in chests"
-                        :key="scenarioTargetKey(target)"
-                        :value="scenarioTargetKey(target)"
-                    >
-                        {{ scenarioTargetLabel(target) }}
-                    </option>
-                    <option v-if="missingChest" :value="explicitChestKey" disabled>
-                        {{ tGame('game.automation.selectedChestIsCurrentlyOut') }}
-                    </option>
-                </UiSelect>
-            </label>
-            <label>
-                {{ tGame('game.automation.whatTransfer') }}
+                {{ tGame('game.automation.farm') }}
                 <UiSelect
                     :border-width="4"
-                    :value="modelValue.mode"
-                    @change="patch({ mode: value($event) })"
+                    :value="modelValue.action"
+                    @change="patch({ action: value($event) })"
                 >
-                    <option value="acquired">
-                        {{ tGame('game.automation.onlyItemsCollectedDuringThis') }}
-                    </option>
-                    <option value="all">{{ tGame('game.automation.fromEntireBackpack') }}</option>
+                    <option value="sow">{{ tGame('game.automation.sow') }}</option>
+                    <option value="harvest">{{ tGame('game.automation.harvest') }}</option>
                 </UiSelect>
             </label>
-            <label>
-                {{ tGame('game.automation.itemType') }}
-                <UiSelect
-                    :border-width="4"
-                    :value="modelValue.itemIds[0] ?? ''"
-                    @change="patch({ itemIds: value($event) ? [value($event)] : [] })"
-                >
-                    <option value="">{{ tGame('game.automation.allMatchingItems') }}</option>
-                    <option v-for="id in itemIds" :key="id" :value="id">
-                        {{ itemName(id) }}
-                    </option>
-                </UiSelect>
-            </label>
+            <ScenarioFarmPlotField
+                :plot-id="modelValue.plotId"
+                :location-id="modelValue.locationId"
+                :plots="plots"
+                @change="(plot) => patch({ plotId: plot.id, locationId: plot.locationId })"
+            />
         </template>
+        <ScenarioDepositStepFields
+            v-else-if="modelValue.kind === 'deposit'"
+            :model-value="modelValue"
+            :targets="targets"
+            @update:model-value="emit('update:modelValue', $event)"
+        />
         <template v-else-if="modelValue.kind === 'wait'">
             <UiNumberInput
                 :label="tGame('game.automation.seconds')"
-                :min="1"
+                :min="0"
                 :max="3600"
+                :decimals="3"
                 :model-value="modelValue.durationMs / 1000"
-                @update:model-value="patch({ durationMs: $event * 1000 })"
+                @update:model-value="patch({ durationMs: Math.round($event * 1000) })"
             />
         </template>
         <template v-else-if="modelValue.kind === 'recover'">

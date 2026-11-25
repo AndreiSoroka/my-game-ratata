@@ -13,9 +13,10 @@ function scenario(
     return {
         id: 'work',
         name: ' Forest work ',
-        steps,
+        main: steps,
         repeat: null,
-        threat: 'flee',
+        sequences: [],
+        reactions: [],
     }
 }
 
@@ -122,9 +123,9 @@ describe('scenario data validation', () => {
         ])
         const parsed = parseScenario(definition)
         expect(parsed?.name).toBe('Forest work')
-        expect(parsed?.steps).toHaveLength(11)
-        expect(parsed?.steps[8]).toMatchObject({ itemIds: ['wood', 'stone'] })
-        expect(parsed?.steps).not.toBe(definition['steps'])
+        expect(parsed?.main).toHaveLength(11)
+        expect(parsed?.main[8]).toMatchObject({ itemIds: ['wood', 'stone'] })
+        expect(parsed?.main).not.toBe(definition['main'])
     })
 
     it.each([
@@ -133,16 +134,16 @@ describe('scenario data validation', () => {
         { repeat: 10_001 },
         { threat: 'teleport' },
         { ownerId: 'other' },
-        { steps: [] },
-        { steps: null },
+        { main: [] },
+        { main: null },
         {
-            steps: [
+            main: [
                 { id: 'same', kind: 'attack' },
                 { id: 'same', kind: 'attack' },
             ],
         },
         {
-            steps: Array.from({ length: 65 }, (_, index) => ({
+            main: Array.from({ length: 65 }, (_, index) => ({
                 id: `step-${String(index)}`,
                 kind: 'attack',
             })),

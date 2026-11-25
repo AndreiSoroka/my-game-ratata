@@ -1,4 +1,8 @@
-import { getWorldLocationDefinition, type ScenarioSearchKind } from '@my-game-ratata/contracts'
+import {
+    type FarmPlotSnapshot,
+    getWorldLocationDefinition,
+    type ScenarioSearchKind,
+} from '@my-game-ratata/contracts'
 
 import { locationName } from '@/shared/lib/i18n'
 
@@ -8,6 +12,7 @@ export interface ScenarioVisibleTarget {
     label: string
     locationId?: string
 }
+export type ScenarioFarmPlot = Pick<FarmPlotSnapshot, 'id' | 'locationId' | 'name'>
 export function scenarioTargetKey(target: { id: string; locationId?: string }): string {
     return JSON.stringify([target.locationId ?? null, target.id])
 }

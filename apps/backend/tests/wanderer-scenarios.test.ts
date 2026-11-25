@@ -26,7 +26,12 @@ describe('authored idle city scenarios', () => {
             const scenario = createWandererScenario(character, navigation)
             expect(scenario?.repeat).toBeNull()
             const walks =
-                scenario?.steps.filter((step) => step.kind === 'go') ?? []
+                scenario?.main.filter((step) => step.kind === 'go') ?? []
+            expect(scenario?.reactions).toContainEqual({
+                id: 'danger',
+                trigger: { kind: 'enemy_visible', distanceTiles: 15 },
+                sequenceId: 'shelter',
+            })
             expect(walks.length).toBeGreaterThanOrEqual(2)
             for (const step of walks) {
                 if (step.destination.kind !== 'point') {

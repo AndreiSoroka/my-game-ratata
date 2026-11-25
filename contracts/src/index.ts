@@ -32,7 +32,7 @@ import type { CreatureType } from './creatures'
 export * from './control'
 import type { AutomationCommand } from './scenarios'
 export * from './creatures'
-export * from './scenarios'
+export * from './scenarioApi'
 import type {
     ChestClientMessage,
     ContainerKind,

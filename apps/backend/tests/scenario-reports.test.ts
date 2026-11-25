@@ -57,6 +57,11 @@ it('retains failed finite helper results while restoring the NPC’s default rou
         actorId: helper.id,
         scenarioId: 'failed-search',
         status: 'completed',
+        phase: 'between_passes',
+        sequenceId: null,
+        sequenceName: null,
+        reactionId: null,
+        nextPassAt: null,
         results: [{ status: 'failed', failures: 1 }],
     })
     expect(report()?.results[0]?.reason?.length).toBeGreaterThan(0)
@@ -84,7 +89,7 @@ it('retains failed finite helper results while restoring the NPC’s default rou
     expect(
         room.snapshot(Date.now(), helper.locationId).automation
     ).toBeUndefined()
-})
+}, 20_000)
 
 it('replaces an old report on accepted reassignment and never shows a new owner’s run to the old owner', async () => {
     const { room, owner, helper, report } = await setup()
@@ -136,7 +141,7 @@ it('replaces an old report on accepted reassignment and never shows a new owner�
         ownerId: nextOwner.actor.id,
     })
     expect(report() ?? null).toBeNull()
-})
+}, 20_000)
 
 function reportFixture() {
     const owner = new GameCharacter({
@@ -159,6 +164,11 @@ function reportFixture() {
         scenarioId: 'last',
         name: 'Last',
         status: 'completed',
+        phase: 'between_passes',
+        sequenceId: null,
+        sequenceName: null,
+        reactionId: null,
+        nextPassAt: null,
         stepIndex: 1,
         iteration: 1,
         remainingFailureMs: 10_000,

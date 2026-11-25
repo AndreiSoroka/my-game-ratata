@@ -1,7 +1,7 @@
 import type { ScenarioHelperSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import type { ScenarioReports } from './scenarioReports'
+import { hideScenarioReaction, type ScenarioReports } from './scenarioReports'
 import type { ScenarioAccess } from './scenarios'
 import type { ScenarioRuntime } from './scenarioState'
 
@@ -14,10 +14,6 @@ export function scenarioHelpers(
 ): ScenarioHelperSnapshot[] {
     const result: ScenarioHelperSnapshot[] = []
     for (const actor of access.characters()) {
-        const run = runs.get(actor.id)
-        const assigned =
-            run?.snapshot.ownerId === owner.id && actor.id !== owner.id
-        const report = reports.forOwner(owner.id, actor.id)
         if (
             actor.controllerKind === 'network_player' ||
             !actor.soul.canSpeak ||
@@ -25,7 +21,15 @@ export function scenarioHelpers(
         ) {
             continue
         }
-        if (!assigned && report === undefined && !nearby(owner, actor)) {
+        const run = runs.get(actor.id)
+        const assigned = run?.snapshot.ownerId === owner.id ? run : undefined
+        const canObserve = () => access.canObserve?.(owner, actor, now) ?? true
+        const report = reports.forOwner(owner.id, actor.id, canObserve)
+        if (
+            assigned === undefined &&
+            report === undefined &&
+            !nearby(owner, actor)
+        ) {
             continue
         }
         const allowed = access.canAssign(owner, actor, now)
@@ -35,10 +39,19 @@ export function scenarioHelpers(
             eligible: allowed.accepted,
             reason: allowed.error,
             canFollow: access.capabilities(actor).canFollow,
-            run: assigned ? run.snapshot : (report ?? null),
+            run:
+                assigned === undefined
+                    ? (report ?? null)
+                    : projectRun(assigned, canObserve()),
         })
     }
     return result
+}
+
+function projectRun(run: ScenarioRuntime, visible: boolean) {
+    return visible
+        ? run.snapshot
+        : hideScenarioReaction(run.snapshot, run.definition.main.length)
 }
 
 function nearby(owner: GameCharacter, actor: GameCharacter): boolean {

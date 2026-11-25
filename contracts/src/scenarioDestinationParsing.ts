@@ -1,5 +1,3 @@
-import { type ScenarioDestination } from '@my-game-ratata/contracts'
-
 import {
     object,
     onlyKeys,
@@ -10,6 +8,7 @@ import {
     validId,
     validLocationId,
 } from './scenarioParsingValues'
+import type { ScenarioDestination } from './scenarios'
 
 export function parseScenarioDestination(
     value: unknown

@@ -2,7 +2,9 @@ import type { AutomationCommand } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
+import { canObserveRoomCharacter } from './characterSight'
 import type { CompanionService } from './companions'
+import { visibleBuildingPoint } from './mapBuildings'
 import { recruitableNpc } from './npcRoster'
 import type { GameRoom } from './room'
 import { ScenarioService } from './scenarios'
@@ -44,6 +46,21 @@ export function createRoomScenarioService(
             requireConsent(owner, actor) ??
             companions.claimAssistance(owner, actor, context, now),
         hasConsent,
+        canObserve: (owner, actor, now) => {
+            if (owner.locationId !== actor.locationId) {
+                return false
+            }
+            const navigation = room.navigationFor(owner)
+            return (
+                canObserveRoomCharacter(owner, actor, navigation, now) &&
+                visibleBuildingPoint(
+                    navigation.grid.buildings ?? [],
+                    owner.position,
+                    actor.position
+                ) &&
+                navigation.hasLineOfSight(owner.position, actor.position)
+            )
+        },
         release: (ownerId, actor) => {
             companions.releaseAssistance(ownerId, actor)
         },

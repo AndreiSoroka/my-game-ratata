@@ -15,7 +15,10 @@ import { parseAbandonLife, parseJoin, parseLocale } from './identityMessages'
 import { parseMotionPing } from './motionProbe'
 import { parseStopCorrection } from './movementInputCommand'
 import { parsePortalBoundary } from './portalCommand'
-import { isAutomationCommand, parseAutomationCommand } from './scenarioCommands'
+import {
+    isAutomationCommand,
+    parseAutomationBoundary,
+} from './scenarioCommands'
 import { parseViewportCommand } from './viewportCommand'
 import { parseSocialBoundary } from './whisperCommands'
 import { parsePickupCommand } from './worldPickup'
@@ -74,10 +77,7 @@ export function parseClientMessage(
     }
 
     if (isAutomationCommand(record['type'])) {
-        const message = parseAutomationCommand(record)
-        return message === undefined
-            ? { error: 'Invalid automation command' }
-            : { message }
+        return parseAutomationBoundary(record)
     }
 
     if (isChestCommandType(record['type'])) {

@@ -237,6 +237,9 @@ it('continues local combat while awaiting advice and speaks its bounded reply du
     await advance(100)
     expect(turns).toHaveLength(1)
     expect(turns[0]?.context.phase).toBe('combat')
+    expect(turns[0]?.context.scenario?.availableAbilities).toContain(
+        'pray_grave'
+    )
     const startedCombatAction = savva.isActionLocked(Date.now())
     const initialSlimeHp = slime.hp
     await advance(1_500)
@@ -254,6 +257,11 @@ it('continues local combat while awaiting advice and speaks its bounded reply du
     visitor.position = { ...savva.position }
     const actionUntil = Date.now() + 4_000
     savva.lockAction(Date.now(), 4_000)
+    const scenarioEdit = {
+        kind: 'set_opening',
+        distanceCells: 5,
+        abilityId: 'pray_grave',
+    } as const
     turn.resolve({
         choice: turn.context.options.findIndex(
             ({ tactic }) => tactic === 'hunt_slime'
@@ -261,6 +269,7 @@ it('continues local combat while awaiting advice and speaks its bounded reply du
         note: 'Слизень ещё рядом.',
         bark: 'warning',
         speech: 'Осторожно, слизень рядом с тропой.',
+        scenarioEdit,
     })
     await advance(450)
     expect(necromancerController(savva)?.journal.at(-1)).toMatchObject({
@@ -269,7 +278,14 @@ it('continues local combat while awaiting advice and speaks its bounded reply du
     expect(speech()).toContain('Осторожно, слизень рядом с тропой.')
     expect(speech()).not.toContain('Слизень ещё рядом.')
     expect(savva.actionLockUntil).toBe(actionUntil)
+    expect(
+        necromancerController(savva)?.scenarioObservation(savva).opening
+    ).toBeNull()
     expect(turns).toHaveLength(1)
+    await advance(4_000)
+    expect(
+        necromancerController(savva)?.scenarioObservation(savva).opening
+    ).toEqual(scenarioEdit)
 })
 
 it('validates model-authored speech separately from the private tactical note and tone', () => {
@@ -299,6 +315,17 @@ it('validates model-authored speech separately from the private tactical note an
             bark: 'Чужие HP и другие числа',
         })
     ).toThrow('Invalid necromancer decision')
+    expect(() =>
+        parseNecromancerDecision({
+            choice: 0,
+            note: '',
+            scenarioEdit: {
+                kind: 'set_opening',
+                distanceCells: 5,
+                abilityId: 'city_portal',
+            },
+        })
+    ).toThrow('Invalid necromancer scenario edit')
 })
 
 it('walks away from an unengaged slime with an available hunter and leaves the skeleton idle', () => {

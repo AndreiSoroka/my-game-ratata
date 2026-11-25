@@ -214,8 +214,8 @@ export function approachScenarioNpc(
 
 export function roomScenario(
     id: string,
-    steps: ScenarioDefinition['steps'],
+    main: ScenarioDefinition['main'],
     repeat: number | null = 1
 ): ScenarioDefinition {
-    return { id, name: id, steps, repeat, threat: 'continue' }
+    return { id, name: id, main, repeat, sequences: [], reactions: [] }
 }

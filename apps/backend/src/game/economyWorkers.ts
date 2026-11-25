@@ -21,6 +21,7 @@ import type { WorkerJob } from './workerSpawns'
 /** The controller chooses work; every harvest, sale, repair and planting uses ordinary commands. */
 export class EconomyWorkerController implements CharacterController {
     private nextDecisionAt = 0
+    private nextIncidentAt = 0
     private initialized = false
     private readonly farming = new WorkerFarm()
     private requestIndex = 0
@@ -201,11 +202,23 @@ export class EconomyWorkerController implements CharacterController {
         return `work-${actor.id}-${String(this.requestIndex++)}`
     }
 
-    private interrupted(
+    public advanceIncident(
         actor: GameCharacter,
         room: GameRoom,
         now: number
     ): boolean {
+        if (!Object.hasOwn(room, 'workerRequests')) {
+            return false
+        }
+        if (now < this.nextIncidentAt) {
+            const request = room.workerRequests.forWorker(actor.id)
+            return (
+                request !== null &&
+                request.stage !== 'completed' &&
+                request.stage !== 'cancelled'
+            )
+        }
+        this.nextIncidentAt = now + 500
         if (this.job === 'farmer') {
             this.farming.reconcile(actor, room)
         }
@@ -213,27 +226,32 @@ export class EconomyWorkerController implements CharacterController {
             this.job === 'farmer'
                 ? this.farming.target
                 : resourceWorkTarget(this.gathering.selected)
-        if (
-            Object.hasOwn(room, 'workerRequests') &&
-            room.workerRequests.updateWorker(
-                actor,
-                this.job,
-                room,
-                now,
-                target,
-                (message) => {
-                    this.gathering.selected = undefined
-                    recordWorkerProbeWork(
-                        actor,
-                        room,
-                        message,
-                        this.job,
-                        now,
-                        this.gathering.nextWorkAt
-                    )
-                }
-            )
-        ) {
+        return room.workerRequests.updateWorker(
+            actor,
+            this.job,
+            room,
+            now,
+            target,
+            (message) => {
+                this.gathering.selected = undefined
+                recordWorkerProbeWork(
+                    actor,
+                    room,
+                    message,
+                    this.job,
+                    now,
+                    this.gathering.nextWorkAt
+                )
+            }
+        )
+    }
+
+    private interrupted(
+        actor: GameCharacter,
+        room: GameRoom,
+        now: number
+    ): boolean {
+        if (this.advanceIncident(actor, room, now)) {
             return true
         }
         if (!canPerformSkillAction(actor, now)) {

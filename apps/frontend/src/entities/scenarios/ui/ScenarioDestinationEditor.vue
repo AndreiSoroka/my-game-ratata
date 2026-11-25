@@ -98,7 +98,13 @@ function target(event: Event): void {
                     </option>
                 </optgroup>
                 <option v-if="missingMarker" :value="selected" disabled>
-                    {{ tGame('game.automation.markerDeleted') }}
+                    {{
+                        tGame(
+                            modelValue.kind === 'marker' && !modelValue.markerId
+                                ? 'game.automation.noMarkerSelected'
+                                : 'game.automation.markerDeleted'
+                        )
+                    }}
                 </option>
                 <optgroup :label="tGame('game.automation.visibleTargetsNearby')">
                     <option

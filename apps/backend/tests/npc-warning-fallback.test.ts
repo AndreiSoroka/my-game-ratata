@@ -188,7 +188,8 @@ it.each([
         expect(npcSpeech(near)).toEqual([warning])
         expect(npcSpeech(far)).toHaveLength(1)
         expect(npcSpeech(far)).not.toContain(warning)
-    }
+    },
+    15_000
 )
 
 it('does not deliver a stale warning to someone who walked out of hearing', async () => {

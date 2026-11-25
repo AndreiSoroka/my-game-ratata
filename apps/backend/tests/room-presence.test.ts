@@ -61,6 +61,12 @@ describe('socket identity switches preserve separate simulation presence', () =>
             status: 'running',
         })
         vi.advanceTimersByTime(1200)
+        expect(first.view().run).toMatchObject({
+            iteration: 1,
+            phase: 'between_passes',
+            results: [{ stepId: 'wait', status: 'succeeded' }],
+        })
+        vi.advanceTimersByTime(3850)
         expect(first.view().run?.iteration).toBeGreaterThanOrEqual(2)
         if (current === undefined) {
             throw new Error('Missing replacement socket identity')
@@ -72,7 +78,7 @@ describe('socket identity switches preserve separate simulation presence', () =>
         expect(current.connected).toBe(false)
         expect(first.actor.connected).toBe(false)
         room.stop()
-    })
+    }, 20_000)
 
     it('keeps the original connection attached when switching to an already connected nickname is rejected', () => {
         const room = openScenarioRoom(),

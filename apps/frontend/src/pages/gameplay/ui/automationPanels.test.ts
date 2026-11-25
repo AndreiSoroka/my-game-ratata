@@ -1,4 +1,4 @@
-import type { ScenarioStep } from '@my-game-ratata/contracts'
+import type { AutomationCommand, ScenarioStep } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 
@@ -89,7 +89,7 @@ it('edits and reorders a private scenario copy while retaining the running snaps
     expect(command).toMatchObject({
         type: 'scenario_save',
         scenario: {
-            steps: [{ id: 'wood' }, { id: 'go-tree' }, { id: 'go-chest' }, { id: 'stash' }],
+            main: [{ id: 'wood' }, { id: 'go-tree' }, { id: 'go-chest' }, { id: 'stash' }],
         },
     })
     expect(automation).toEqual(original)
@@ -119,6 +119,10 @@ it('keeps a new draft through repeated snapshots and sends only a server-approve
     expect(wrapper.get('input').element).toHaveProperty('value', 'Ожидание')
     expect(wrapper.findAll('.scenario-steps > li')).toHaveLength(1)
     await select.setValue('lumber')
+    await wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Сбросить изменения')!
+        .trigger('click')
     const target = wrapper
         .findAll('label')
         .find((label) => label.text().startsWith('Кто выполняет'))!
@@ -168,7 +172,7 @@ it('keeps run controls available outside editors without cancelling it on focus'
 
 it('retains numeric edits before blur across live snapshots, temporary clearing and reordering', async () => {
     const automation = automationFixture()
-    automation.scenarios[0]!.steps = [
+    automation.scenarios[0]!.main = [
         { id: 'wait-a', kind: 'wait', durationMs: 1000 },
         { id: 'wait-b', kind: 'wait', durationMs: 1000 },
     ]
@@ -196,7 +200,7 @@ it('retains numeric edits before blur across live snapshots, temporary clearing 
         {
             type: 'scenario_save',
             scenario: {
-                steps: [
+                main: [
                     { id: 'wait-b', durationMs: 20_000 },
                     { id: 'wait-a', durationMs: 30_000 },
                 ],
@@ -217,10 +221,11 @@ it('recognizes a saved definition after the server reorders object properties', 
             ...automation,
             scenarios: [
                 {
-                    steps: definition.steps.map(
+                    main: definition.main.map(
                         (step) => Object.fromEntries(Object.entries(step).reverse()) as ScenarioStep
                     ),
-                    threat: definition.threat,
+                    reactions: definition.reactions,
+                    sequences: definition.sequences,
                     repeat: definition.repeat,
                     name: definition.name,
                     id: definition.id,
@@ -235,4 +240,130 @@ it('recognizes a saved definition after the server reorders object properties', 
     expect(wrapper.emitted('command')?.at(-1)).toEqual([
         { type: 'scenario_start', scenarioId: 'lumber' },
     ])
+})
+
+it('copies a saved route with fresh identifiers and keeps reaction references valid', async () => {
+    const automation = automationFixture()
+    const original = automation.scenarios[0]!
+    original.sequences = [
+        { id: 'after', name: 'Ожидание', steps: [{ id: 'wait', kind: 'wait', durationMs: 1000 }] },
+    ]
+    original.reactions = [
+        {
+            id: 'rule',
+            trigger: { kind: 'step_result', stepId: original.main[0]!.id, status: 'succeeded' },
+            sequenceId: 'after',
+        },
+    ]
+    const wrapper = mount(ScenarioPanel, {
+        props: { automation, playerId: 'self', available: true, targets: [] },
+    })
+    wrappers.push(wrapper)
+    const button = (name: string) =>
+        wrapper.findAll('button').find((entry) => entry.text() === name)!
+    await button('Создать копию').trigger('click')
+    expect(wrapper.emitted('command')).toBeUndefined()
+    expect(button('Запустить').attributes('disabled')).toBeDefined()
+    await button('Сохранить').trigger('click')
+
+    const command = wrapper.emitted('command')?.at(-1)?.[0] as Extract<
+        AutomationCommand,
+        { type: 'scenario_save' }
+    >
+    expect(command.type).toBe('scenario_save')
+    expect(command.scenario.id).not.toBe(original.id)
+    expect(command.scenario.main[0]?.id).not.toBe(original.main[0]?.id)
+    expect(command.scenario.sequences[0]?.id).not.toBe(original.sequences[0]?.id)
+    expect(command.scenario.reactions[0]).toMatchObject({
+        sequenceId: command.scenario.sequences[0]?.id,
+        trigger: { kind: 'step_result', stepId: command.scenario.main[0]?.id },
+    })
+})
+
+it('checks template bindings and accepts pseudocode only after explicit apply', async () => {
+    const wrapper = mount(ScenarioPanel, {
+        props: {
+            automation: { ...automationFixture(), markers: [], scenarios: [] },
+            playerId: 'self',
+            available: true,
+            targets: [],
+        },
+    })
+    wrappers.push(wrapper)
+    const button = (name: string) =>
+        wrapper.findAll('button').find((entry) => entry.text() === name)!
+    await button('Готовые сценарии').trigger('click')
+    await button('Создать копию').trigger('click')
+    expect(wrapper.get('input').element).toHaveProperty('value', 'Лесоруб')
+    await button('Сохранить').trigger('click')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Сценарий не сохранён')
+    expect(wrapper.emitted('command')).toBeUndefined()
+
+    await button('Псевдокод').trigger('click')
+    const text = wrapper.get('textarea')
+    await text.setValue('repeat once\nmain {\n  unexpected\n}')
+    expect(button('Сохранить').attributes('disabled')).toBeDefined()
+    await button('Применить псевдокод').trigger('click')
+    expect(
+        wrapper.findAll('[role="alert"]').some((entry) => entry.text().includes('Строка 3'))
+    ).toBe(true)
+    expect(wrapper.emitted('command')).toBeUndefined()
+    await text.setValue('repeat once\nmain {\n  wait 1s\n}')
+    await button('Применить псевдокод').trigger('click')
+    await button('Конструктор').trigger('click')
+    expect(wrapper.findAll('.scenario-steps > li')).toHaveLength(1)
+    await button('Сохранить').trigger('click')
+    expect(wrapper.emitted('command')?.at(-1)?.[0]).toMatchObject({
+        type: 'scenario_save',
+        scenario: {
+            name: 'Лесоруб',
+            main: [{ kind: 'wait', durationMs: 1000 }],
+            sequences: [],
+            reactions: [],
+        },
+    })
+})
+
+it('creates a friendly reaction with the trigger character as the follow target', async () => {
+    const wrapper = mount(ScenarioPanel, {
+        props: {
+            automation: { ...automationFixture(), scenarios: [] },
+            playerId: 'self',
+            available: true,
+            targets: [],
+        },
+    })
+    wrappers.push(wrapper)
+    const button = (name: string) =>
+        wrapper.findAll('button').find((entry) => entry.text() === name)!
+    await button('Добавить последовательность').trigger('click')
+    const sequence = wrapper.get('ol[aria-label="Последовательности"]')
+    await sequence.get('select').setValue('follow')
+    await sequence
+        .findAll('button')
+        .find((entry) => entry.text() === 'Добавить шаг')!
+        .trigger('click')
+    const target = sequence.findAll('label').find((entry) => entry.text().startsWith('Выбор цели'))!
+    await target.get('select').setValue('reaction_target')
+    await button('Добавить реакцию').trigger('click')
+    const reaction = wrapper.get('ol[aria-label="Реакции"]')
+    await reaction.get('select').setValue('friendly_nearby')
+    await reaction.get('input[type="checkbox"]').setValue(true)
+    await button('Сохранить').trigger('click')
+    expect(wrapper.emitted('command')?.at(-1)?.[0]).toMatchObject({
+        type: 'scenario_save',
+        scenario: {
+            main: [],
+            sequences: [{ steps: [{ kind: 'follow', target: 'reaction_target' }] }],
+            reactions: [
+                {
+                    trigger: {
+                        kind: 'friendly_nearby',
+                        distanceTiles: 5,
+                        onlyWhenNotFollowing: true,
+                    },
+                },
+            ],
+        },
+    })
 })

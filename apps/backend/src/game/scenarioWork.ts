@@ -1,4 +1,8 @@
-import type { ScenarioStep } from '@my-game-ratata/contracts'
+import {
+    type AdventureClientMessage,
+    FARM_INTERACTION_RANGE,
+    type ScenarioStep,
+} from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
 import { countInventoryItem } from './inventory'
@@ -8,7 +12,74 @@ import { workingApproach } from './scenarioApproach'
 import { navigateScenario, type ScenarioOutcome } from './scenarioNavigation'
 import { retryOutcome } from './scenarioRetries'
 import type { ScenarioRuntime } from './scenarioState'
-import { type ScenarioTarget, visibleScenarioTargets } from './scenarioTargets'
+import {
+    type ScenarioTarget,
+    visibleScenarioPlot,
+    visibleScenarioTargets,
+} from './scenarioTargets'
+
+export function scenarioFarmCommand(
+    step: Pick<Extract<ScenarioStep, { kind: 'farm' }>, 'action' | 'plotId'>
+): Extract<AdventureClientMessage, { type: 'farm_action' }> {
+    return { type: 'farm_action', plotId: step.plotId, action: step.action }
+}
+
+export function scenarioGatherCommand(
+    nodeId: string
+): Extract<AdventureClientMessage, { type: 'gather' }> {
+    return { type: 'gather', nodeId }
+}
+
+export function farmScenario(
+    actor: GameCharacter,
+    run: ScenarioRuntime,
+    room: GameRoom,
+    step: Extract<ScenarioStep, { kind: 'farm' }>,
+    now: number
+): ScenarioOutcome {
+    const plot = visibleScenarioPlot(actor, room, step, now)
+    if (plot === undefined) {
+        return {
+            state: 'blocked',
+            reason: 'Выбранную грядку не видно в этой локации.',
+        }
+    }
+    if (step.action === 'sow' && plot.phase === 'growing') {
+        return { state: 'skipped', reason: 'На грядке уже растут посевы.' }
+    }
+    if (step.action === 'harvest' && plot.phase === 'growing') {
+        return { state: 'waiting', reason: 'Посевы ещё не созрели.' }
+    }
+    const move = navigateScenario(
+        actor,
+        run,
+        room,
+        plot.locationId,
+        plot.position,
+        FARM_INTERACTION_RANGE,
+        now
+    )
+    if (move.state !== 'done') {
+        return move
+    }
+    if (now < room.adventureForWorkers().workAvailableAt(actor)) {
+        return { state: 'waiting' }
+    }
+    if (now - run.step.lastActionAt < 500) {
+        return retryOutcome(run)
+    }
+    const before = structuredClone(actor.inventory)
+    const result = room.requestAdventure(actor, scenarioFarmCommand(step), now)
+    run.step.lastActionAt = now
+    room.publishEvents(result.events)
+    if (!result.accepted) {
+        run.step.lastFailure =
+            result.error ?? 'Работа на грядке сейчас недоступна.'
+        return retryOutcome(run)
+    }
+    run.ledger.acquired(before, actor.inventory)
+    return { state: 'done' }
+}
 
 export function gatherScenario(
     actor: GameCharacter,
@@ -65,12 +136,8 @@ function performGather(
     const count = countInventoryItem(actor.inventory, step.resource)
     const command =
         target.farmId === undefined
-            ? { type: 'gather' as const, nodeId: target.id }
-            : {
-                  type: 'farm_action' as const,
-                  plotId: target.farmId,
-                  action: 'harvest' as const,
-              }
+            ? scenarioGatherCommand(target.id)
+            : scenarioFarmCommand({ plotId: target.farmId, action: 'harvest' })
     const result = room.requestAdventure(actor, command, now)
     run.step.lastActionAt = now
     room.publishEvents(result.events)

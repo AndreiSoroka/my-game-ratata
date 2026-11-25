@@ -1,5 +1,6 @@
 import type {
     AdventureResourceNode,
+    FarmPlotSnapshot,
     ItemId,
     ScenarioSearchKind,
     Vector2,
@@ -8,10 +9,14 @@ import type {
 } from '@my-game-ratata/contracts'
 import { chestInteractionDistance } from '@my-game-ratata/contracts'
 
+import { allowedMode, availableActor, visibleTarget } from './autoActionTargets'
 import type { GameCharacter } from './character'
 import { chestHasLineOfSight } from './chestInteraction'
+import { canTargetByFaction } from './factions'
 import { distance } from './math'
 import type { GameRoom } from './room'
+
+const sightRange = 240
 
 export interface ScenarioTarget {
     id: string
@@ -22,6 +27,98 @@ export interface ScenarioTarget {
     character?: GameCharacter
     farmId?: string
 }
+
+export function visibleScenarioEnemy(
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number,
+    pinnedId?: string
+): GameCharacter | undefined {
+    if (pinnedId === undefined) {
+        return room.findVisibleTarget(actor, sightRange, now)
+    }
+    const target = visibleScenarioCharacter(actor, room, now, pinnedId)
+    return target?.alive === true && canTargetByFaction(actor, target, now)
+        ? target
+        : undefined
+}
+
+export function visibleScenarioCharacter(
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number,
+    targetId: string
+): GameCharacter | undefined {
+    const target = room.getCharacter(targetId)
+    return target !== actor &&
+        target?.trainingTarget === undefined &&
+        visibleTarget(actor, target, {
+            navigation: room.navigationFor(actor),
+            now,
+        })
+        ? target
+        : undefined
+}
+
+export function findFriendlyScenarioTarget(
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number,
+    distanceTiles?: number
+): GameCharacter | undefined {
+    const navigation = room.navigationFor(actor)
+    const range =
+        distanceTiles === undefined
+            ? sightRange
+            : Math.min(sightRange, distanceTiles * navigation.grid.tileWidth)
+    return room
+        .charactersFor(actor)
+        .filter(
+            (target) =>
+                isScenarioFriendly(actor, target, now) &&
+                distance(actor.position, target.position) <= range &&
+                visibleTarget(actor, target, { navigation, now })
+        )
+        .sort(
+            (first, second) =>
+                distance(actor.position, first.position) -
+                distance(actor.position, second.position)
+        )[0]
+}
+
+export function isScenarioFriendly(
+    actor: GameCharacter,
+    target: GameCharacter,
+    now: number
+): boolean {
+    return (
+        target !== actor &&
+        target.trainingTarget === undefined &&
+        availableActor(target) &&
+        allowedMode(actor, target, 'follow', now)
+    )
+}
+
+export function visibleScenarioPlot(
+    actor: GameCharacter,
+    room: GameRoom,
+    reference: { plotId: string; locationId: string },
+    now: number
+): FarmPlotSnapshot | undefined {
+    if (reference.locationId !== actor.locationId) {
+        return undefined
+    }
+    const plot = room
+        .adventureForWorkers()
+        .farmSnapshot(actor.locationId, now)
+        .find((candidate) => candidate.id === reference.plotId)
+    return plot !== undefined &&
+        distance(actor.position, plot.position) <= sightRange &&
+        room.navigationFor(actor).hasLineOfSight(actor.position, plot.position)
+        ? plot
+        : undefined
+}
+
 export function visibleScenarioTargets(
     actor: GameCharacter,
     room: GameRoom,
@@ -30,7 +127,7 @@ export function visibleScenarioTargets(
     now = Date.now()
 ): ScenarioTarget[] {
     if (kind === 'enemy') {
-        const target = room.findVisibleTarget(actor, 240, now)
+        const target = visibleScenarioEnemy(actor, room, now)
         return target === undefined
             ? []
             : [{ id: target.id, position: target.position, character: target }]

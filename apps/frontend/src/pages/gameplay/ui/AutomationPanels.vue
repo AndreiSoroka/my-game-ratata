@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import './automationControls.css'
 
-import type {
-    AutomationCommand,
-    AutomationSnapshot,
-    CharacterSnapshot,
-    ScenarioRunSnapshot,
-    WorldSnapshot,
+import {
+    type AutomationCommand,
+    type AutomationSnapshot,
+    type CharacterSnapshot,
+    scenarioAbilityIds,
+    type ScenarioRunSnapshot,
+    type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -40,6 +41,19 @@ const targets = computed(() =>
         props.characters,
         (position, bounds) => props.game?.isInteractionVisible(position, bounds, 240) ?? false
     )
+)
+const plots = computed(() =>
+    (props.snapshot.adventure?.farmPlots ?? []).filter((plot) =>
+        targets.value.some(
+            (target) =>
+                target.kind === 'grain' &&
+                target.id === plot.id &&
+                target.locationId === plot.locationId
+        )
+    )
+)
+const abilities = computed(() =>
+    scenarioAbilityIds.filter((id) => props.player.abilities?.known.includes(id))
 )
 const activeRuns = computed(() => {
     const runs = [automation.value.run, ...automation.value.helpers.map((entry) => entry.run)]
@@ -104,6 +118,7 @@ defineExpose({ open, close, hasOpenWindow: computed(() => activeWindow.value !==
             :key="run.actorId"
             :run="run"
             :actor-name="actorName(run.actorId)"
+            :server-time="snapshot.serverTime"
             compact
             :can-control="connected"
             @pause="control(run, 'scenario_pause')"
@@ -126,6 +141,9 @@ defineExpose({ open, close, hasOpenWindow: computed(() => activeWindow.value !==
         :player-id="player.id"
         :available="available"
         :targets="targets"
+        :plots="plots"
+        :abilities="abilities"
+        :server-time="snapshot.serverTime"
         @close="close"
         @command="emit('command', $event)"
     />

@@ -144,8 +144,9 @@ it('keeps a saved pinned definition clean after server normalization and a locat
             id: 'pinned',
             name: 'Перенос',
             repeat: 1,
-            threat: 'flee',
-            steps: [
+            sequences: [],
+            reactions: [],
+            main: [
                 { id: 'go', kind: 'go', destination: { kind: 'visible', target: 'chest' } },
                 { id: 'stash', kind: 'deposit', mode: 'acquired', itemIds: ['wood'] },
             ],
@@ -171,7 +172,7 @@ it('keeps a saved pinned definition clean after server normalization and a locat
         const command = wrapper.emitted('command')?.at(-1)?.[0]
         expect(command).toMatchObject({ type: 'scenario_save' })
         const saved = (command as Extract<AutomationCommand, { type: 'scenario_save' }>).scenario
-        expect(saved.steps).toMatchObject([
+        expect(saved.main).toMatchObject([
             { destination: { targetId: chestId, locationId: city } },
             { chestId, locationId: city },
         ])
@@ -179,8 +180,9 @@ it('keeps a saved pinned definition clean after server normalization and a locat
             id: saved.id,
             name: saved.name,
             repeat: saved.repeat,
-            threat: saved.threat,
-            steps: saved.steps,
+            main: saved.main,
+            sequences: saved.sequences,
+            reactions: saved.reactions,
         }
         await wrapper.setProps({
             automation: { ...automation, scenarios: [normalized] },

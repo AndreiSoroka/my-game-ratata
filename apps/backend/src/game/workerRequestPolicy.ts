@@ -1,6 +1,7 @@
 import type { AdventureClientMessage } from '@my-game-ratata/contracts'
 
 import type { AdventureActionResult } from './adventureTrading'
+import { agentSpeech } from './agentSpeech'
 import type { GameCharacter } from './character'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
@@ -175,10 +176,36 @@ function returnToClerk(
         incident.view.reason = null
         return
     }
+    publishWorkerReport(incident, actor, clerk, room, now)
+}
+
+function publishWorkerReport(
+    incident: WorkerIncident,
+    actor: GameCharacter,
+    clerk: GameCharacter,
+    room: GameRoom,
+    now: number
+): void {
+    const firstReport = incident.view.stage === 'reporting'
     incident.published = true
     incident.view.stage = incident.returnReady ? 'ready' : 'waiting'
     if (incident.returnReady) {
         incident.view.reason = null
+    }
+    if (firstReport || incident.returnReady) {
+        const report = agentSpeech(
+            actor,
+            {
+                type: 'speak',
+                targetId: clerk.id,
+                text: firstReport
+                    ? 'На моём рабочем участке замечена опасность. Прошу помощи.'
+                    : 'Я вернулся с участка. Рабочая проверка прошла успешно, награду можно выдать после сдачи.',
+            },
+            room,
+            now
+        )
+        room.publishEvents(report.events)
     }
 }
 

@@ -8,16 +8,18 @@ import {
 import type { GameCharacter } from './character'
 import { countInventoryItem } from './inventory'
 import type { GameRoom } from './room'
+import { scenarioFarmCommand } from './scenarioWork'
 import { recordWorkerActivity } from './workerActivityState'
 import { executeWorkerAdventure } from './workerCommands'
 import { recordFarmPlotIntent } from './workerFarmActivity'
 import {
-    approach,
     approachCharacter,
     sourceCost,
     stop,
+    WorkerFieldRoute,
 } from './workerNavigation'
 export class WorkerFarm {
+    private readonly fieldRoute = new WorkerFieldRoute()
     public remaining = 0
     public target: WorkerWorkTarget | undefined
 
@@ -83,7 +85,7 @@ export class WorkerFarm {
         now: number
     ): void {
         const service = room.adventureForWorkers()
-        if (!approach(actor, room, plot.locationId, plot.position)) {
+        if (!this.fieldRoute.advance(actor, room, plot, 36, now)) {
             if (hasNoRoute(actor)) {
                 this.finish(actor, room, now, {
                     reason: 'route',
@@ -139,7 +141,7 @@ export class WorkerFarm {
         const result = executeWorkerAdventure(
             actor,
             room,
-            { type: 'farm_action', plotId: plot.id, action },
+            scenarioFarmCommand({ plotId: plot.id, action }),
             now
         )
         this.remaining = service.farmSupply.remaining(actor.id)

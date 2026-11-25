@@ -42,8 +42,9 @@ export function automationFixture(): AutomationSnapshot {
                 id: 'lumber',
                 name: 'Древесина в сундук',
                 repeat: null,
-                threat: 'flee',
-                steps: [
+                sequences: [],
+                reactions: [],
+                main: [
                     {
                         id: 'go-tree',
                         kind: 'go',
@@ -91,6 +92,11 @@ export function scenarioRunFixture(
         status: 'running',
         stepIndex: 1,
         iteration: 1,
+        phase: 'main',
+        sequenceId: null,
+        sequenceName: null,
+        reactionId: null,
+        nextPassAt: null,
         remainingFailureMs: 0,
         reason: null,
         interruption: null,

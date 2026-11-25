@@ -77,6 +77,7 @@ describe('ordinary worker verification trips', () => {
             )
             expect(test.current().stage).toBe('returning')
             expect(test.worker.locationId).toBe(test.worksite.locationId)
+            expect(test.reports).toHaveLength(1)
             expect(
                 test.requests.checkTurnIn(
                     test.current().id,
@@ -93,6 +94,18 @@ describe('ordinary worker verification trips', () => {
             )
             expect(test.commands[0]?.locationId).toBe(test.worksite.locationId)
             expect(test.commands[0]?.permitted).toBe(true)
+            expect(test.reports).toEqual([
+                expect.objectContaining({
+                    actorId: test.worker.id,
+                    targetId: test.clerk.id,
+                }),
+                expect.objectContaining({
+                    actorId: test.worker.id,
+                    targetId: test.clerk.id,
+                }),
+            ])
+            expect(test.reports[0]?.text).toContain('замечена опасность')
+            expect(test.reports[1]?.text).toContain('проверка прошла успешно')
             expect(
                 test.requests.checkTurnIn(
                     test.current().id,

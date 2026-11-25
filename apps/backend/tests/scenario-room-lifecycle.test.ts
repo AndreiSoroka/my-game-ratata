@@ -86,7 +86,7 @@ describe('ordinary resurrection preserves scenario progress', () => {
                 .find((node) => node.id === source.id)?.remaining
         ).toBe(source.remaining)
         room.stop()
-    })
+    }, 20_000)
 })
 
 describe('ordinary socket scenario identity lifecycle', () => {

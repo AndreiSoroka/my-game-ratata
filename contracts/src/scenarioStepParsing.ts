@@ -1,9 +1,4 @@
-import {
-    ITEM_DEFINITIONS,
-    type ScenarioResourceKind,
-    type ScenarioStep,
-} from '@my-game-ratata/contracts'
-
+import { ITEM_DEFINITIONS } from './inventory'
 import { parseScenarioDestination } from './scenarioDestinationParsing'
 import {
     integer,
@@ -14,37 +9,81 @@ import {
     optionalItem,
     optionalPinnedLocationId,
     searchKind,
+    validFarmPlot,
     validId,
 } from './scenarioParsingValues'
+import {
+    scenarioAbilityIds,
+    scenarioAbilityTargets,
+    type ScenarioResourceKind,
+    type ScenarioStep,
+} from './scenarios'
 
+type StepParser = (
+    record: Record<string, unknown>,
+    id: string
+) => ScenarioStep | undefined
+const stepParsers = new Map<string, StepParser>([
+    ['go', parseGo],
+    ['search', parseSearch],
+    ['gather', parseGather],
+    ['attack', parseAttack],
+    ['follow', parseFollow],
+    ['cast', parseCast],
+    ['farm', parseFarm],
+    ['pickup', parsePickup],
+    ['deposit', parseDeposit],
+    ['wait', parseWait],
+    ['recover', parseRecover],
+])
 export function parseScenarioStep(value: unknown): ScenarioStep | undefined {
     const record = object(value)
-    if (record === undefined || !validId(record['id'])) {
+    if (
+        record === undefined ||
+        !validId(record['id']) ||
+        typeof record['kind'] !== 'string'
+    ) {
         return undefined
     }
-    const id = record['id']
-    switch (record['kind']) {
-        case 'go':
-            return parseGo(record, id)
-        case 'search':
-            return parseSearch(record, id)
-        case 'gather':
-            return parseGather(record, id)
-        case 'attack':
-            return onlyKeys(record, ['id', 'kind'])
-                ? { id, kind: 'attack' }
-                : undefined
-        case 'pickup':
-            return parsePickup(record, id)
-        case 'deposit':
-            return parseDeposit(record, id)
-        case 'wait':
-            return parseWait(record, id)
-        case 'recover':
-            return parseRecover(record, id)
-        default:
-            return undefined
+    return stepParsers.get(record['kind'])?.(record, record['id'])
+}
+function parseAttack(
+    record: Record<string, unknown>,
+    id: string
+): ScenarioStep | undefined {
+    const { target } = record
+    if (!onlyKeys(record, ['id', 'kind', 'target'])) {
+        return undefined
     }
+    if (target === undefined) {
+        return { id, kind: 'attack' }
+    }
+    return target === 'visible_enemy' || target === 'reaction_target'
+        ? { id, kind: 'attack', target }
+        : undefined
+}
+function parseFollow(
+    record: Record<string, unknown>,
+    id: string
+): ScenarioStep | undefined {
+    const { target } = record
+    return onlyKeys(record, ['id', 'kind', 'target']) &&
+        (target === 'nearest_friendly' || target === 'reaction_target')
+        ? { id, kind: 'follow', target }
+        : undefined
+}
+function parseFarm(
+    record: Record<string, unknown>,
+    id: string
+): ScenarioStep | undefined {
+    const { action, plotId, locationId } = record
+    return onlyKeys(record, ['id', 'kind', 'action', 'plotId', 'locationId']) &&
+        (action === 'sow' || action === 'harvest') &&
+        typeof plotId === 'string' &&
+        typeof locationId === 'string' &&
+        validFarmPlot(plotId, locationId)
+        ? { id, kind: 'farm', action, plotId, locationId }
+        : undefined
 }
 function parseWait(
     record: Record<string, unknown>,
@@ -55,17 +94,46 @@ function parseWait(
         ? { id, kind: 'wait', durationMs: record['durationMs'] }
         : undefined
 }
+function parseCast(
+    record: Record<string, unknown>,
+    id: string
+): ScenarioStep | undefined {
+    const abilityId = scenarioAbilityIds.find(
+        (candidate) => candidate === record['abilityId']
+    )
+    if (
+        abilityId === undefined ||
+        !onlyKeys(record, ['id', 'kind', 'abilityId', 'target'])
+    ) {
+        return undefined
+    }
+    const target = scenarioAbilityTargets(abilityId).find(
+        (candidate) => candidate === record['target']
+    )
+    return target === undefined
+        ? undefined
+        : { id, kind: 'cast', abilityId, target }
+}
 function parseGo(
     record: Record<string, unknown>,
     id: string
 ): ScenarioStep | undefined {
-    if (!onlyKeys(record, ['id', 'kind', 'destination'])) {
+    const dash = record['dash']
+    if (
+        !onlyKeys(record, ['id', 'kind', 'destination', 'dash']) ||
+        (dash !== undefined && typeof dash !== 'boolean')
+    ) {
         return undefined
     }
     const destination = parseScenarioDestination(record['destination'])
     return destination === undefined
         ? undefined
-        : { id, kind: 'go', destination }
+        : {
+              id,
+              kind: 'go',
+              destination,
+              ...(dash === undefined ? {} : { dash }),
+          }
 }
 function parseSearch(
     record: Record<string, unknown>,

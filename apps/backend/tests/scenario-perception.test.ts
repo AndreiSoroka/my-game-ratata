@@ -42,8 +42,9 @@ it('search clears residual movement and never walks toward an unseen target', ()
         id: 'search',
         name: 'Поиск',
         repeat: 1,
-        threat: 'continue',
-        steps: [{ id: 'first', kind: 'search', target: 'tree' }],
+        main: [{ id: 'first', kind: 'search', target: 'tree' }],
+        sequences: [],
+        reactions: [],
     })
     f.actor.setMoveInput({ x: 1, y: 0 })
     f.actor.setPath([{ x: 120, y: 24 }])

@@ -8,6 +8,10 @@ import { npcAssistanceContext } from './dialogueOrders'
 import { beginNpcSelfTravel, stopNpcSelfTravelEscort } from './guide'
 import { npcSelfTravelTargetError } from './guideTargets'
 import { npcFollowInitiativeProblem } from './npcFollowInitiative'
+import {
+    configureNpcScenario,
+    npcScenarioConfigurationProblem,
+} from './npcScenarios'
 import { type NpcAiActorState, npcAiBusyFor } from './runtimeState'
 import type { NpcReplyProblem } from './turnInformation'
 import type { NpcAiEvent, NpcAiReply } from './types'
@@ -21,6 +25,7 @@ export type NpcSelfDecision = Extract<
             | 'leave_companion'
             | 'propose_follow'
             | 'start_following'
+            | 'configure_scenario'
     }
 >
 
@@ -31,7 +36,8 @@ export function isNpcSelfDecision(
         decision?.type === 'travel_to' ||
         decision?.type === 'leave_companion' ||
         decision?.type === 'propose_follow' ||
-        decision?.type === 'start_following'
+        decision?.type === 'start_following' ||
+        decision?.type === 'configure_scenario'
     )
 }
 
@@ -60,6 +66,16 @@ export function npcSelfDecisionProblem(
     }
     if (decision.type === 'travel_to') {
         return selfTravelProblem(room, state, actor, decision, heard, hasSpeech)
+    }
+    if (decision.type === 'configure_scenario') {
+        const error = npcScenarioConfigurationProblem(
+            room,
+            actor,
+            state,
+            decision,
+            now
+        )
+        return error === undefined ? undefined : problem(error)
     }
     return canLeaveCompanion(companions, state, actor, now)
         ? undefined
@@ -192,6 +208,14 @@ export function applyNpcSelfDecision(
         case 'propose_follow':
         case 'start_following':
             return beginFollowInitiative(room, companions, actor, decision, now)
+        case 'configure_scenario':
+            return configureNpcScenario(
+                room,
+                actor,
+                state.config.role,
+                decision,
+                now
+            )
     }
 }
 

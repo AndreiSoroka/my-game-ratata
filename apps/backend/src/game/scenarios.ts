@@ -9,7 +9,12 @@ import { cancelCharacterControl } from './characterControl'
 import type { CharacterController } from './controllers'
 import type { GameRoom } from './room'
 import { scenarioHelpers } from './scenarioHelpers'
-import { releaseScenarioInput } from './scenarioInput'
+import {
+    pauseScenario,
+    releaseScenarioInput,
+    resumeScenario,
+    stopScenarioControl,
+} from './scenarioInput'
 import {
     editScenarioLibrary,
     resolveScenarioMarkers,
@@ -19,10 +24,16 @@ import {
 import { ScenarioPolicies } from './scenarioPolicies'
 import { ScenarioReports } from './scenarioReports'
 import { advanceScenario } from './scenarioRunner'
-import { createScenarioRun, type ScenarioRuntime } from './scenarioState'
+import { ScenarioSchedule } from './scenarioSchedule'
+import type { ScenarioRunReview, ScenarioRuntime } from './scenarioState'
 
 export interface ScenarioAccess {
     characters(): Iterable<GameCharacter>
+    canObserve?(
+        owner: GameCharacter,
+        actor: GameCharacter,
+        now: number
+    ): boolean
     canAssign(
         owner: GameCharacter,
         actor: GameCharacter,
@@ -40,25 +51,27 @@ export interface ScenarioAccess {
         canFollow: boolean
     }
 }
+
 export class ScenarioService {
     private readonly policies = new ScenarioPolicies()
     private readonly reports = new ScenarioReports()
     private readonly libraries = new Map<string, ScenarioLibrary>()
     private readonly runs = new Map<string, ScenarioRuntime>()
     private readonly defaults = new Map<string, ScenarioDefinition>()
+    private readonly schedule = new ScenarioSchedule()
     public constructor(private readonly access: ScenarioAccess) {}
     public registerDefault(
         actor: GameCharacter,
         definition: ScenarioDefinition,
         now: number
     ): void {
-        if (definition.steps.length === 0) {
+        if (definition.main.length === 0 && definition.reactions.length === 0) {
             return
         }
         this.defaults.set(actor.id, structuredClone(definition))
         this.runs.set(
             actor.id,
-            createScenarioRun(actor, actor.id, definition, now, true)
+            this.schedule.create(actor, actor.id, definition, now, true)
         )
     }
     public handle(
@@ -68,7 +81,7 @@ export class ScenarioService {
         now: number
     ): string | null {
         if (command.type === 'release_input') {
-            return this.releaseInput(owner, now)
+            return releaseScenarioInput(owner, this.running(owner.id), now)
         }
         if (!owner.alive || owner.tags.has('state.retired')) {
             return 'Персонаж сейчас недоступен.'
@@ -92,21 +105,18 @@ export class ScenarioService {
         return editScenarioLibrary(owner, this.library(owner.id), command)
     }
     public pause(actor: GameCharacter): void {
-        const run = this.runs.get(actor.id)
-        if (run?.snapshot.status !== 'running') {
-            return
-        }
-        run.snapshot.status = 'paused'
-        actor.clearPath()
-        actor.setMoveInput({ x: 0, y: 0 })
+        pauseScenario(actor, this.runs.get(actor.id))
     }
     public running(actorId: string): boolean {
         return this.runs.get(actorId)?.snapshot.status === 'running'
     }
     public busy(actorId: string): boolean {
-        return ['running', 'paused'].includes(
-            this.runs.get(actorId)?.snapshot.status ?? ''
-        )
+        const status = this.runs.get(actorId)?.snapshot.status
+        return status === 'running' || status === 'paused'
+    }
+    public ownRunForReview(actorId: string): ScenarioRunReview | undefined {
+        const run = this.runs.get(actorId)?.snapshot
+        return run?.ownerId === actorId ? run : undefined
     }
     public advance(
         actor: GameCharacter,
@@ -128,6 +138,7 @@ export class ScenarioService {
             return false
         }
         const handled = advanceScenario(actor, run, room, now, held)
+        this.schedule.observe(actor.id, run)
         if (
             run.snapshot.status === 'completed' &&
             actor.id !== run.snapshot.ownerId
@@ -148,8 +159,7 @@ export class ScenarioService {
         room: GameRoom,
         now: number
     ): boolean {
-        const status = this.runs.get(actor.id)?.snapshot.status
-        if (status === 'running' || status === 'paused') {
+        if (this.busy(actor.id)) {
             return false
         }
         return this.policies.advance(actor, controller, room, now)
@@ -174,6 +184,7 @@ export class ScenarioService {
                 this.restoreDefault(actor, now)
             }
         }
+        this.schedule.reconcile(characters)
     }
     public snapshot(owner: GameCharacter, now: number): AutomationSnapshot {
         const library = this.library(owner.id)
@@ -222,7 +233,7 @@ export class ScenarioService {
         actor.setMoveInput({ x: 0, y: 0 })
         this.runs.set(
             actor.id,
-            createScenarioRun(actor, owner.id, resolved, now)
+            this.schedule.create(actor, owner.id, resolved, now)
         )
         return null
     }
@@ -252,17 +263,9 @@ export class ScenarioService {
         if (command.type === 'scenario_pause') {
             this.pause(actor)
         } else if (command.type === 'scenario_resume') {
-            if (run.snapshot.status !== 'paused') {
-                return 'Этот сценарий не приостановлен.'
-            }
-            cancelCharacterControl(actor)
-            run.snapshot.status = 'running'
-            run.lastAt = now
-            run.step.previousDistance = Infinity
-            run.step.lastPlanAt = -Infinity
+            return resumeScenario(actor, run, now)
         } else {
-            actor.clearPath()
-            actor.setMoveInput({ x: 0, y: 0 })
+            stopScenarioControl(actor, run)
             run.snapshot.status = 'stopped'
             if (actor !== owner) {
                 this.restoreDefault(actor, now)
@@ -272,26 +275,23 @@ export class ScenarioService {
     }
     private restoreDefault(actor: GameCharacter, now: number): void {
         const old = this.runs.get(actor.id)
-        if (old !== undefined) {
-            this.reports.record(old.snapshot)
+        if (old === undefined) {
+            return
         }
-        if (old !== undefined && old.snapshot.ownerId !== actor.id) {
+        stopScenarioControl(actor, old)
+        this.reports.record(old.snapshot, old.definition.main.length)
+        if (old.snapshot.ownerId !== actor.id) {
             this.access.release(old.snapshot.ownerId, actor)
         }
-        actor.clearPath()
-        actor.setMoveInput({ x: 0, y: 0 })
         const definition = this.defaults.get(actor.id)
         if (definition === undefined) {
             this.runs.delete(actor.id)
         } else {
             this.runs.set(
                 actor.id,
-                createScenarioRun(actor, actor.id, definition, now, true)
+                this.schedule.create(actor, actor.id, definition, now, true)
             )
         }
-    }
-    private releaseInput(actor: GameCharacter, now: number): null {
-        return releaseScenarioInput(actor, this.running(actor.id), now)
     }
     private library(id: string): ScenarioLibrary {
         return scenarioLibraryFor(this.libraries, id)

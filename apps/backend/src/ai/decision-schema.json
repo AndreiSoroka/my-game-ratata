@@ -25,6 +25,88 @@
                 {
                     "type": "object",
                     "additionalProperties": false,
+                    "required": ["type", "templateId", "parameters", "start"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["configure_scenario"]
+                        },
+                        "templateId": {
+                            "type": "string",
+                            "enum": [
+                                "lumberjack",
+                                "miner",
+                                "farmer",
+                                "patrol",
+                                "retreat",
+                                "follow"
+                            ]
+                        },
+                        "parameters": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "workMarkerId",
+                                "storageMarkerId",
+                                "shelterMarkerId",
+                                "secondMarkerId",
+                                "plotId",
+                                "plotLocationId",
+                                "amount",
+                                "resource",
+                                "distanceTiles",
+                                "dash",
+                                "abilityId"
+                            ],
+                            "properties": {
+                                "workMarkerId": { "type": ["string", "null"] },
+                                "storageMarkerId": {
+                                    "type": ["string", "null"]
+                                },
+                                "shelterMarkerId": {
+                                    "type": ["string", "null"]
+                                },
+                                "secondMarkerId": {
+                                    "type": ["string", "null"]
+                                },
+                                "plotId": { "type": ["string", "null"] },
+                                "plotLocationId": {
+                                    "type": ["string", "null"]
+                                },
+                                "amount": {
+                                    "type": ["integer", "null"],
+                                    "minimum": 1,
+                                    "maximum": 10000
+                                },
+                                "resource": {
+                                    "type": ["string", "null"],
+                                    "enum": ["stone", "scrap", null]
+                                },
+                                "distanceTiles": {
+                                    "type": ["integer", "null"],
+                                    "minimum": 1,
+                                    "maximum": 64
+                                },
+                                "dash": { "type": ["boolean", "null"] },
+                                "abilityId": {
+                                    "type": ["string", "null"],
+                                    "enum": [
+                                        "barrier",
+                                        "blink",
+                                        "dispel_magic",
+                                        "city_portal",
+                                        "defensive_stance",
+                                        null
+                                    ]
+                                }
+                            }
+                        },
+                        "start": { "type": "boolean" }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
                     "required": ["type", "draft"],
                     "properties": {
                         "type": {

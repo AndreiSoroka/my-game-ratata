@@ -11,6 +11,7 @@ defineProps<{
     compact?: boolean
     canControl?: boolean
     actorName?: string
+    serverTime?: number
 }>()
 const emit = defineEmits<{ pause: []; resume: []; stop: [] }>()
 const status = {
@@ -40,11 +41,11 @@ const steps = {
     get failed() {
         return tGame('game.automation.failed')
     },
+    get skipped() {
+        return tGame('game.automation.skipped')
+    },
 }
 const interruptions = {
-    get enemy() {
-        return tGame('game.automation.enemyNearby')
-    },
     get conversation() {
         return tGame('game.automation.conversation')
     },
@@ -60,11 +61,26 @@ const interruptions = {
             <span v-if="actorName">{{ actorName }} · </span>
             <strong>{{ run.name }}</strong> · {{ status[run.status] }}
             <span v-if="run.status === 'running' || run.status === 'paused'">
-                {{ tGame('game.automation.stepScenarioRun') }} {{ run.stepIndex + 1 }}/{{
-                    run.results.length
-                }}
+                <template v-if="run.phase === 'reaction' && run.sequenceName">
+                    · {{ tGame('game.automation.activeReaction', { name: run.sequenceName }) }}
+                </template>
+                <template v-else-if="run.phase === 'between_passes'">
+                    · {{ tGame('game.automation.beforeNextPass') }}
+                </template>
+                <template v-if="run.phase !== 'between_passes' && run.results.length">
+                    {{ tGame('game.automation.stepScenarioRun') }} {{ run.stepIndex + 1 }}/{{
+                        run.results.length
+                    }}
+                </template>
                 {{ tGame('game.automation.loop') }} {{ run.iteration }}
             </span>
+        </p>
+        <p
+            v-if="run.status === 'running' && run.nextPassAt !== null && serverTime !== undefined"
+            class="automation-muted"
+        >
+            {{ Math.max(0, Math.ceil((run.nextPassAt - serverTime) / 1000)) }}
+            {{ tGame('game.knowledge.s') }}
         </p>
         <p v-if="run.interruption" class="automation-muted">
             {{ interruptions[run.interruption] }}

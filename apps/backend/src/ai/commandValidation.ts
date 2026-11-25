@@ -69,6 +69,7 @@ function npcWorldCommandProblem(
     return (
         npcRoleProblem(room, state, actor, reply, now) ??
         backgroundProblem(state, reply) ??
+        scenarioReviewProblem(state, reply) ??
         taskClaimProblem(room, state, actor, reply) ??
         companionProblem(room, companions, state, actor, reply, now) ??
         soloTravelPromiseProblem(state, reply) ??
@@ -126,6 +127,29 @@ function backgroundProblem(
         return problem(
             'self_activity_only',
             'Это собственное короткое занятие в текущей локации, а не чужое поручение, договор или сопровождение.'
+        )
+    }
+    return undefined
+}
+
+function scenarioReviewProblem(
+    state: NpcAiActorState,
+    reply: NpcAiReply
+): NpcReplyProblem | undefined {
+    if (state.task?.background !== 'scenario_review') {
+        return undefined
+    }
+    if (
+        (reply.decision !== null &&
+            reply.decision.type !== 'configure_scenario') ||
+        reply.speech != null ||
+        reply.companionOrder != null ||
+        acceptsTask(reply) ||
+        !reply.done
+    ) {
+        return problem(
+            'scenario_review_only',
+            'Можно только завершить проверку своей рутины или настроить её, не беря новое поручение.'
         )
     }
     return undefined

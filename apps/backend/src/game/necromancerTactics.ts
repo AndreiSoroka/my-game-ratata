@@ -1,6 +1,7 @@
 import {
     healthPercent,
     type HealthSnapshot,
+    type ScenarioAbilityId,
     type Vector2,
 } from '@my-game-ratata/contracts'
 
@@ -57,13 +58,27 @@ export interface NecromancerModelContext extends NpcConversationFeedback {
     plan?: NecromancerOption
     lastNote?: string
     options: NecromancerOption[]
+    scenario?: {
+        name: string
+        opening: NecromancerScenarioEdit | null
+        availableAbilities: ScenarioAbilityId[]
+    }
 }
+
+export type NecromancerScenarioEdit =
+    | {
+          kind: 'set_opening'
+          distanceCells: number
+          abilityId: ScenarioAbilityId | null
+      }
+    | { kind: 'clear_opening' }
 
 export interface NecromancerModelDecision {
     choice: number
     note: string
     bark?: NecromancerBark
     speech?: string | null
+    scenarioEdit?: NecromancerScenarioEdit
 }
 
 export interface NecromancerJournalEntry extends NecromancerOption {

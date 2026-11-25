@@ -8,17 +8,28 @@ import type { GameCharacter } from './character'
 import { findActorPath } from './doorNavigation'
 import { distance } from './math'
 import type { NavigationService } from './navigation'
+import { regionalExit } from './regionalNavigation'
 import type { GameRoom } from './room'
-import type { ScenarioRuntime } from './scenarioState'
+import type { ScenarioStepState } from './scenarioState'
+
+interface ScenarioRoute {
+    step: Pick<
+        ScenarioStepState,
+        | 'previousLocation'
+        | 'previousPosition'
+        | 'previousDistance'
+        | 'lastPlanAt'
+    >
+}
 
 export interface ScenarioOutcome {
-    state: 'done' | 'progress' | 'waiting' | 'blocked'
+    state: 'done' | 'progress' | 'waiting' | 'blocked' | 'skipped'
     reason?: string
 }
 /** Crosses authored adjacent locations with ordinary movement; never writes position. */
 export function navigateScenario(
     actor: GameCharacter,
-    run: ScenarioRuntime,
+    run: ScenarioRoute,
     room: GameRoom,
     locationId: string,
     point: Vector2,
@@ -68,7 +79,7 @@ function pointInsideLocation(
 }
 function madeProgress(
     actor: GameCharacter,
-    run: ScenarioRuntime,
+    run: ScenarioRoute,
     remaining: number
 ): boolean {
     const changedLocation = actor.locationId !== run.step.previousLocation
@@ -120,7 +131,7 @@ function pathToReach(
 }
 function travelToward(
     actor: GameCharacter,
-    run: ScenarioRuntime,
+    run: ScenarioRoute,
     room: GameRoom,
     locationId: string,
     now: number
@@ -153,11 +164,8 @@ function travelToward(
         x: next.column - current.column,
         y: next.row - current.row,
     }
-    const edge = crossingEdge(
-        actor.position,
-        direction,
-        room.navigationFor(actor).summary
-    )
+    const navigation = room.navigationFor(actor)
+    const edge = crossingEdge(actor.position, direction, navigation.summary)
     if (distance(actor.position, edge) <= 1) {
         const progressed = madeProgress(
             actor,
@@ -172,7 +180,21 @@ function travelToward(
     }
     const progressed = madeProgress(actor, run, distance(actor.position, edge))
     if (!actor.hasPath() || now - run.step.lastPlanAt >= 1000) {
-        actor.setPath(findActorPath(room.navigationFor(actor), actor, edge))
+        const direct = findActorPath(navigation, actor, edge)
+        const exit =
+            direct.length === 0
+                ? regionalExit(
+                      actor.position,
+                      actor.locationId,
+                      next.id,
+                      navigation
+                  )
+                : undefined
+        actor.setPath(
+            exit === undefined
+                ? direct
+                : findActorPath(navigation, actor, exit.point)
+        )
         run.step.lastPlanAt = now
     }
     return {

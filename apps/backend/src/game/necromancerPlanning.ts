@@ -7,6 +7,7 @@ import {
     type NecromancerModelContext,
     type NecromancerModelDecision,
     type NecromancerOption,
+    type NecromancerScenarioEdit,
     type NecromancerScene,
     necromancerStudyGoal,
     necromancerThreats,
@@ -162,7 +163,11 @@ export class NecromancerPlanning {
         actor: GameCharacter,
         scene: NecromancerScene,
         options: () => NecromancerOption[],
-        now: number
+        now: number,
+        onScenarioEdit?: (
+            edit: NecromancerScenarioEdit,
+            offer: NecromancerOffer
+        ) => void
     ): NecromancerRemark | undefined {
         const pending = this.pending
         this.pending = undefined
@@ -198,6 +203,9 @@ export class NecromancerPlanning {
             this.favoriteId = option.targetId
         } else {
             this.plan = option
+        }
+        if (reply.scenarioEdit !== undefined) {
+            onScenarioEdit?.(reply.scenarioEdit, offer)
         }
         return acceptedRemark(option, reply.speech)
     }

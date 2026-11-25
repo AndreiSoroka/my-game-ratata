@@ -12,6 +12,7 @@ import type {
 import type { MovementClientMessage } from './movement'
 import type { NpcQuestDecision } from './npcQuests'
 import type { AutomationCommand } from './scenarios'
+import type { ConfigureScenarioDecision } from './scenarioTemplates'
 import type { TheftClientMessage } from './theft'
 
 export type SoulKind = 'spark' | 'echo'
@@ -49,6 +50,7 @@ export type AgentDecision =
     | ExchangeClientMessage
     | NpcQuestDecision
     | AutomationCommand
+    | ConfigureScenarioDecision
     | AdventureClientMessage
     | InventoryActionClientMessage
     | EquipmentActionClientMessage

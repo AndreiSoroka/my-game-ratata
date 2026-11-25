@@ -43,6 +43,10 @@ export function npcAiDecisionError(
             return combatAbilityError(actor, decision)
         case 'move_to':
             return movementError(actor, role, decision, navigation)
+        case 'configure_scenario':
+            return role === 'companion'
+                ? undefined
+                : 'This role cannot configure its own routines'
         case 'dialogue_choice':
             return [
                 'trade',

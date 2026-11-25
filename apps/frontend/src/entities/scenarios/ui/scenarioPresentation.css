@@ -12,6 +12,16 @@
     gap: 4px;
 }
 
+.automation-fields .automation-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.automation-checkbox input {
+    margin: 0;
+}
+
 .automation-status .automation-row {
     display: flex;
     align-items: center;

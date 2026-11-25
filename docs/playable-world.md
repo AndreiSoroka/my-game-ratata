@@ -237,32 +237,48 @@ skill requirement yet. Markers, scenario definitions and current runs live only 
 server memory, attached to the current identity. Rejoining and resurrection retain
 them; permanent death, abandoning that life or restarting the world removes them.
 
-Open **Сценарии** from the game menu to arrange steps, choose one or several passes
-or an endless loop, and set the response to a visible enemy. Steps can walk to a
-marker, point or visible target; search for a nearby resource, enemy, chest or item;
-gather a quantity or exhaust a source; attack; pick up items; unload a chest; wait;
-or recover a resource. Search itself never moves and never sees through walls.
-Work steps independently select a suitable visible target. A stone search followed
-by woodcutting therefore does not make the stone a tree: woodcutting looks for an
-actual visible tree and fails if none is available.
+Open **Сценарии** from the game menu. In **Готовые**, choose a template and create
+a personal copy. Fill in your own markers and settings, then save and start it
+from **Мои**. The builder and pseudocode edit the same definition. Before saving,
+the game validates actions, targets, selected steps and sequences, and owned
+markers. This release replaces the previous scenario format. Old scenarios and
+runs do not carry over.
 
-For example, save a marker near a grove and another near a chest, then repeat
-**go to grove → gather three wood → go to chest → unload wood**. Unloading defaults
-to units actually acquired by this run, even when they joined an older material
-stack. The alternative unloads all matching backpack goods; equipped items remain
-equipped. All transfers still use real items and validated container access.
+A scenario has a main route and optional reactions that start named action
+sequences. Choose one pass, a fixed number, or a continuous repeat. Each pass starts
+at least five server gameplay seconds after the preceding start. When the main route
+ends early, reactions remain armed until the end of that window. If a reaction
+matches, the first one in display order wins and skips the remaining route steps.
+Only one reaction can run per pass, and the next pass starts with a fresh route.
+A reaction can optionally post a private notification.
 
-Each step has ten seconds of blocked time. Normal path progress, successful work
-and ordinary action intervals do not spend that budget. Missing targets, tools,
-capacity or a path do. The step is marked failed with its reason when the budget
-runs out, then the next step starts; a later loop tries again. Enemy responses
-and conversations freeze the remaining budget rather than resetting it. A run
-started from a saved definition keeps its own copy of steps and referenced marker
-coordinates, so editing the template does not silently change an active job.
-Explicit object selections also retain their location: a chest with the same ID
-in another location never substitutes for the selected container. A helper's latest
-completed or stopped result remains visible to its customer after the helper
-returns to its normal routine; a new assignment replaces that report.
+For example, create a marker at a grove and another at a chest, then copy
+**Лесоруб**. The route goes to the grove, gathers wood, and unloads the batch.
+Unloading the acquired batch includes items that merged into an older stack.
+Its full-bag reaction can unload all matching items in the backpack. Equipment
+stays equipped. You can also react to a visible enemy, a nearby friendly character,
+a selected ripe plot, or the result of a specific main-route step. The **Следовать
+за дружественным персонажем** template uses the normal Follow command when the
+executor sees a nearby friend and is not already following anyone.
+
+```text
+repeat forever
+main {
+}
+sequence "Следовать" {
+  follow reaction_target
+}
+on friendly_nearby(5 tiles) while not_following -> "Следовать"
+```
+
+Movement can optionally use a normal dash along an available route segment.
+An ability step selects a learned ability and a supported target. The server checks
+perception, reach, costs, cooldowns and consent at execution. Movement and work
+report blocked paths and unavailable targets. The run keeps its own saved steps
+and marker coordinates, so changing the copy in your library does not change
+the active run. Explicit object selections retain their location. A helper's
+latest completed or stopped result remains available to its customer after the
+helper returns to its normal routine.
 
 Use **Пауза**, **Продолжить** and **Остановить** in the scenario panel or active-run
 controls. Manual movement, a replacing click or a manual combat action pauses the
@@ -286,7 +302,7 @@ NPCs without an active model-control lease use local authored rules. The UI repo
 
 The server checks Codex CLI or Claude Code before the world starts. Mira, the necromancer Savva, Kaplya, Leia and Bran use the model to choose activities. Passive NPCs use it in addressed conversations. An exclusive lease renews while a task is active, and the server determines completion from ordinary action receipts. [NPC reasoning, readiness and world modes](npc-ai.md).
 
-Existing worker, artisan, guard, companion and hostile strategies enter the common scheduler as bounded server-owned policy tasks. Their retained controllers still choose the next ordinary intention; their profession logic is not yet an editable data-only scenario. The two new wanderers and player-assigned jobs use the semantic scenario steps directly. A running or paused assigned scenario, active conversation or exclusive control prevents the baseline policy from acting concurrently.
+Routine gathering and farming use the same scenario movement and work actions as assigned jobs. The city worker service still handles trade, repair, supplies and requests. When danger blocks work, Danila, Gordey or Agafya reports to Mira. After the quest holder requests turn-in, the worker returns to the original worksite, checks safety with a real profession action and reports back before the reward is available. Guard, artisan, companion and hostile strategies retain their server-owned policies.
 
 Прохор and Дарья wander through city street routes using the shared scenario runner. Players can ask Kaplya, Leia and Bran for companionship. The server checks explicit consent, existing promises, reach, line of sight and availability before assigning work.
 

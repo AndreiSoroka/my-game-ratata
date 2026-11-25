@@ -1,10 +1,7 @@
-import {
-    ITEM_DEFINITIONS,
-    type ItemId,
-    type ScenarioSearchKind,
-    WORLD_LOCATION_DEFINITIONS,
-} from '@my-game-ratata/contracts'
-
+import { FARM_PLOTS } from './farms'
+import { type ItemId, itemIds } from './inventory'
+import type { ScenarioSearchKind } from './scenarios'
+import { WORLD_LOCATION_DEFINITIONS } from './world'
 export function object(value: unknown): Record<string, unknown> | undefined {
     return value !== null && typeof value === 'object' && !Array.isArray(value)
         ? (value as Record<string, unknown>)
@@ -44,6 +41,11 @@ export function validLocationId(value: unknown): value is string {
         WORLD_LOCATION_DEFINITIONS.some((location) => location.id === value)
     )
 }
+export function validFarmPlot(plotId: unknown, locationId: unknown): boolean {
+    return FARM_PLOTS.some(
+        (plot) => plot.id === plotId && plot.locationId === locationId
+    )
+}
 export function optionalPinnedLocationId(
     value: unknown,
     targetId: unknown
@@ -54,7 +56,7 @@ export function optionalPinnedLocationId(
     )
 }
 export function itemId(value: unknown): value is ItemId {
-    return typeof value === 'string' && Object.hasOwn(ITEM_DEFINITIONS, value)
+    return typeof value === 'string' && itemIds.some((id) => id === value)
 }
 export function optionalItem(value: unknown): value is ItemId | undefined {
     return value === undefined || itemId(value)

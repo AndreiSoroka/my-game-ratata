@@ -1,6 +1,8 @@
 import {
     CENTER_LOCATION_ID,
     type ScenarioDefinition,
+    type ScenarioStep,
+    type Vector2,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
@@ -43,26 +45,47 @@ export function createWandererScenario(
                     character.spawnPosition
                 ).length > 0
         )
+    const shelter = points[0]
+    if (shelter === undefined) {
+        return undefined
+    }
     return {
         id: `idle-${character.id}`,
         name: 'Прогулка по Новогороду',
         repeat: null,
-        threat: 'flee',
-        steps: points.flatMap((position, index) => [
+        sequences: [
             {
-                id: `walk-${String(index)}`,
-                kind: 'go' as const,
-                destination: {
-                    kind: 'point' as const,
-                    locationId: CENTER_LOCATION_ID,
-                    position,
-                },
+                id: 'shelter',
+                name: 'Укрытие',
+                steps: [waypoint('retreat', shelter)],
             },
+        ],
+        reactions: [
+            {
+                id: 'danger',
+                trigger: { kind: 'enemy_visible', distanceTiles: 15 },
+                sequenceId: 'shelter',
+            },
+        ],
+        main: points.flatMap((position, index) => [
+            waypoint(`walk-${String(index)}`, position),
             {
                 id: `rest-${String(index)}`,
                 kind: 'wait' as const,
                 durationMs: 2500,
             },
         ]),
+    }
+}
+
+function waypoint(id: string, position: Vector2): ScenarioStep {
+    return {
+        id,
+        kind: 'go',
+        destination: {
+            kind: 'point',
+            locationId: CENTER_LOCATION_ID,
+            position,
+        },
     }
 }

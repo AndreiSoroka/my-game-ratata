@@ -1,11 +1,13 @@
-import type {
-    AutomationCommand,
-    MarkerDefinition,
-    ScenarioDefinition,
+import {
+    type AutomationCommand,
+    type MarkerDefinition,
+    SCENARIO_MAX_SCENARIOS,
+    type ScenarioDefinition,
+    type ScenarioStep,
+    validateScenarioDefinition,
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { parseScenario } from './scenarioCommands'
 
 export interface ScenarioLibrary {
     markers: MarkerDefinition[]
@@ -66,15 +68,18 @@ function saveScenario(
     input: ScenarioDefinition,
     locationId: string
 ): string | null {
-    const scenario = parseScenario(input)
-    if (scenario === undefined) {
-        return 'Некорректный сценарий.'
+    const result = validateScenarioDefinition(input, {
+        markers: library.markers,
+    })
+    if (!result.ok) {
+        return result.message
     }
+    const scenario = result.scenario
     pinScenarioTargets(scenario, locationId)
     const index = library.scenarios.findIndex(
         (entry) => entry.id === scenario.id
     )
-    if (index < 0 && library.scenarios.length >= 16) {
+    if (index < 0 && library.scenarios.length >= SCENARIO_MAX_SCENARIOS) {
         return 'Можно сохранить не больше 16 сценариев.'
     }
     if (index < 0) {
@@ -88,7 +93,7 @@ function pinScenarioTargets(
     scenario: ScenarioDefinition,
     locationId: string
 ): void {
-    for (const step of scenario.steps) {
+    for (const step of allScenarioSteps(scenario)) {
         if (step.kind === 'deposit' && step.chestId !== undefined) {
             step.locationId ??= locationId
         }
@@ -106,7 +111,7 @@ export function resolveScenarioMarkers(
     library: ScenarioLibrary
 ): ScenarioDefinition | undefined {
     const copy = structuredClone(definition)
-    for (const step of copy.steps) {
+    for (const step of allScenarioSteps(copy)) {
         if (step.kind !== 'go' || step.destination.kind !== 'marker') {
             continue
         }
@@ -122,6 +127,13 @@ export function resolveScenarioMarkers(
         }
     }
     return copy
+}
+
+function allScenarioSteps(definition: ScenarioDefinition): ScenarioStep[] {
+    return [
+        ...definition.main,
+        ...definition.sequences.flatMap((sequence) => sequence.steps),
+    ]
 }
 
 export function scenarioLibraryFor(

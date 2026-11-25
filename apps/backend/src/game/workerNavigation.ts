@@ -11,6 +11,44 @@ import { distance } from './math'
 import type { NavigationService } from './navigation'
 import { resourceReachable } from './resourcePlacement'
 import type { GameRoom } from './room'
+import { navigateScenario } from './scenarioNavigation'
+import { stepState } from './scenarioState'
+
+/** Professions prefer a known worksite, then use the same route as scenario steps. */
+export class WorkerFieldRoute {
+    private target:
+        { id: string; locationId: string; position: Vector2 } | undefined
+    private state: ReturnType<typeof stepState> | undefined
+
+    public advance(
+        actor: GameCharacter,
+        room: GameRoom,
+        target: { id: string; locationId: string; position: Vector2 },
+        radius: number,
+        now: number
+    ): boolean {
+        if (
+            this.state === undefined ||
+            this.target?.id !== target.id ||
+            this.target.locationId !== target.locationId ||
+            distance(this.target.position, target.position) > 0
+        ) {
+            this.target = target
+            this.state = stepState(actor)
+        }
+        return (
+            navigateScenario(
+                actor,
+                { step: this.state },
+                room,
+                target.locationId,
+                target.position,
+                radius,
+                now
+            ).state === 'done'
+        )
+    }
+}
 
 export function sourceCost(
     actor: GameCharacter,

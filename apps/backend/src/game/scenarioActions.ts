@@ -1,17 +1,23 @@
 import type { ScenarioStep } from '@my-game-ratata/contracts'
 
-import { canFight } from './autoActionTargets'
+import { applyAgentControl } from './agentCapabilities'
 import type { GameCharacter } from './character'
-import { isTargetInAttackRange } from './combat'
+import { snapshotControl } from './characterControl'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
-import { distance } from './math'
 import type { GameRoom } from './room'
 import { approachWorkTarget } from './scenarioApproach'
+import { attackScenario, castScenario } from './scenarioCombat'
+import { tryScenarioDash } from './scenarioDash'
 import { depositScenario } from './scenarioDeposit'
 import { navigateScenario, type ScenarioOutcome } from './scenarioNavigation'
-import type { ScenarioRuntime } from './scenarioState'
-import { visibleScenarioTargets } from './scenarioTargets'
-import { gatherScenario, pickupScenario } from './scenarioWork'
+import { type ScenarioRuntime, stopScenarioPath } from './scenarioState'
+import {
+    findFriendlyScenarioTarget,
+    isScenarioFriendly,
+    visibleScenarioCharacter,
+    visibleScenarioTargets,
+} from './scenarioTargets'
+import { farmScenario, gatherScenario, pickupScenario } from './scenarioWork'
 
 export function executeScenarioStep(
     actor: GameCharacter,
@@ -25,19 +31,7 @@ export function executeScenarioStep(
         case 'go':
             return go(actor, run, room, step, now)
         case 'search':
-            stopStationary(actor)
-            return visibleScenarioTargets(
-                actor,
-                room,
-                step.target,
-                step.itemId,
-                now
-            ).length > 0
-                ? { state: 'done' }
-                : {
-                      state: 'blocked',
-                      reason: 'Подходящая цель в области видимости не найдена.',
-                  }
+            return search(actor, run, room, step, now)
         case 'gather':
             return gatherScenario(actor, run, room, step, now)
         case 'pickup':
@@ -45,22 +39,49 @@ export function executeScenarioStep(
         case 'deposit':
             return depositScenario(actor, run, room, step, now)
         case 'attack':
-            return attackScenario(actor, run, room, now)
+            return attackScenario(actor, run, room, step, now)
+        case 'follow':
+            return follow(actor, run, room, step, now)
+        case 'farm':
+            return farmScenario(actor, run, room, step, now)
+        case 'cast':
+            return castScenario(actor, run, room, step, now)
         case 'wait':
-            stopStationary(actor)
-            run.step.waitMs += deltaMs
-            return {
-                state: run.step.waitMs >= step.durationMs ? 'done' : 'waiting',
-            }
+            return wait(actor, run, step.durationMs, deltaMs)
         case 'recover':
-            stopStationary(actor)
+            stopScenarioPath(actor, run)
             return recover(actor, step)
     }
 }
-function stopStationary(actor: GameCharacter): void {
-    actor.clearPath()
-    actor.setMoveInput({ x: 0, y: 0 })
+
+function search(
+    actor: GameCharacter,
+    run: ScenarioRuntime,
+    room: GameRoom,
+    step: Extract<ScenarioStep, { kind: 'search' }>,
+    now: number
+): ScenarioOutcome {
+    stopScenarioPath(actor, run)
+    return visibleScenarioTargets(actor, room, step.target, step.itemId, now)
+        .length > 0
+        ? { state: 'done' }
+        : {
+              state: 'blocked',
+              reason: 'Подходящая цель в области видимости не найдена.',
+          }
 }
+
+function wait(
+    actor: GameCharacter,
+    run: ScenarioRuntime,
+    durationMs: number,
+    deltaMs: number
+): ScenarioOutcome {
+    stopScenarioPath(actor, run)
+    run.step.waitMs += deltaMs
+    return { state: run.step.waitMs >= durationMs ? 'done' : 'waiting' }
+}
+
 function recover(
     actor: GameCharacter,
     step: Extract<ScenarioStep, { kind: 'recover' }>
@@ -86,8 +107,27 @@ function go(
     step: Extract<ScenarioStep, { kind: 'go' }>,
     now: number
 ): ScenarioOutcome {
-    const destination = step.destination
+    const outcome = moveToDestination(actor, run, room, step.destination, now)
+    if (
+        step.dash === true &&
+        run.step.lastActionAt === -Infinity &&
+        tryScenarioDash(actor, room, now)
+    ) {
+        run.step.lastActionAt = now
+        return { state: 'progress' }
+    }
+    return outcome
+}
+
+function moveToDestination(
+    actor: GameCharacter,
+    run: ScenarioRuntime,
+    room: GameRoom,
+    destination: Extract<ScenarioStep, { kind: 'go' }>['destination'],
+    now: number
+): ScenarioOutcome {
     if (destination.kind === 'marker') {
+        stopScenarioPath(actor, run)
         return { state: 'blocked', reason: 'Метка отсутствует.' }
     }
     if (destination.kind === 'point') {
@@ -105,6 +145,7 @@ function go(
         destination.locationId !== undefined &&
         destination.locationId !== actor.locationId
     ) {
+        stopScenarioPath(actor, run)
         return {
             state: 'blocked',
             reason: 'Выбранная цель находится в другой локации.',
@@ -122,92 +163,61 @@ function go(
             entry.id === destination.targetId
     )
     if (target === undefined) {
+        stopScenarioPath(actor, run)
         return { state: 'blocked', reason: 'Подходящая цель больше не видна.' }
     }
     return approachWorkTarget(actor, run, room, target, now)
 }
-export function attackScenario(
+
+function follow(
     actor: GameCharacter,
     run: ScenarioRuntime,
     room: GameRoom,
+    step: Extract<ScenarioStep, { kind: 'follow' }>,
     now: number
 ): ScenarioOutcome {
-    if (!canFight(actor)) {
+    const control = snapshotControl(actor)
+    const target = followTarget(actor, run, room, step.target, now)
+    if (target === undefined || !isScenarioFriendly(actor, target, now)) {
         return {
             state: 'blocked',
-            reason: 'Этот персонаж не согласен сражаться.',
+            reason: 'Подходящего персонажа для следования не видно.',
         }
     }
-    const prior =
-        run.step.targetId === undefined
-            ? undefined
-            : room.getCharacter(run.step.targetId)
-    if (prior !== undefined && !prior.alive) {
-        return { state: 'done' }
-    }
-    const target = room.findVisibleTarget(actor, 240, now)
-    if (target === undefined) {
-        return { state: 'blocked', reason: 'Противника не видно.' }
-    }
-    run.step.targetId = target.id
-    const nav = room.navigationFor(actor)
-    actor.updateFacing({
-        x: target.position.x - actor.position.x,
-        y: target.position.y - actor.position.y,
-    })
-    if (!isTargetInAttackRange(actor, target, nav.grid.tileWidth)) {
-        return navigateScenario(
+    if (control.mode !== 'follow' || control.targetId !== target.id) {
+        const decision = applyAgentControl(
             actor,
-            run,
+            { type: 'follow', targetId: target.id },
             room,
-            actor.locationId,
-            target.position,
-            1,
             now
         )
-    }
-    actor.clearPath()
-    actor.setMoveInput({ x: 0, y: 0 })
-    if (actor.isActionLocked(now) || actor.combat.readyAt > now) {
-        return { state: 'waiting' }
-    }
-    const before = actor.lastAttackAt
-    room.requestAttack(actor, now, target.id)
-    return actor.lastAttackAt > before
-        ? { state: 'progress' }
-        : { state: 'blocked', reason: 'Атака недоступна.' }
-}
-export function fleeScenario(
-    actor: GameCharacter,
-    room: GameRoom,
-    target: GameCharacter
-): void {
-    const nav = room.navigationFor(actor)
-    const dx = actor.position.x - target.position.x
-    const dy = actor.position.y - target.position.y
-    const magnitude = Math.max(1, Math.hypot(dx, dy))
-    const candidate = nav.clampWorld({
-        x: actor.position.x + (dx / magnitude) * 160,
-        y: actor.position.y + (dy / magnitude) * 160,
-    })
-    if (actor.hasPath()) {
-        return
-    }
-    const path = nav.findPathWorld(actor.position, candidate)
-    if (path.length > 0) {
-        actor.setPath(path)
-    } else {
-        const tile = nav.worldToTile(actor.position)
-        const alternatives = nav
-            .walkableNeighbors(tile)
-            .map((entry) => nav.tileToWorld(entry))
-            .sort(
-                (a, b) =>
-                    distance(b, target.position) - distance(a, target.position)
-            )
-        const point = alternatives[0]
-        if (point !== undefined) {
-            actor.setPath(nav.findPathWorld(actor.position, point))
+        if (!decision.accepted) {
+            return { state: 'blocked', reason: 'Следование сейчас недоступно.' }
         }
     }
+    run.followTargetId = target.id
+    return { state: 'done' }
+}
+
+function followTarget(
+    actor: GameCharacter,
+    run: ScenarioRuntime,
+    room: GameRoom,
+    selection: Extract<ScenarioStep, { kind: 'follow' }>['target'],
+    now: number
+): GameCharacter | undefined {
+    if (selection === 'reaction_target') {
+        const id = run.reaction?.targetId
+        return id === undefined
+            ? undefined
+            : visibleScenarioCharacter(actor, room, now, id)
+    }
+    const control = snapshotControl(actor)
+    const current =
+        control.mode === 'follow' && control.targetId !== null
+            ? visibleScenarioCharacter(actor, room, now, control.targetId)
+            : undefined
+    return current !== undefined && isScenarioFriendly(actor, current, now)
+        ? current
+        : findFriendlyScenarioTarget(actor, room, now)
 }
