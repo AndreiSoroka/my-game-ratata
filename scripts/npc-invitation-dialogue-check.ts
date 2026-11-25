@@ -422,7 +422,7 @@ async function run(scenario: Scenario): Promise<void> {
         assert.equal(room.social.quests.cityFund(actor.locationId), goldBefore)
         assert.equal(
             room.snapshot(Date.now(), player.locationId, player.id).party
-                ?.activeJob ?? null,
+                ?.activeJobs[0] ?? null,
             null
         )
         assert.equal(invitation(), null)

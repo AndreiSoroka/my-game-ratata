@@ -5,7 +5,9 @@ export { artisanRecipes } from './productionWorkOrders'
 import {
     CITY_COMMODITIES,
     type CityState,
+    depositHerbs,
     periodMs,
+    recordStockDelivery,
     replenishStock,
     takeQuantity,
     transferQuantity,
@@ -43,6 +45,14 @@ export interface MarketResult {
 /** Session-owned finite warehouses; snapshots and quotes never mutate stock. */
 export class CityEconomyService {
     private readonly cities = new Map<string, CityState>()
+
+    public depositHerbs(actor: GameCharacter, now: number): void {
+        const city = this.cities.get(actor.locationId)
+        if (city !== undefined) {
+            depositHerbs(actor.inventory, city, now)
+        }
+    }
+
     public questInventory(cityId: string): InventoryItemInstance[] | undefined {
         return this.cities.get(cityId)?.inventory
     }
@@ -60,13 +70,12 @@ export class CityEconomyService {
         ) {
             return
         }
-        city.revision += 1
-        city.history.push({
-            at: now,
-            itemId: itemId as import('@my-game-ratata/contracts').MarketItemId,
+        recordStockDelivery(
+            city,
+            itemId as import('@my-game-ratata/contracts').MarketItemId,
             quantity,
-            kind: 'delivery',
-        })
+            now
+        )
     }
     public readonly customerOrders = new CustomerOrders(
         (id) => this.cities.get(id),
@@ -256,14 +265,10 @@ export class CityEconomyService {
         resetMartyrStreak(actor)
         wallet.gold += buying ? -plan.total : plan.total
         plan.creditTax()
-        city.revision += 1
-        if (!buying) {
-            city.history.push({
-                at: now,
-                itemId: message.itemId,
-                quantity: message.quantity,
-                kind: 'delivery',
-            })
+        if (buying) {
+            city.revision += 1
+        } else {
+            recordStockDelivery(city, message.itemId, message.quantity, now)
         }
         return { accepted: true, error: null }
     }

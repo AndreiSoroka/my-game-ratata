@@ -8,6 +8,11 @@ import type { NpcAiCoordinator } from '../ai/coordinator'
 import type { AdventureService } from './adventure'
 import type { AgentDecisionResult } from './agentDecisions'
 import type { GameCharacter } from './character'
+import {
+    advanceHerbExchange,
+    isCityHerbCollector,
+    usesHerbExchangePolicy,
+} from './cityHerbExchange'
 import { ExchangeService } from './exchange'
 import type { ExchangeSettlement } from './exchangeState'
 import {
@@ -18,8 +23,9 @@ import {
 import { npcDialogueMode } from './npcRoster'
 import type { GameRoom } from './room'
 import type { NpcHeardSpeech } from './roomNpcConversations'
-import type { createSocialWake } from './roomSocialWake'
+import { createSocialWake } from './roomSocialWake'
 import { socialKey } from './socialScores'
+import { TradeNotifications } from './tradeNotifications'
 
 const exchangeReputationIntervalMs = 5 * 60_000
 
@@ -32,9 +38,9 @@ export function isExchange(message: {
 export function createRoomExchange(
     room: GameRoom,
     adventure: AdventureService,
-    ai: () => NpcAiCoordinator | undefined,
-    wake: ReturnType<typeof createSocialWake>
+    ai: () => NpcAiCoordinator | undefined
 ) {
+    const wake = createSocialWake(room, ai)
     const service = createExchangeService(room, adventure, ai, wake)
     const discussion = new NpcExchangeDiscussion()
     const acceptanceProblem = (
@@ -74,27 +80,6 @@ export function createRoomExchange(
                 )
             }
         },
-        notifyChange(
-            actor: GameCharacter,
-            exchange: ExchangeSnapshot,
-            now: number
-        ): void {
-            const offer = considersItems(actor.id)
-                ? offeredItems(exchange)
-                : undefined
-            const prompt =
-                offer === undefined
-                    ? undefined
-                    : discussion.problem(actor, exchange)
-            wake(
-                actor.id,
-                exchange.partnerId,
-                prompt ??
-                    'Изменились подтверждённые сервером условия обмена. Проверь их и реши следующий шаг.',
-                now,
-                offer
-            )
-        },
         decide(
             actor: GameCharacter,
             decision: ExchangeClientMessage,
@@ -105,7 +90,75 @@ export function createRoomExchange(
                 ? decideSocialExchange(service, actor, decision, now)
                 : { accepted: false, error: problem, events: [] }
         },
+        update: createExchangeUpdate({
+            room,
+            adventure,
+            ai,
+            wake,
+            service,
+            discussion,
+        }),
     }
+}
+
+interface ExchangeUpdateContext {
+    room: GameRoom
+    adventure: AdventureService
+    ai: () => NpcAiCoordinator | undefined
+    wake: ReturnType<typeof createSocialWake>
+    service: ExchangeService
+    discussion: NpcExchangeDiscussion
+}
+
+function createExchangeUpdate({
+    room,
+    adventure,
+    ai,
+    wake,
+    service,
+    discussion,
+}: ExchangeUpdateContext) {
+    const tradeViews = new TradeNotifications()
+    return (actors: Iterable<GameCharacter>, now: number): void => {
+        service.pause(now)
+        for (const actor of actors) {
+            const model = ai()?.configured(actor.id) === true
+            const scripted = usesHerbExchangePolicy(actor, model)
+            if (scripted) {
+                advanceHerbExchange(actor, service, room.getCharacter, now)
+            }
+            if (isCityHerbCollector(actor) && !service.isBusy(actor.id)) {
+                adventure.economy.depositHerbs(actor, now)
+            }
+            if (!model || scripted) {
+                continue
+            }
+            const snapshot = service.snapshot(actor.id)
+            if (snapshot !== null && tradeViews.changed(actor.id, snapshot)) {
+                notifyExchangeChange(wake, discussion, actor, snapshot, now)
+            }
+        }
+    }
+}
+
+function notifyExchangeChange(
+    wake: ReturnType<typeof createSocialWake>,
+    discussion: NpcExchangeDiscussion,
+    actor: GameCharacter,
+    snapshot: ExchangeSnapshot,
+    now: number
+): void {
+    const offer = considersItems(actor.id) ? offeredItems(snapshot) : undefined
+    const prompt =
+        offer === undefined ? undefined : discussion.problem(actor, snapshot)
+    wake(
+        actor.id,
+        snapshot.partnerId,
+        prompt ??
+            'Изменились подтверждённые сервером условия обмена. Проверь их и реши следующий шаг.',
+        now,
+        offer
+    )
 }
 
 function createExchangeService(
@@ -114,22 +167,39 @@ function createExchangeService(
     ai: () => NpcAiCoordinator | undefined,
     wake: ReturnType<typeof createSocialWake>
 ): ExchangeService {
+    const reputation = recordExchangeReputation(room)
+    const collectsHerbs = (actor: GameCharacter) =>
+        usesHerbExchangePolicy(actor, ai()?.configured(actor.id) === true)
     return new ExchangeService({
         getCharacter: (id) => room.getCharacter(id),
         navigationFor: (actor) => room.navigationFor(actor),
         aiDialogue: (actor) =>
-            ai()?.configured(actor.id) === true &&
-            npcDialogueMode(actor.id) !== 'passive',
-        canControlAI: (actor, now) => ai()?.canControl(actor.id, now) === true,
+            collectsHerbs(actor) ||
+            (ai()?.configured(actor.id) === true &&
+                npcDialogueMode(actor.id) !== 'passive'),
+        canControlAI: (actor, now) =>
+            collectsHerbs(actor) || ai()?.canControl(actor.id, now) === true,
         walletFor: (id) => adventure.walletFor(id),
-        onSettled: recordExchangeReputation(room),
-        onInvite: (actorId, partnerId, _id, now) =>
+        onSettled: (settlement) => {
+            reputation(settlement)
+            for (const { actor } of settlement.participants) {
+                if (isCityHerbCollector(actor)) {
+                    adventure.economy.depositHerbs(actor, settlement.at)
+                }
+            }
+        },
+        onInvite: (actorId, partnerId, _id, now) => {
+            const partner = room.getCharacter(partnerId)
+            if (partner !== undefined && collectsHerbs(partner)) {
+                return
+            }
             wake(
                 partnerId,
                 actorId,
                 'Приглашение к добровольному обмену. Проверь окно обмена и реши, согласиться ли.',
                 now
-            ),
+            )
+        },
         onInvitationAccepted: (inviterId, inviteeId, now) => {
             if (ai()?.configured(inviterId) === true) {
                 wake(

@@ -275,7 +275,7 @@ it('keeps civic services at the coordinator while requests are handled through c
         ...snapshot,
         characters: [player, mira, clerk],
         party: {
-            activeJob: null,
+            activeJobs: [],
             invitations: [],
             jobs: [job],
             leaderId: null,
@@ -291,6 +291,7 @@ it('keeps civic services at the coordinator while requests are handled through c
 
     expect(serviceCommands(mira.id)).toEqual([
         { type: 'interact', targetId: mira.id, service: 'shop' },
+        { type: 'interact', targetId: mira.id, service: 'sell' },
         { type: 'interact', targetId: mira.id, service: 'city_affairs' },
     ])
     expect(serviceCommands(clerk.id)).toEqual([])

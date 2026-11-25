@@ -1,10 +1,12 @@
 import {
+    type GuildQuestDefinition,
     type GuildQuestSnapshot,
     npcQuestMessage,
 } from '@my-game-ratata/contracts'
 
 import { guildRewardUnchanged } from './guildRewards'
 import type { GuildJob } from './guildRules'
+import type { WorkerGuildGateway } from './guildWorkerRequests'
 import type { QuestFunding } from './questFunding'
 
 function rewardMissing(job: GuildJob, funding?: QuestFunding): boolean {
@@ -72,4 +74,59 @@ export function viewGuildJob(
         progress: job.progress,
         status: status(job, missing),
     }
+}
+
+export function viewActiveGuildJob(
+    job: GuildJob,
+    key: string,
+    workers: WorkerGuildGateway | undefined,
+    funding: QuestFunding | undefined
+): GuildQuestSnapshot | undefined {
+    if (job.definition.workRequest === undefined) {
+        return viewGuildJob(job, funding)
+    }
+    const request = workers?.active(key, job.definition.id)
+    return request == null
+        ? undefined
+        : viewGuildJob(
+              {
+                  ...job,
+                  definition: { ...job.definition, workRequest: request },
+                  progress: request.stage === 'ready' ? job.definition.goal : 0,
+              },
+              funding
+          )
+}
+
+export function viewGuildHistory(
+    history: Iterable<GuildJob>,
+    active: ReadonlySet<string>,
+    issuerId: string,
+    personId: string,
+    funding: QuestFunding | undefined
+): GuildQuestSnapshot[] {
+    return [...history]
+        .filter(
+            (job) =>
+                (issuerId === '' || job.issuerId === issuerId) &&
+                (active.has(job.id) ||
+                    ((job.completed || job.cancelled === true) &&
+                        (job.acceptedBy === personId ||
+                            job.participants.has(personId))))
+        )
+        .map((job) => viewGuildJob(job, funding))
+}
+
+export function availableGuildDefinitions(
+    definitions: GuildQuestDefinition[],
+    completed: ReadonlySet<string> | undefined,
+    active: ReadonlySet<string>
+): GuildQuestDefinition[] {
+    return definitions.filter(
+        (job) =>
+            !active.has(job.id) &&
+            (job.workRequest === undefined
+                ? completed?.has(job.id) !== true
+                : job.workRequest.stage === 'waiting')
+    )
 }

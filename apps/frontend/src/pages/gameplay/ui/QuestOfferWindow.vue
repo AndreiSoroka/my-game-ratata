@@ -19,15 +19,12 @@ const props = defineProps<{
     offer: QuestOfferSnapshot
     characters: CharacterSnapshot[]
     serverTime: number
-    occupied: boolean
     playerId?: string
     conversation?: WhisperSnapshot | null
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const rewardMode = ref<QuestRewardMode>(props.offer.rewardMode)
 const initialRevision = ref(props.offer.revision)
-const usesGroupSlot = computed(() => props.offer.authoredQuestId !== 'hearts-for-the-border-bell')
-const groupOccupied = computed(() => usesGroupSlot.value && props.occupied)
 const cityFunded = computed(
     () =>
         props.offer.guildQuestId === undefined &&
@@ -48,7 +45,7 @@ watch(
     }
 )
 function answer(accept: boolean): void {
-    if (accept && (groupOccupied.value || expired.value)) return
+    if (accept && expired.value) return
     emit('command', {
         type: 'quest_offer_answer',
         offerId: props.offer.id,
@@ -67,7 +64,7 @@ function answer(accept: boolean): void {
     >
         <QuestOfferPanel
             v-model:reward-mode="rewardMode"
-            :confirm-disabled="groupOccupied || expired"
+            :confirm-disabled="expired"
             :required-items="requiredItems"
             :reward-gold="offer.rewardGold"
             :reward-items="rewardItems"
@@ -82,12 +79,6 @@ function answer(accept: boolean): void {
             <template #status>
                 <p v-if="offer.revision !== initialRevision" class="social-status" role="status">
                     {{ tGame('game.quests.questGiverChangedRewardReview') }}
-                </p>
-                <p v-if="usesGroupSlot" class="social-muted">
-                    {{ tGame('game.quests.youCanHaveOneActive') }}
-                </p>
-                <p v-if="groupOccupied" class="social-status" role="status">
-                    {{ tGame('game.quests.completeOrCancelYourCurrent') }}
                 </p>
                 <p v-if="expired" class="social-status" role="status">
                     {{ tGame('game.quests.offerExpired') }}

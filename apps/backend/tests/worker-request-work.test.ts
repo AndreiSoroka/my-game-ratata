@@ -1,7 +1,18 @@
-import { FARM_GROW_MS, INVENTORY_CAPACITY } from '@my-game-ratata/contracts'
+import {
+    CENTER_LOCATION_ID,
+    FARM_GROW_MS,
+    INVENTORY_CAPACITY,
+} from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
-import { countInventoryItem, createItemInstance } from '../src/game/inventory'
+import {
+    countInventoryItem,
+    createItemInstance,
+    itemQuantity,
+} from '../src/game/inventory'
+import { readWorkerActivity } from '../src/game/workerActivityState'
+import { createEconomyWorkers } from '../src/game/workerSpawns'
+import { required } from './containerTestHelpers'
 import { WorkerSimulation } from './workerRequestFixture'
 
 function startTrial(test: WorkerSimulation): void {
@@ -12,6 +23,17 @@ function startTrial(test: WorkerSimulation): void {
 }
 
 describe('real work steps verify a saved worksite', () => {
+    it('starts Agafya with ten real wheat seeds in legal stacks', () => {
+        const test = new WorkerSimulation('farmer')
+        const farmer = createEconomyWorkers(
+            test.room.navigationFor({ locationId: CENTER_LOCATION_ID })
+        ).find(({ character }) => character.id === 'npc_farmer_1')?.character
+        expect(farmer?.inventory.map(itemQuantity)).toEqual([9, 1])
+        expect(
+            farmer?.inventory.every((item) => item.itemId === 'wheat_seed')
+        ).toBe(true)
+    })
+
     it('counts generic scrap accepted with no domain event as a real step', () => {
         const test = new WorkerSimulation('miner', { scrap: true })
         startTrial(test)
@@ -42,17 +64,87 @@ describe('real work steps verify a saved worksite', () => {
         expect(countInventoryItem(test.worker.inventory, 'wheat_seed')).toBe(0)
         expect(countInventoryItem(test.worker.inventory, 'grain')).toBe(0)
     })
+})
 
-    it('waits for actual growth and reports missing seeds independently of safety', () => {
-        const missing = new WorkerSimulation('farmer')
-        missing.prepareFarm('bare')
-        startTrial(missing)
-        missing.until(() => missing.current().reason?.includes('семя') === true)
-        expect(missing.current().stage).toBe('working')
-        expect(missing.commands.some((entry) => entry.result.accepted)).toBe(
-            false
+describe('seed supply during a verification trip', () => {
+    it('visits the city supplier and returns to the original plot for a real test planting', () => {
+        const test = new WorkerSimulation('farmer')
+        test.prepareFarm('bare')
+        test.worker.inventory.push(createItemInstance('grain'))
+        const supplier = required(test.characters.get('npc_merchant_1'))
+        supplier.alive = false
+        startTrial(test)
+        const site = required(readWorkerActivity(test.worker)?.worksite)
+        test.until(
+            () =>
+                test
+                    .current()
+                    .reason?.includes('поставщик семян сейчас недоступен') ===
+                true
         )
+        expect(test.current().stage).toBe('working')
+        expect(test.commands).toHaveLength(0)
 
+        supplier.alive = true
+        test.until(() => test.current().stage === 'ready')
+        expect(test.commands).toHaveLength(2)
+        expect(test.commands[0]).toMatchObject({
+            message: {
+                type: 'farm_supply',
+                npcId: supplier.id,
+                plotId: site.sourceId,
+            },
+            locationId: CENTER_LOCATION_ID,
+            permitted: true,
+            result: { accepted: true },
+        })
+        expect(test.commands[1]).toMatchObject({
+            message: {
+                type: 'farm_action',
+                action: 'sow',
+                plotId: site.sourceId,
+            },
+            locationId: test.worksite.locationId,
+            permitted: true,
+            result: { accepted: true },
+        })
+        expect(test.player.inventory).toHaveLength(0)
+        expect(test.worker.inventory).toHaveLength(0)
+        expect(test.adventure.farmSupply.remaining(test.worker.id)).toBe(0)
+    })
+
+    it('keeps the single seed advance bound to the incident across another claim', () => {
+        const test = new WorkerSimulation('farmer')
+        test.prepareFarm('bare')
+        startTrial(test)
+        test.until(
+            () => countInventoryItem(test.worker.inventory, 'wheat_seed') === 1
+        )
+        test.worker.inventory.length = 0
+        expect(
+            test.requests.abandon(test.current().id, 'solo:hero', test.now)
+        ).toBeNull()
+        test.until(() => test.current().stage === 'waiting')
+        test.accept()
+        expect(test.report()).toBeNull()
+        test.until(
+            () =>
+                test.current().reason ===
+                'Для настоящего посева на проверке нужно семя пшеницы.'
+        )
+        for (let tick = 0; tick < 40; tick += 1) {
+            test.tick()
+        }
+        expect(test.commands).toHaveLength(1)
+        expect(test.current()).toMatchObject({
+            stage: 'working',
+            proofAccepted: true,
+        })
+    })
+})
+
+describe('farming and gathering availability during verification', () => {
+    it('waits for actual crop growth before asking for a seed advance', () => {
         const growing = new WorkerSimulation('farmer')
         growing.prepareFarm('growing')
         startTrial(growing)

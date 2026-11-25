@@ -298,7 +298,7 @@ try {
         )
         assert.equal(
             room.snapshot(Date.now(), player.locationId, player.id).party
-                ?.activeJob ?? null,
+                ?.activeJobs[0] ?? null,
             null
         )
         assert.ok(

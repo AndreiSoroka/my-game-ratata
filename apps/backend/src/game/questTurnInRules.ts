@@ -11,8 +11,12 @@ import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
 import type { ExchangeService } from './exchange'
 import type { NavigationService } from './navigation'
+import { objectiveGoal } from './npcQuestProgress'
 import type { NpcQuestService } from './npcQuests'
-import { questTransferReachable } from './npcQuestTypes'
+import {
+    type NpcQuestDecisionContext,
+    questTransferReachable,
+} from './npcQuestTypes'
 import type { PartyService } from './parties'
 import { availableItemQuantity } from './rewardReservations'
 import { canHearSpeech } from './socialSpeech'
@@ -100,10 +104,25 @@ export function turnInContact(
     )
 }
 
-export function hasDeliveries(
+export function freshTurnInDialogue(
+    context: NpcQuestDecisionContext | undefined,
+    playerId: string,
+    now: number
+): boolean {
+    return (
+        context?.autonomous === false &&
+        context.freshDialogueTargetId === playerId &&
+        Boolean(context.freshDialogueMessageId) &&
+        context.freshDialogueAt !== undefined &&
+        context.freshDialogueAt <= now &&
+        context.freshDialogueAt > now - 30_000
+    )
+}
+
+function missingDeliveries(
     player: GameCharacter,
     objectives: readonly QuestObjective[]
-): boolean {
+): NonNullable<QuestTurnInPromptSnapshot['missingItems']> {
     const required = new Map<ItemId, number>()
     for (const objective of objectives) {
         if (objective.kind === 'deliver') {
@@ -113,10 +132,12 @@ export function hasDeliveries(
             )
         }
     }
-    return [...required].every(
-        ([itemId, quantity]) =>
-            availableItemQuantity(player.inventory, itemId) >= quantity
-    )
+    return [...required].flatMap(([itemId, quantity]) => {
+        const available = availableItemQuantity(player.inventory, itemId)
+        return available < quantity
+            ? [{ itemId, required: quantity, available }]
+            : []
+    })
 }
 
 export function activeWorkerRequest(
@@ -124,33 +145,13 @@ export function activeWorkerRequest(
     player: GameCharacter,
     job: NpcQuestSnapshot
 ): WorkRequestSnapshot | undefined {
-    const active = environment.parties.boardActiveJob(player.id)
-    return active?.instanceId === job.instanceId &&
-        active.workRequest?.id === job.workerRequestId
-        ? active.workRequest
-        : undefined
-}
-
-function workerAction(
-    environment: QuestTurnInEnvironment,
-    player: GameCharacter,
-    job: NpcQuestSnapshot
-): QuestTurnInAction | undefined {
-    const request = activeWorkerRequest(environment, player, job)
-    if (
-        request === undefined ||
-        !canReachWorkerClerk(environment, player, request)
-    ) {
-        return undefined
-    }
-    if (request.stage === 'waiting') {
-        return request.proofAccepted || hasDeliveries(player, job.objectives)
-            ? 'report'
-            : undefined
-    }
-    return request.stage === 'ready' && job.status === 'ready'
-        ? 'turn_in'
-        : undefined
+    return environment.parties
+        .boardActiveJobs(player.id)
+        .find(
+            (active) =>
+                active.instanceId === job.instanceId &&
+                active.workRequest?.id === job.workerRequestId
+        )?.workRequest
 }
 
 export function canReachWorkerClerk(
@@ -165,7 +166,7 @@ export function canReachWorkerClerk(
     )
 }
 
-export function readyTurnInAction(
+export function turnInPreviewAction(
     environment: QuestTurnInEnvironment,
     player: GameCharacter,
     job: NpcQuestSnapshot
@@ -180,17 +181,62 @@ export function readyTurnInAction(
         return undefined
     }
     if (job.workerRequestId !== undefined) {
-        return workerAction(environment, player, job)
+        const request = activeWorkerRequest(environment, player, job)
+        switch (request?.stage) {
+            case 'waiting':
+                return 'report'
+            case 'ready':
+                return job.status === 'ready' ? 'turn_in' : undefined
+            default:
+                return undefined
+        }
     }
-    return job.status === 'ready' &&
-        questTransferReachable(
-            player,
-            environment.getCharacter(job.issuerId),
-            environment
-        ) &&
-        hasDeliveries(player, job.objectives)
+    return job.objectives.some(({ kind }) => kind === 'deliver') ||
+        (job.status === 'ready' &&
+            questTransferReachable(
+                player,
+                environment.getCharacter(job.issuerId),
+                environment
+            ))
         ? 'turn_in'
         : undefined
+}
+
+export function turnInReadiness(
+    environment: QuestTurnInEnvironment,
+    player: GameCharacter,
+    view: QuestTurnInPromptSnapshot,
+    job?: NpcQuestSnapshot
+): Pick<
+    QuestTurnInPromptSnapshot,
+    'canConfirm' | 'missingItems' | 'blockedReason'
+> {
+    const missingItems = missingDeliveries(player, view.objectives)
+    let blockedReason: QuestTurnInPromptSnapshot['blockedReason']
+    if (
+        !questTransferReachable(
+            player,
+            environment.getCharacter(view.issuerId),
+            environment
+        )
+    ) {
+        blockedReason = 'approach_issuer'
+    } else if (
+        job?.status === 'active' &&
+        job.workerRequestId === undefined &&
+        job.objectives.some(
+            (objective, index) =>
+                objective.kind !== 'deliver' &&
+                (job.progress[index] ?? 0) < objectiveGoal(objective)
+        )
+    ) {
+        blockedReason = 'unfinished_objectives'
+    }
+    return {
+        canConfirm: missingItems.length === 0 && blockedReason === undefined,
+        ...(missingItems.length === 0 ? {} : { missingItems }),
+        ...(blockedReason === undefined ? {} : { blockedReason }),
+    }
 }
 
 function sourceKind(
@@ -216,10 +262,13 @@ export function createTurnInPrompt(
     action: QuestTurnInAction,
     now: number
 ): QuestTurnInPromptSnapshot {
-    const active = environment.parties.boardActiveJob(playerId)
-    const withoutTrophy =
-        active?.instanceId === job.instanceId &&
-        active.workRequest?.proofAccepted === true
+    const withoutTrophy = environment.parties
+        .boardActiveJobs(playerId)
+        .some(
+            (active) =>
+                active.instanceId === job.instanceId &&
+                active.workRequest?.proofAccepted === true
+        )
     return {
         id: environment.adventure.questFunding.newId('quest-confirm'),
         instanceId: job.instanceId,

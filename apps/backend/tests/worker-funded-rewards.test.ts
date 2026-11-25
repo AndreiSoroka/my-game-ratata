@@ -20,9 +20,12 @@ it('freezes completed participation when its owner later forms another party', (
     f.guild.moveJob('solo:hero', 'party:later')
     f.guild.addLateMember('party:later', late)
     f.guild.removeMember('party:later', f.actor.id)
-    expect(f.guild.conversation(f.clerk.id, late.id)).toHaveLength(0)
     expect(
-        f.guild.conversation(f.clerk.id, f.actor.id)[0]?.participants
+        f.guild.conversation(f.clerk.id, late.id, 'party:later')
+    ).toHaveLength(0)
+    expect(
+        f.guild.conversation(f.clerk.id, f.actor.id, 'solo:hero')[0]
+            ?.participants
     ).toEqual([
         {
             id: f.actor.id,
@@ -67,7 +70,7 @@ it('refuses an unfunded claim and releases reservations on abandonment and issue
     f.accept()
     f.clerk.applyDamage(f.clerk.hp, 1002)
     expect(f.wallet.questFunding.availableGold(f.request.cityId)).toBe(300)
-    expect(f.guild.snapshot('solo:hero')).toBeNull()
+    expect(f.guild.snapshots('solo:hero')).toEqual([])
 })
 
 it('settles negotiated gold and a real item atomically without consuming a second trophy', () => {
@@ -95,9 +98,9 @@ it('settles negotiated gold and a real item atomically without consuming a secon
         }
     )
     f.request.stage = 'ready'
-    expect(f.guild.snapshot('solo:hero')?.rewardItems?.[0]?.instanceId).toBe(
-        apple.instanceId
-    )
+    expect(
+        f.guild.snapshots('solo:hero')[0]?.rewardItems?.[0]?.instanceId
+    ).toBe(apple.instanceId)
     f.turnIn()
     expect(f.gateway.complete).not.toHaveBeenCalled()
     expect(f.wallet.snapshot(f.actor.id).gold).toBe(0)
@@ -114,9 +117,9 @@ it('settles negotiated gold and a real item atomically without consuming a secon
         f.actor.inventory.some((item) => item.instanceId === trophy.instanceId)
     ).toBe(true)
     expect(f.clerk.inventory).toHaveLength(0)
-    expect(f.guild.conversation(f.clerk.id, f.actor.id)[0]?.status).toBe(
-        'completed'
-    )
+    expect(
+        f.guild.conversation(f.clerk.id, f.actor.id, 'solo:hero')[0]?.status
+    ).toBe('completed')
 })
 
 it('keeps a stolen promised item missing without paying or freeing the worker', () => {
@@ -141,7 +144,7 @@ it('keeps a stolen promised item missing without paying or freeing the worker', 
     f.clerk.inventory.splice(0)
     f.request.stage = 'ready'
     f.turnIn()
-    expect(f.guild.snapshot('solo:hero')?.status).toBe('reward_missing')
+    expect(f.guild.snapshots('solo:hero')[0]?.status).toBe('reward_missing')
     expect(f.gateway.complete).not.toHaveBeenCalled()
     expect(f.wallet.snapshot(f.actor.id).gold).toBe(0)
     expect(f.wallet.questFunding.wallet(f.request.cityId)?.gold).toBe(300)

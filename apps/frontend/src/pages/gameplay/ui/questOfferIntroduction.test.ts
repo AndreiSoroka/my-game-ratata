@@ -15,7 +15,6 @@ it('shows the actual invitation above the terms, without emitting speech or acce
             offer: { ...questOfferFixture(), introduction },
             characters: [],
             serverTime: 100_000,
-            occupied: false,
         },
     })
     try {
@@ -38,7 +37,7 @@ it('escapes prose and replaces it rather than duplicating it on repeated snapsho
         introduction: '<img src=x onerror="alert(1)"> Сначала обсудим условия.',
     }
     const wrapper = mount(QuestOfferWindow, {
-        props: { offer, characters: [], serverTime: 100_000, occupied: false },
+        props: { offer, characters: [], serverTime: 100_000 },
     })
     try {
         expect(wrapper.get('.quest-offer__introduction').text()).toBe(offer.introduction)
@@ -62,7 +61,6 @@ it('keeps legacy offers readable without an introduction', () => {
             offer: questOfferFixture(),
             characters: [],
             serverTime: 100_000,
-            occupied: false,
         },
     })
     try {
@@ -106,7 +104,6 @@ it('localizes the open offer while keeping its structured quantities and IDs', a
             offer: { ...offer, objectives: [...offer.objectives] },
             characters: [],
             serverTime: 100_000,
-            occupied: false,
         },
     })
     try {

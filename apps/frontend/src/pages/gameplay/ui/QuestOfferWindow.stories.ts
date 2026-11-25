@@ -15,7 +15,6 @@ type Args = {
     offer: QuestOfferSnapshot
     characters: CharacterSnapshot[]
     serverTime: number
-    occupied: boolean
     playerId?: string
     conversation?: WhisperSnapshot | null
 }
@@ -26,7 +25,6 @@ const meta = {
         offer,
         characters: [],
         serverTime: 1_000,
-        occupied: false,
         playerId: 'self',
         conversation: null,
     },
@@ -36,6 +34,5 @@ export default meta
 type Story = StoryObj<Args>
 
 export const Default: Story = {}
-export const Occupied: Story = { args: { occupied: true } }
 export const Expired: Story = { args: { serverTime: offer.expiresAt } }
 export const Conversation: Story = { args: { conversation: whisperFixture() } }

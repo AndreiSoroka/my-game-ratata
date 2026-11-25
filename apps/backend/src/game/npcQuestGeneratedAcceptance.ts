@@ -32,19 +32,21 @@ export function acceptGenerated(
     const id =
         offer.publication?.id ??
         context.environment.adventure.questFunding.newId('npc-contract')
-    const group = context.environment.parties.contractGroup(actor.id)
+    const { parties } = context.environment
+    const group = parties.contractGroup(actor.id)
+    if (draft === null || wallet === undefined) {
+        return questResult(
+            false,
+            'Награда больше недоступна. Попросите новые условия.'
+        )
+    }
     if (
-        draft === null ||
-        wallet === undefined ||
-        !(offer.publication === undefined
-            ? context.reservations.reserve(
-                  id,
-                  { inventory: issuer.inventory, wallet },
-                  draft.rewardGold,
-                  draft.rewardItems
-              )
-            : !context.jobs.has(id) && context.reservations.valid(id))
+        offer.publication === undefined &&
+        hasMatchingContract(context, group.key, issuer.id, draft)
     ) {
+        return questResult(false, 'Группа уже выполняет этот договор.')
+    }
+    if (!reserveContract(context, offer, id, issuer, wallet, draft)) {
         return questResult(
             false,
             'Награда больше недоступна. Попросите новые условия.'
@@ -54,7 +56,7 @@ export function acceptGenerated(
         if (offer.publication === undefined) {
             context.reservations.release(id)
         }
-        return questResult(false, 'У группы уже есть действующий договор.')
+        return questResult(false, 'Этот договор уже принят.')
     }
     const job = buildJob(
         context,
@@ -79,6 +81,47 @@ export function acceptGenerated(
     context.offers.delete(actor.id)
     context.refresh(job)
     return questResult(true)
+}
+
+function reserveContract(
+    context: QuestAcceptanceContext,
+    offer: QuestOfferRecord,
+    id: string,
+    issuer: GameCharacter,
+    wallet: NonNullable<ReturnType<typeof questRewardWallet>>,
+    draft: QuestDraft
+): boolean {
+    return offer.publication === undefined
+        ? context.reservations.reserve(
+              id,
+              { inventory: issuer.inventory, wallet },
+              draft.rewardGold,
+              draft.rewardItems
+          )
+        : !context.jobs.has(id) && context.reservations.valid(id)
+}
+
+function hasMatchingContract(
+    context: QuestAcceptanceContext,
+    groupKey: string,
+    issuerId: string,
+    draft: QuestDraft
+): boolean {
+    const title = draft.title.toLocaleLowerCase()
+    const objectives = JSON.stringify(draft.objectives)
+    for (const id of context.environment.parties.contractSlots.idsFor(
+        groupKey
+    )) {
+        const job = context.jobs.get(id)
+        if (
+            job?.view.issuerId === issuerId &&
+            job.draft.title.toLocaleLowerCase() === title &&
+            JSON.stringify(job.draft.objectives) === objectives
+        ) {
+            return true
+        }
+    }
+    return false
 }
 
 export function redeemPublishedQuest(

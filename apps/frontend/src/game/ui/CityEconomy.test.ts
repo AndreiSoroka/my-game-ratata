@@ -26,7 +26,9 @@ const market: MarketSnapshot = {
 }
 describe('city economy panels', () => {
     it('shows who pays the tax and emits the quoted totals after tax', async () => {
-        const wrapper = mount(CityMarket, { props: { market, gold: 9 } })
+        const wrapper = mount(CityMarket, {
+            props: { market, gold: 9, inventory: { wood: { owned: 3, sellable: 2 } } },
+        })
         const button = wrapper.get('.market-row button')
         expect(wrapper.text()).toContain('Городской налог 20% округляется вверх. Платит торговец.')
         expect(button.text()).toBe('Купить · 9 ◈')
@@ -67,6 +69,7 @@ describe('city economy panels', () => {
         ])
         wrapper.unmount()
     })
+
     it('repair all includes exactly the quoted instances and cost', async () => {
         const wrapper = mount(RepairWorkshop, {
             props: {
@@ -123,4 +126,36 @@ describe('city economy panels', () => {
         expect(cells).toEqual(['6 / 12 / 24', '1', '1 / 3 ◈', '3 / 1'])
         wrapper.unmount()
     })
+})
+
+it('keeps the sell-only tab selected and uses only sellable items for availability', async () => {
+    const wrapper = mount(CityMarket, {
+        props: {
+            market,
+            gold: 0,
+            sides: ['sell'],
+            inventory: { wood: { owned: 3, sellable: 1 } },
+        },
+    })
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs).toHaveLength(1)
+    expect(tabs[0]?.text()).toBe('Продать')
+    await tabs[0]?.trigger('keydown', { code: 'Home' })
+    expect(tabs[0]?.attributes('aria-selected')).toBe('true')
+    const button = wrapper.get('.market-row button')
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(wrapper.text()).toContain('В сумке 3')
+    expect(wrapper.text()).toContain('Можно продать: 1')
+    const quantity = wrapper.get('input')
+    await quantity.setValue('')
+    expect(button.text()).toBe('Укажите количество')
+    expect(button.attributes('disabled')).toBeDefined()
+    await quantity.setValue(2)
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.market-row__empty-stock').text()).toBe('Можно продать: 1')
+    await wrapper.setProps({ inventory: { wood: { owned: 3, sellable: 2 } } })
+    expect(button.attributes('disabled')).toBeUndefined()
+    await wrapper.setProps({ inventory: {} })
+    expect(button.attributes('disabled')).toBeDefined()
+    wrapper.unmount()
 })

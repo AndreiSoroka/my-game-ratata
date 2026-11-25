@@ -152,6 +152,13 @@ export interface QuestTurnInPromptSnapshot {
     revision: number
     action?: 'report' | 'turn_in'
     preAcceptance?: true
+    canConfirm?: boolean
+    missingItems?: Array<{
+        itemId: ItemId
+        required: number
+        available: number
+    }>
+    blockedReason?: 'approach_issuer' | 'unfinished_objectives'
 }
 
 export interface QuestHistoryEntry {
@@ -188,5 +195,5 @@ export interface NpcQuestSocialSnapshot {
     questHistory?: QuestHistoryEntry[]
     issuerQuests?: NpcQuestSnapshot[]
     questOffer?: QuestOfferSnapshot | null
-    quest?: NpcQuestSnapshot | null
+    quests?: NpcQuestSnapshot[]
 }

@@ -37,6 +37,80 @@ it('requires an explicit button, confirms the server prompt once and blocks repe
         view.unmount()
     }
 })
+
+it('shows the total shortage for an item and enables submission when the server updates it', async () => {
+    const delivery: QuestTurnInPromptSnapshot = {
+        ...prompt,
+        objectives: [
+            { kind: 'deliver', itemId: 'slime_heart', quantity: 1, recipientId: 'mira' },
+            { kind: 'deliver', itemId: 'bone', quantity: 1, recipientId: 'mira' },
+            { kind: 'deliver', itemId: 'slime_heart', quantity: 2, recipientId: 'mira' },
+        ],
+        canConfirm: false,
+        missingItems: [{ itemId: 'slime_heart', required: 3, available: 2 }],
+    }
+    const view = mount(QuestTurnInWindow, {
+        props: { prompt: delivery, serverTime: 1000, playerId: 'self' },
+    })
+    try {
+        const items = view.get('[aria-label="Нужные предметы"]')
+        expect(items.findAll('li')).toHaveLength(2)
+        expect(items.get('.quest-item-list__item--missing').text()).toBe(
+            'Слизневое сердце · доступно 2 из 3 · не хватает 1'
+        )
+        expect(items.get('li:last-child').text()).toBe('Кость × 1')
+        expect(items.get('li:last-child').classes()).not.toContain('quest-item-list__item--missing')
+        const take = view.findAll('button').find((button) => button.text() === 'Сдать')!
+        expect(take.attributes('disabled')).toBeDefined()
+        await take.trigger('click')
+        expect(view.emitted('command')).toBeUndefined()
+
+        await view.setProps({ prompt: { ...delivery, canConfirm: true, missingItems: [] } })
+        expect(items.find('.quest-item-list__item--missing').exists()).toBe(false)
+        expect(items.get('li:first-child').text()).toBe('Слизневое сердце × 3')
+        expect(take.attributes('disabled')).toBeUndefined()
+        await take.trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'quest_turn_in_confirm', confirmationId: delivery.id, accept: true }],
+        ])
+
+        await view.setProps({ prompt: { ...delivery, id: 'confirm-2' } })
+        expect(take.text()).toBe('Сдать')
+        expect(take.attributes('disabled')).toBeDefined()
+        expect(items.get('.quest-item-list__item--missing').text()).toContain('не хватает 1')
+        const back = view
+            .findAll('button')
+            .find((button) => button.text() === 'Вернуться к разговору')!
+        expect(back.attributes('disabled')).toBeUndefined()
+    } finally {
+        view.unmount()
+    }
+})
+
+it('explains a non-inventory blocker and lets the player return to the conversation', async () => {
+    const view = mount(QuestTurnInWindow, {
+        props: {
+            prompt: { ...prompt, canConfirm: false, blockedReason: 'approach_issuer' },
+            serverTime: 1000,
+            playerId: 'self',
+        },
+    })
+    try {
+        expect(view.get('[role="status"]').text()).toBe('Подойдите ближе к заказчику.')
+        const take = view.findAll('button').find((button) => button.text() === 'Сдать')!
+        expect(take.attributes('disabled')).toBeDefined()
+        await view
+            .findAll('button')
+            .find((button) => button.text() === 'Вернуться к разговору')!
+            .trigger('click')
+        expect(view.emitted('command')).toEqual([
+            [{ type: 'quest_turn_in_confirm', confirmationId: prompt.id, accept: false }],
+        ])
+    } finally {
+        view.unmount()
+    }
+})
+
 it('disables an expired prompt and closes through the same explicit confirmation protocol', async () => {
     const view = mount(QuestTurnInWindow, {
         props: { prompt, serverTime: prompt.expiresAt, playerId: 'self' },

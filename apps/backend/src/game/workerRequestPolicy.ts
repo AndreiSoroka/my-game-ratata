@@ -10,6 +10,7 @@ import { parkWorkerAtClerk } from './workerClerkParking'
 import { approach, stop } from './workerNavigation'
 import { recordWorkerIncidentActivity } from './workerRequestActivity'
 import { WORKER_REQUEST_RADIUS, type WorkerIncident } from './workerRequestData'
+import { advanceTrialSeedVisit } from './workerTrialSeedSupply'
 
 export type AuthorizedWorkerCommand = (
     actor: GameCharacter,
@@ -102,7 +103,11 @@ function advanceTrial(
             'Опасность осталась: работник возвращается за помощью.'
         incident.returnReady = false
         incident.trialPoint = null
+        delete incident.seedVisit
         returnToClerk(incident, actor, room, now)
+        return
+    }
+    if (advanceTrialSeedVisit(incident, actor, room, now, perform)) {
         return
     }
     const target = incident.target
@@ -132,6 +137,9 @@ function advanceTrial(
     }
     if (result.until !== undefined) {
         incident.activityUntil = result.until
+    }
+    if (result.seedPlotId !== undefined && incident.seedAdvanceUsed !== true) {
+        incident.seedVisit = { plotId: result.seedPlotId }
     }
     if (result.done) {
         incident.trialPoint = {

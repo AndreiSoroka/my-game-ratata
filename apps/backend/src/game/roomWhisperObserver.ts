@@ -13,7 +13,14 @@ export function createWhisperObserver(
         targetId: string
     ) => void,
     turnIns: () => QuestTurnInService,
-    onDelivered?: (actor: GameCharacter, listener: GameCharacter) => void
+    onDelivered?: (actor: GameCharacter, listener: GameCharacter) => void,
+    onAddressed?: (
+        actor: GameCharacter,
+        listener: GameCharacter,
+        text: string,
+        now: number,
+        handleQuest: () => boolean
+    ) => boolean
 ) {
     return (
         actor: GameCharacter,
@@ -36,7 +43,18 @@ export function createWhisperObserver(
                 })
             }
         }
-        if (turnIns().heard(actor, listener, message.text, message.at)) {
+        const handleQuest = () =>
+            turnIns().heard(actor, listener, message.text, message.at)
+        if (
+            onAddressed?.(
+                actor,
+                listener,
+                message.text,
+                message.at,
+                handleQuest
+            ) ??
+            handleQuest()
+        ) {
             return
         }
         hear(

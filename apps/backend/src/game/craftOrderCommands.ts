@@ -73,6 +73,7 @@ export function parseNpcInteractionService(
     if (
         !validId(targetId) ||
         (service !== 'shop' &&
+            service !== 'sell' &&
             service !== 'orders' &&
             service !== 'repair' &&
             service !== 'city_affairs' &&

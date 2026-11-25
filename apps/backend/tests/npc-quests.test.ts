@@ -31,7 +31,7 @@ it('requires the exact server offer revision and explicit acceptance', () => {
             20
         ).accepted
     ).toBe(false)
-    expect(f.service.snapshot(f.player.id, 20).quest).toBeNull()
+    expect(f.service.snapshot(f.player.id, 20).quests).toEqual([])
     expect(
         f.service.handle(
             f.player,
@@ -46,7 +46,7 @@ it('requires the exact server offer revision and explicit acceptance', () => {
     ).toBe(false)
 })
 
-it('uses the existing group slot and reserves a finite municipal budget once', () => {
+it('keeps the guild hunt and NPC quest independent with a finite municipal budget', () => {
     const f = npcQuestFixture()
     const id = f.accept(f.draft({ rewardGold: 300 }))
     expect(f.service.cityFund(f.issuer.locationId)).toBe(0)
@@ -56,7 +56,7 @@ it('uses the existing group slot and reserves a finite municipal budget once', (
         f.characters.values(),
         30
     )
-    expect(f.parties.snapshot(f.player.id).activeJob).toBeNull()
+    expect(f.parties.snapshot(f.player.id).activeJobs[0]?.id).toBe('slime_hunt')
     expect(
         f.service.propose(f.issuer, f.friend.id, f.draft(), 30).accepted
     ).toBe(false)
@@ -80,23 +80,12 @@ it('uses the existing group slot and reserves a finite municipal budget once', (
         f.characters.values(),
         50
     )
-    expect(f.parties.snapshot(f.player.id).activeJob?.id).toBe('slime_hunt')
-    expect(
-        f.service.propose(f.issuer, f.player.id, f.draft(), 60).accepted
-    ).toBe(false)
-    const offer = f.service.snapshot(f.player.id, 60).questOffer
-    expect(
-        f.service.handle(
-            f.player,
-            {
-                type: 'quest_offer_answer',
-                offerId: offer?.id ?? '',
-                revision: 1,
-                accept: true,
-            },
-            61
-        ).accepted
-    ).toBe(false)
+    expect(f.parties.snapshot(f.player.id).activeJobs).toHaveLength(1)
+    const second = f.accept(f.draft())
+    expect(second).not.toBe(id)
+    expect(f.service.snapshot(f.player.id, 60).quests).toMatchObject([
+        { instanceId: second },
+    ])
 })
 
 it('rejects unknown mechanics, unauthorized municipal funding and fabricated possessions', () => {
@@ -159,7 +148,7 @@ it('leaves promised items stealable and reports missing rewards without inventin
         )
     ).toBeDefined()
     f.service.update(30)
-    expect(f.service.snapshot(f.player.id, 30).quest?.status).toBe(
+    expect(f.service.snapshot(f.player.id, 30).quests?.[0]?.status).toBe(
         'reward_missing'
     )
     expect(f.turnIn(id).accepted).toBe(false)
@@ -176,7 +165,7 @@ it('cancels on issuer death before ordinary loot and never puts the city fund in
     )
     expect(f.service.cityFund(f.issuer.locationId)).toBe(290)
     f.issuer.applyDamage(f.issuer.hp, 30)
-    expect(f.service.snapshot(f.player.id, 30).quest).toBeNull()
+    expect(f.service.snapshot(f.player.id, 30).quests).toEqual([])
     expect(f.service.conversation(f.issuer.id, f.player.id)[0]?.status).toBe(
         'cancelled'
     )
@@ -218,7 +207,7 @@ it('requires renewed consent when the promised item condition changes before acc
         ).accepted
     ).toBe(false)
     expect(f.service.cityFund(f.issuer.locationId)).toBe(300)
-    expect(f.service.snapshot(f.player.id, 20).quest).toBeNull()
+    expect(f.service.snapshot(f.player.id, 20).quests).toEqual([])
 })
 
 it('does not substitute a damaged promised instance returned after theft', () => {
@@ -255,7 +244,7 @@ it('does not substitute a damaged promised instance returned after theft', () =>
         )
     ).toBeDefined()
     f.service.update(30)
-    expect(f.service.snapshot(f.player.id, 30).quest?.status).toBe(
+    expect(f.service.snapshot(f.player.id, 30).quests?.[0]?.status).toBe(
         'reward_missing'
     )
     expect(f.turnIn(id).accepted).toBe(false)

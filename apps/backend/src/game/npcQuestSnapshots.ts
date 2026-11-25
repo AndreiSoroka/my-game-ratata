@@ -22,14 +22,12 @@ export function snapshotNpcQuests(
 ): NpcQuestSocialSnapshot {
     const offer = context.offers.get(actorId)
     const group = context.environment.parties.contractGroup(actorId)
-    const active = context.jobs.get(
-        context.environment.parties.contractSlots.get(group.key) ?? ''
-    )
-    const job =
-        active !== undefined &&
-        !['completed', 'cancelled'].includes(active.view.status)
-            ? active
-            : undefined
+    const quests = [
+        ...context.environment.parties.contractSlots.idsFor(group.key),
+    ].flatMap((id) => {
+        const job = context.jobs.get(id)
+        return job === undefined ? [] : [snapshotQuest(job)]
+    })
     return {
         questOffer: cloneQuestOffer(
             offer !== undefined &&
@@ -37,7 +35,7 @@ export function snapshotNpcQuests(
                 ? offer
                 : undefined
         ),
-        quest: job === undefined ? null : snapshotQuest(job),
+        quests,
     }
 }
 
@@ -51,12 +49,14 @@ export function conversationNpcQuests(
         .filter(
             (job) =>
                 job.view.issuerId === issuerId &&
-                (job.acceptedBy === recipientId ||
-                    job.submittedBy === recipientId ||
-                    job.baseline.has(recipientId) ||
-                    environment.parties
-                        .contractRoster(job.view.instanceId)
-                        .members.has(recipientId))
+                (environment.parties
+                    .contractRoster(job.view.instanceId)
+                    .members.has(recipientId) ||
+                    ((job.view.status === 'completed' ||
+                        job.view.status === 'cancelled') &&
+                        (job.acceptedBy === recipientId ||
+                            job.submittedBy === recipientId ||
+                            job.baseline.has(recipientId))))
         )
         .map(snapshotQuest)
 }

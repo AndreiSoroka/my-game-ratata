@@ -3,6 +3,7 @@ import type { ItemId } from '@my-game-ratata/contracts'
 export interface QuestItem {
     itemId: ItemId
     quantity: number
+    available?: number
 }
 
 export interface QuestItemListProps {

@@ -26,10 +26,21 @@ it('lists accepted unfinished quests from all sources and removes completed, can
             ...adventureFixture(),
             quest: { ...adventureFixture().quest, status: 'ready' as const },
         },
-        party: { ...world.party!, activeJob: guildQuestFixture({ status: 'reward_missing' }) },
-        social: { quest: npcQuest('active'), questOffer: questOfferFixture() },
+        party: {
+            ...world.party!,
+            activeJobs: [
+                guildQuestFixture({ status: 'reward_missing' }),
+                guildQuestFixture({ instanceId: 'guild-2' }),
+            ],
+        },
+        social: { quests: [npcQuest('active')], questOffer: questOfferFixture() },
     }
-    expect(activeQuests(snapshot).map((entry) => entry.source)).toEqual(['story', 'guild', 'npc'])
+    expect(activeQuests(snapshot).map((entry) => entry.source)).toEqual([
+        'story',
+        'guild',
+        'guild',
+        'npc',
+    ])
     expect(
         activeQuests({
             ...snapshot,
@@ -37,8 +48,8 @@ it('lists accepted unfinished quests from all sources and removes completed, can
                 ...snapshot.adventure,
                 quest: { ...snapshot.adventure.quest, status: 'available' },
             },
-            party: { ...snapshot.party, activeJob: guildQuestFixture({ status: 'completed' }) },
-            social: { quest: npcQuest('completed'), questOffer: questOfferFixture() },
+            party: { ...snapshot.party, activeJobs: [guildQuestFixture({ status: 'completed' })] },
+            social: { quests: [npcQuest('completed')], questOffer: questOfferFixture() },
         })
     ).toEqual([])
     expect(
@@ -47,17 +58,19 @@ it('lists accepted unfinished quests from all sources and removes completed, can
             adventure: undefined,
             party: {
                 ...snapshot.party,
-                activeJob: guildQuestFixture({
-                    workRequest: workRequestFixture({ stage: 'cancelled' }),
-                }),
+                activeJobs: [
+                    guildQuestFixture({
+                        workRequest: workRequestFixture({ stage: 'cancelled' }),
+                    }),
+                ],
             },
-            social: { quest: npcQuest('cancelled') },
+            social: { quests: [npcQuest('cancelled')] },
         })
     ).toEqual([])
 })
 it('reads details and allows abandonment without offering direct hand-in commands', async () => {
     const player = characterFixture('self')
-    const snapshot = { ...worldFixture([player]), social: { quest: npcQuest('ready') } }
+    const snapshot = { ...worldFixture([player]), social: { quests: [npcQuest('ready')] } }
     const view = mount(CharacterQuests, { props: { snapshot, player, characters: [] } })
     try {
         expect(view.text()).toContain('Готово к сдаче')
@@ -67,7 +80,7 @@ it('reads details and allows abandonment without offering direct hand-in command
         expect(view.emitted('command')).toEqual([
             [{ type: 'npc_quest_abandon', instanceId: 'npc-contract-1' }],
         ])
-        await view.setProps({ snapshot: { ...snapshot, social: { quest: null } } })
+        await view.setProps({ snapshot: { ...snapshot, social: { quests: [] } } })
         expect(view.text()).toBe('Активных квестов нет.')
     } finally {
         view.unmount()

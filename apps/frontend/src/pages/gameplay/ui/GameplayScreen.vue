@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { HeroClass } from '@my-game-ratata/contracts'
-import { ref } from 'vue'
+import { provide, ref } from 'vue'
 
+import { marketWindowContext } from '../model/marketWindowContext'
 import { useGameplaySession } from '../model/useGameplaySession'
 import AutomationPanels from './AutomationPanels.vue'
 import ChestContainer from './ChestContainer.vue'
@@ -18,6 +19,7 @@ import TreePlanting from './TreePlanting.vue'
 
 const props = defineProps<{ canEnterWorld: () => Promise<boolean> }>()
 const nearbyTargetKey = ref<string>()
+provide(marketWindowContext, { shopOpen: ref(false), whisperPartnerId: ref<string>() })
 const isStarted = defineModel<boolean>('started', { default: false })
 defineSlots<{
     start(props: {

@@ -1,6 +1,8 @@
 import { REGION_NAME } from '@my-game-ratata/contracts'
 
 export const menuMessages = {
+    decreaseNumber: ['Уменьшить: {label}', 'Decrease: {label}'],
+    increaseNumber: ['Увеличить: {label}', 'Increase: {label}'],
     dialog: ['Игровое меню', 'Game menu'],
     shortcut: ['Меню · Esc', 'Menu · Esc'],
     resume: ['Вернуться в игру', 'Resume game'],

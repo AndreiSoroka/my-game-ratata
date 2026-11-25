@@ -43,7 +43,10 @@ export class WorkerSimulation {
         locationId: string
         permitted: boolean
     }> = []
-    private readonly controller: EconomyWorkerController
+    private readonly controllers = new Map<
+        GameCharacter,
+        EconomyWorkerController
+    >()
 
     public constructor(
         job: WorkerJob,
@@ -52,6 +55,7 @@ export class WorkerSimulation {
             sourceRemaining?: number
             additionalSources?: AdventureResourceNode[]
             attackPosition?: { x: number; y: number }
+            workerIdentity?: { id: string; nickname: string }
         } = {}
     ) {
         const navigation = new NavigationService({
@@ -85,12 +89,14 @@ export class WorkerSimulation {
             worldObjects: [],
         })
         this.worker = actor(
-            'worker',
+            options.workerIdentity?.id ?? 'worker',
             plot.locationId,
             options.attackPosition ?? {
                 x: plot.position.x + 32,
                 y: plot.position.y,
-            }
+            },
+            'human',
+            options.workerIdentity?.nickname
         )
         this.worker.tags.add(`worker.${job}`)
         this.worker.tags.add(`worker.city.${CENTER_LOCATION_ID}`)
@@ -123,8 +129,17 @@ export class WorkerSimulation {
         ]) {
             this.characters.set(character.id, character)
         }
-        this.controller = new EconomyWorkerController(job)
+        this.controllers.set(this.worker, new EconomyWorkerController(job))
         this.room = this.createRoom()
+    }
+
+    public addFarmer(id: string): GameCharacter {
+        const farmer = actor(id, this.worker.locationId, this.worker.position)
+        farmer.tags.add('worker.farmer')
+        farmer.tags.add(`worker.city.${CENTER_LOCATION_ID}`)
+        this.characters.set(farmer.id, farmer)
+        this.controllers.set(farmer, new EconomyWorkerController('farmer'))
+        return farmer
     }
 
     private createRoom(): GameRoom {
@@ -235,28 +250,34 @@ export class WorkerSimulation {
             this.characters.values()
         )
         this.requests.reconcile(this.characters, this.now)
-        this.controller.update(this.worker, this.room, this.now)
-        const point = this.worker.nextPathPoint()
-        const input = this.worker.getMoveInput()
+        for (const [worker, controller] of this.controllers) {
+            controller.update(worker, this.room, this.now)
+            this.moveWorker(worker)
+        }
+    }
+
+    private moveWorker(worker: GameCharacter): void {
+        const point = worker.nextPathPoint()
+        const input = worker.getMoveInput()
         const intent =
             input.x !== 0 || input.y !== 0 || point === undefined
                 ? input
                 : {
-                      x: point.x - this.worker.position.x,
-                      y: point.y - this.worker.position.y,
+                      x: point.x - worker.position.x,
+                      y: point.y - worker.position.y,
                   }
-        const before = { ...this.worker.position }
+        const before = { ...worker.position }
         advanceCharacter({
-            character: this.worker,
+            character: worker,
             now: this.now,
             deltaMs: 50,
-            navigation: this.world.get(this.worker.locationId).navigation,
+            navigation: this.world.get(worker.locationId).navigation,
         })
         this.movedPixels += Math.hypot(
-            this.worker.position.x - before.x,
-            this.worker.position.y - before.y
+            worker.position.x - before.x,
+            worker.position.y - before.y
         )
-        this.world.travel(this.worker, intent, this.now)
+        this.world.travel(worker, intent, this.now)
     }
 
     public until(predicate: () => boolean): void {
@@ -312,11 +333,12 @@ function actor(
     id: string,
     locationId: string,
     position: { x: number; y: number },
-    kind: 'human' | 'skeleton' | 'player' = 'human'
+    kind: 'human' | 'skeleton' | 'player' = 'human',
+    nickname = id
 ): GameCharacter {
     return new GameCharacter({
         id,
-        nickname: id,
+        nickname,
         locationId,
         spawnPosition: { ...position },
         archetype: kind === 'skeleton' ? 'skeleton' : 'human',

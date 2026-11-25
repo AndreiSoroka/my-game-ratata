@@ -28,7 +28,7 @@ it('reports an unclaimed incident and starts a repeat trip through chat using on
     ).toBe(true)
     const first = turns.snapshot(f.player, f.now)
     expect(first).toMatchObject({ preAcceptance: true, action: 'report' })
-    expect(f.requests.active('solo:hero')).toBeNull()
+    expect(f.requests.active('solo:hero', 'worker-request-1')).toBeNull()
     expect(
         turns.confirm(f.player, first?.id ?? '', true, f.now, 'submitter')
             .accepted
@@ -112,7 +112,7 @@ it('offers the clerk’s real worker incident through dialogue and completes the
             f.now
         ).accepted
     ).toBe(true)
-    const contract = parties.snapshot(f.player.id).activeJob
+    const contract = parties.snapshot(f.player.id).activeJobs[0]
     expect(contract?.workRequest?.id).toBe(f.current().id)
     expect(f.requests.list()).toHaveLength(0)
     f.player.inventory.push(createItemInstance('bone'))

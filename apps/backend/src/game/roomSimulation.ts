@@ -88,6 +88,7 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         (actor) =>
             reacting.has(actor.id) ||
             conversations.has(actor.id) ||
+            room.social.merchantVisits.has(actor.id) ||
             room.scenarios.busy(actor.id) ||
             room.social.exchanges.isPaused(actor.id) ||
             context.companions.blocksScenario(actor, now, room)

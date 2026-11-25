@@ -61,6 +61,31 @@ export const selectedDarkPanelButtonColors = {
     },
 } satisfies UiButtonColors
 
+export const interactionButtonColors = {
+    ...darkPanelButtonColors,
+    highlighted: {
+        ...darkPanelButtonColors.highlighted,
+        border: 'var(--game-ui-focus)',
+    },
+    focus: 'var(--game-ui-focus)',
+} satisfies UiButtonColors
+
+export const dangerInteractionButtonColors = {
+    normal: {
+        text: 'var(--ui-dark-panel-warning)',
+        border: 'var(--ui-dark-action-danger-border)',
+        backgroundTop: 'var(--ui-dark-action-danger-top)',
+        backgroundBottom: 'var(--ui-dark-action-danger-bottom)',
+    },
+    highlighted: {
+        text: 'var(--ui-dark-panel-title)',
+        border: 'var(--ui-dark-panel-warning)',
+        backgroundTop: 'var(--ui-dark-action-danger-hover-top)',
+        backgroundBottom: 'var(--ui-dark-action-danger-hover-bottom)',
+    },
+    focus: 'var(--game-ui-focus)',
+} satisfies UiButtonColors
+
 export const constellationButtonColors = {
     normal: {
         text: 'var(--ui-sky-starlight)',

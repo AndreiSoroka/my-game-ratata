@@ -127,12 +127,21 @@ export function questDeath(target: GameCharacter): boolean {
     )
 }
 
-export function matchesJob(job: GuildJob, target: GameCharacter): boolean {
-    return (
-        (job.definition.id === 'slime_hunt' && target.archetype === 'slime') ||
-        (job.definition.id === 'skeleton_hunt' &&
-            target.archetype === 'skeleton')
-    )
+export function guildHuntArchetype(
+    id: string
+): 'slime' | 'skeleton' | undefined {
+    switch (id) {
+        case 'slime_hunt':
+            return 'slime'
+        case 'skeleton_hunt':
+            return 'skeleton'
+        default:
+            return undefined
+    }
+}
+
+function matchesJob(job: GuildJob, target: GameCharacter): boolean {
+    return guildHuntArchetype(job.definition.id) === target.archetype
 }
 
 export function canContribute(

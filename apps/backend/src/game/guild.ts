@@ -22,7 +22,11 @@ import {
     removeGuildParticipant,
 } from './guildRules'
 import { settleGuildJob } from './guildSettlement'
-import { viewGuildJob } from './guildViews'
+import {
+    availableGuildDefinitions,
+    viewActiveGuildJob,
+    viewGuildHistory,
+} from './guildViews'
 import {
     workerContactAllowed,
     type WorkerGuildGateway,
@@ -54,16 +58,11 @@ export class GuildService {
         )
     }
 
-    public definitions(leaderId?: string) {
-        const definitions = [...guildQuests, ...(this.workers?.list() ?? [])]
-        if (leaderId === undefined) {
-            return definitions
-        }
-        const completed = this.completed.get(leaderId)
-        return definitions.filter((job) =>
-            job.workRequest === undefined
-                ? completed?.has(job.id) !== true
-                : job.workRequest.stage === 'waiting'
+    public definitions(leaderId: string, key: string) {
+        return availableGuildDefinitions(
+            [...guildQuests, ...(this.workers?.list() ?? [])],
+            this.completed.get(leaderId),
+            new Set(this.activeJobs(key).map((job) => job.definition.id))
         )
     }
 
@@ -72,12 +71,22 @@ export class GuildService {
         actor: GameCharacter,
         npc: GameCharacter,
         now: number,
-        questId?: string
+        questId?: string,
+        instanceId?: string
     ): boolean {
         const dynamicId = this.workers
             ?.list()
             .find((entry) => entry.id === questId)?.id
-        return workerContactAllowed(this.workers, this.jobs.get(key), {
+        const job =
+            instanceId === undefined ? undefined : this.job(key, instanceId)
+        if (
+            instanceId !== undefined &&
+            (job === undefined ||
+                (job.issuerId !== undefined && job.issuerId !== npc.id))
+        ) {
+            return false
+        }
+        return workerContactAllowed(this.workers, job, {
             groupKey: key,
             requestId: dynamicId,
             actor,
@@ -86,40 +95,40 @@ export class GuildService {
         })
     }
 
-    public snapshot(key: string): GuildQuestSnapshot | null {
-        const job = this.jobs.get(key)
-        if (job === undefined) {
-            return null
-        }
-        if (job.definition.workRequest === undefined || job.completed) {
-            return viewGuildJob(job, this.rewards?.funding)
-        }
-        const request = this.workers?.active(key)
-        return request?.id !== job.definition.id
-            ? null
-            : viewGuildJob(
-                  {
-                      ...job,
-                      definition: { ...job.definition, workRequest: request },
-                      progress:
-                          request.stage === 'ready' ? job.definition.goal : 0,
-                  },
-                  this.rewards?.funding
-              )
+    private job(key: string, id: string): GuildJob | undefined {
+        return this.slots.owns(key, id) ? this.jobs.get(id) : undefined
+    }
+
+    private readonly activeJobs = (key: string): GuildJob[] =>
+        [...this.slots.idsFor(key)].flatMap((id) => {
+            const job = this.jobs.get(id)
+            return job === undefined ? [] : [job]
+        })
+
+    public snapshots(key: string): GuildQuestSnapshot[] {
+        return this.activeJobs(key).flatMap((job) => {
+            const view = viewActiveGuildJob(
+                job,
+                key,
+                this.workers,
+                this.rewards?.funding
+            )
+            return view === undefined ? [] : [view]
+        })
     }
 
     public conversation(
         issuerId: string,
-        personId: string
+        personId: string,
+        key: string
     ): GuildQuestSnapshot[] {
-        return [...this.history.values()]
-            .filter(
-                (job) =>
-                    (issuerId === '' || job.issuerId === issuerId) &&
-                    (job.acceptedBy === personId ||
-                        job.participants.has(personId))
-            )
-            .map((job) => viewGuildJob(job, this.rewards?.funding))
+        return viewGuildHistory(
+            this.history.values(),
+            this.slots.idsFor(key),
+            issuerId,
+            personId,
+            this.rewards?.funding
+        )
     }
 
     public accept(
@@ -133,16 +142,18 @@ export class GuildService {
         terms?: NegotiatedWorkerReward,
         issuerId?: string,
         reporter?: GameCharacter
-    ): string {
+    ): { instanceId?: string; notice: string } {
         this.lifecycle.reconcile(key)
-        if (this.hasActiveJob(key)) {
-            return 'Сначала завершите действующий договор.'
+        if (this.activeJobs(key).some((job) => job.definition.id === questId)) {
+            return { notice: 'Группа уже выполняет этот договор.' }
         }
-        const definition = this.definitions(leader).find(
+        const definition = this.definitions(leader, key).find(
             (quest) => quest.id === questId
         )
         if (definition === undefined) {
-            return 'Этот договор уже выполнен этой личностью или недоступен.'
+            return {
+                notice: 'Этот договор уже выполнен этой личностью или недоступен.',
+            }
         }
         const id = this.newInstanceId()
         const job = acceptGuildJob({
@@ -162,17 +173,21 @@ export class GuildService {
             reporter,
         })
         if (typeof job === 'string') {
-            return job
+            return { notice: job }
         }
+        this.jobs.set(id, job)
         this.lifecycle.watchIssuer(job, now)
-        this.jobs.set(key, job)
         this.history.set(id, job)
         if (reporter !== undefined) {
             this.lifecycle.reconcile(key)
         }
-        return reporter === undefined
-            ? 'Договор принят. Способ распределения награды закреплён; состав для выплаты определяется при сдаче.'
-            : 'Доклад принят. Работник проверит участок и вернётся к распорядителю.'
+        return {
+            instanceId: id,
+            notice:
+                reporter === undefined
+                    ? 'Договор принят. Способ распределения награды закреплён; состав для выплаты определяется при сдаче.'
+                    : 'Доклад принят. Работник проверит участок и вернётся к распорядителю.',
+        }
     }
 
     private newInstanceId(): string {
@@ -185,19 +200,10 @@ export class GuildService {
     public moveJob(from: string, to: string): void {
         this.slots.move(from, to)
         this.workers?.moveGroup(from, to)
-        const job = this.jobs.get(from)
-        if (job !== undefined) {
-            this.jobs.set(to, job)
-            this.jobs.delete(from)
-        }
     }
 
     public hasActiveJob(key: string): boolean {
-        const snapshot = this.snapshot(key)
-        return (
-            this.slots.get(key) !== undefined ||
-            (snapshot !== null && snapshot.status !== 'completed')
-        )
+        return this.slots.idsFor(key).size > 0
     }
 
     public refreshGroup(key: string, members: ReadonlySet<string>): void {
@@ -205,11 +211,15 @@ export class GuildService {
     }
 
     public addLateMember(key: string, character: GameCharacter): void {
-        addGuildParticipant(this.jobs.get(key), character)
+        for (const job of this.activeJobs(key)) {
+            addGuildParticipant(job, character)
+        }
     }
 
     public removeMember(key: string, playerId: string): void {
-        removeGuildParticipant(this.jobs.get(key), playerId)
+        for (const job of this.activeJobs(key)) {
+            removeGuildParticipant(job, playerId)
+        }
     }
 
     public observe(
@@ -217,7 +227,7 @@ export class GuildService {
         find: (id: string) => GameCharacter | undefined,
         group: (id: string) => { key: string; members: Set<string> }
     ): void {
-        this.killCredit.observe(events, find, group, this.jobs)
+        this.killCredit.observe(events, find, group, this.activeJobs)
     }
 
     public update(
@@ -227,16 +237,14 @@ export class GuildService {
     ): void {
         this.refreshGroup(key, members)
         this.lifecycle.reconcile(key)
-        const job = this.jobs.get(key)
-        if (
-            job === undefined ||
-            job.completed ||
-            job.definition.id !== 'survey_frontier' ||
-            job.progress >= job.definition.goal
-        ) {
-            return
+        for (const job of this.activeJobs(key)) {
+            if (
+                job.definition.id === 'survey_frontier' &&
+                job.progress < job.definition.goal
+            ) {
+                advanceExploration(job, members, characters)
+            }
         }
-        advanceExploration(job, members, characters)
     }
 
     public report(
@@ -245,13 +253,8 @@ export class GuildService {
         actor: GameCharacter,
         now: number
     ): string {
-        const job = this.jobs.get(key)
-        if (
-            job === undefined ||
-            job.completed ||
-            job.id !== instanceId ||
-            job.definition.workRequest === undefined
-        ) {
+        const job = this.job(key, instanceId)
+        if (job?.definition.workRequest === undefined) {
             return 'Это обращение уже недоступно.'
         }
         const error = this.workers?.report(job.definition.id, key, actor, now)
@@ -261,8 +264,8 @@ export class GuildService {
     }
 
     public abandon(key: string, instanceId: string, now: number): string {
-        const job = this.jobs.get(key)
-        if (job === undefined || job.completed || job.id !== instanceId) {
+        const job = this.job(key, instanceId)
+        if (job === undefined) {
             return 'Этот договор уже недоступен.'
         }
         if (job.definition.workRequest !== undefined) {
@@ -271,13 +274,12 @@ export class GuildService {
                 return error ?? 'Обращение недоступно.'
             }
         }
-        this.lifecycle.drop(key, 'Договор оставлен. Награда освобождена.')
+        this.lifecycle.drop(job, 'Договор оставлен. Награда освобождена.')
         return 'Договор оставлен. Награда не выдана.'
     }
 
     public release(key: string, now: number): void {
-        this.workers?.releaseGroup(key, now)
-        this.lifecycle.drop(key, 'Группа больше не выполняет договор.')
+        this.lifecycle.release(key, now)
     }
 
     public readonly stop = () => this.lifecycle.stop()
@@ -291,8 +293,8 @@ export class GuildService {
         award: QuestGoldAwarder,
         now: number
     ): string {
-        const job = this.jobs.get(key)
-        if (job === undefined || job.completed || job.id !== instanceId) {
+        const job = this.job(key, instanceId)
+        if (job === undefined) {
             return 'Нет готового неоплаченного договора.'
         }
         const error = settleGuildJob({
@@ -309,7 +311,7 @@ export class GuildService {
         if (error !== null) {
             return error
         }
-        this.slots.release(job.id)
+        this.lifecycle.remove(job)
         if (job.definition.workRequest === undefined) {
             const completed =
                 this.completed.get(job.acceptedBy) ?? new Set<string>()

@@ -59,7 +59,10 @@ it('atomically replaces an own pending offer and requires acceptance of its new 
     })
     expect(f.service.cityFund(f.issuer.locationId)).toBe(300)
     expect(f.issuer.inventory).toContainEqual(food)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(false)
     expect(
         f.service.journal
             .conversation(f.issuer.id, f.player.id)
@@ -82,7 +85,7 @@ it('atomically replaces an own pending offer and requires acceptance of its new 
     expect(f.service.cityFund(f.issuer.locationId)).toBe(300)
     expect(answer(current).accepted).toBe(true)
     expect(f.service.cityFund(f.issuer.locationId)).toBe(283)
-    expect(f.service.snapshot(f.player.id, 40).quest).toMatchObject({
+    expect(f.service.snapshot(f.player.id, 40).quests?.[0]).toMatchObject({
         title: current.title,
     })
 })
@@ -188,13 +191,16 @@ it('does not replace or release an accepted active contract', () => {
             25
         ).accepted
     ).toBe(true)
-    const active = f.service.snapshot(f.player.id, 25).quest
+    const active = f.service.snapshot(f.player.id, 25).quests?.[0]
     expect(
         f.service.handleDecision(f.issuer, f.decision, 30, f.context).accepted
     ).toBe(false)
-    expect(f.service.snapshot(f.player.id, 30).quest).toEqual(active)
+    expect(f.service.snapshot(f.player.id, 30).quests?.[0]).toEqual(active)
     expect(f.service.cityFund(f.issuer.locationId)).toBe(290)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(true)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(true)
     expect(f.service.snapshot(f.player.id, 30).questOffer).toBeNull()
 })
 
@@ -254,7 +260,10 @@ it('switches worker proposals without claiming either request or spending city g
     expect(accept).not.toHaveBeenCalled()
     expect(f.workers.list()).toEqual(requests)
     expect(f.service.cityFund(f.issuer.locationId)).toBe(300)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(false)
 })
 
 it.each(['quest_propose', 'worker_quest_propose'] as const)(

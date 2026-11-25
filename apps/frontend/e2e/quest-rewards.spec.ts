@@ -4,11 +4,7 @@ import { ITEM_DEFINITIONS } from '@my-game-ratata/contracts'
 import { expect, type Locator, type Page, test, type ViewportSize } from '@playwright/test'
 
 import { joinSocial, selectSocialTarget, socialMenu } from './social-helpers'
-import {
-    abandonGuildContract,
-    openObservedWorkerOffer,
-    whisperQuestRequest,
-} from './worker-contract-helpers'
+import { abandonGuildContract, whisperQuestRequest } from './worker-contract-helpers'
 import { approachBuilding, enterBuilding, walkTo } from './world-navigation'
 
 const scenarios = [
@@ -32,6 +28,41 @@ const scenarios = [
     },
 ]
 for (const scenario of scenarios) {
+    if (process.env['GAME_WORLD_SEED'] === 'novogorod-example') {
+        test(`shows the Bell delivery shortage before and after acceptance (${scenario.name})`, async ({
+            page,
+        }) => {
+            test.setTimeout(120_000)
+            await page.setViewportSize(scenario.viewport)
+            await joinSocial(page, `bell-${scenario.name}-${Date.now().toString(36)}`)
+            const miraId = await approachMira(page)
+            const title = 'Сердца для колокола памяти'
+            const turnIn = page.getByRole('dialog', { name: 'Сдать поручение', exact: true })
+            const shortage = turnIn.getByRole('listitem').filter({
+                hasText: 'Слизневое сердце · доступно 0 из 3 · не хватает 3',
+            })
+            const confirm = turnIn.getByRole('button', { name: 'Сдать', exact: true })
+
+            await scenario.requestTurnIn(page, miraId, `Хочу сдать «${title}»`)
+            await expect(shortage).toBeVisible()
+            await expect(shortage).toHaveCSS('color', 'rgb(158, 62, 44)')
+            await expect(confirm).toBeDisabled()
+            await turnIn.getByRole('button', { name: 'Вернуться к разговору' }).click()
+            await expect(turnIn).toBeHidden()
+
+            await whisperQuestRequest(page, miraId, `Хочу взять «${title}»`)
+            const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
+            await expect(offer.getByRole('heading', { name: title })).toBeVisible()
+            await offer.getByRole('button', { name: 'Взять', exact: true }).click()
+            await expect(offer).toBeHidden()
+            await whisperQuestRequest(page, miraId, 'Хочу сдать этот квест')
+            await expect(shortage).toBeVisible()
+            await expect(confirm).toBeDisabled()
+            await page.keyboard.press('Escape')
+            await expect(turnIn).toBeHidden()
+        })
+    }
+
     if (process.env['E2E_BOARD_DELIVERY'] === '1') {
         test(`completes a board delivery from the chat turn-in window (${scenario.name})`, async ({
             page,
@@ -49,7 +80,7 @@ for (const scenario of scenarios) {
             await expect(board).toBeHidden()
             const miraId = await approachMira(page)
             const before = await page.evaluate(() => window.__ratataTest!.getState().snapshot!)
-            expect(before.social?.quest).toBeFalsy()
+            expect(before.social?.quests ?? []).toEqual([])
             await scenario.requestTurnIn(page, miraId, `Хочу сдать «${title}»`)
             const prompt = page.getByRole('dialog', { name: 'Сдать поручение', exact: true })
             await expect(prompt.getByRole('heading', { name: title, exact: true })).toBeVisible()
@@ -93,14 +124,17 @@ for (const scenario of scenarios) {
     test(`fixes worker and guild reward sharing through ordinary UI (${scenario.name})`, async ({
         page,
     }, info) => {
-        test.setTimeout(120_000)
-        await page.setViewportSize(scenario.viewport)
+        test.setTimeout(180_000)
+        // Wait at the city spawn for a worker to travel and report.
+        await page.setViewportSize({ width: 390, height: 844 })
         await page.goto('/?test=1')
         await page.waitForFunction(() => Boolean(window.__ratataTest))
         await page.evaluate(
             (name) => window.__ratataTest!.join(name, 'ranger'),
             `qr-${info.workerIndex}-${scenario.name[0]}-${Date.now().toString(36)}`
         )
+        const workerName = await waitForWorkerOrder(page)
+        await page.setViewportSize(scenario.viewport)
         const board = await readQuestBoard(page)
         await expect(board.getByText('Зачистка троп', { exact: true })).toBeVisible()
         await expect(board.getByRole('button', { name: 'Взять', exact: true })).toHaveCount(0)
@@ -117,7 +151,7 @@ for (const scenario of scenarios) {
         await page.keyboard.press('Escape')
         await page.keyboard.press('Escape')
         await expect(cityAffairs).toHaveCount(0)
-        await openObservedWorkerOffer(page, miraId)
+        await openContextualWorkerOffer(page, miraId, workerName)
         const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
         await expect(offer).toBeVisible()
         await expect(offer.getByText('из городского фонда')).toBeVisible()
@@ -138,19 +172,16 @@ for (const scenario of scenarios) {
         await page.keyboard.press('Enter')
         await expect
             .poll(() =>
-                page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob)
+                page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJobs[0])
             )
             .toMatchObject({ status: 'active', rewardMode: workerMode })
         await expect(offer).toBeHidden()
         await expect(page.locator('canvas[data-game-canvas=true]')).toBeFocused()
         const workerInstance = await page.evaluate(
-            () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
+            () => window.__ratataTest!.getState().snapshot!.party!.activeJobs[0]!.instanceId
         )
         try {
-            await whisperQuestRequest(page, miraId, 'Я сделал задание')
-            const whisper = page.getByRole('dialog', { name: /^Шёпот:/u })
-            await expect(whisper).toContainText('Для доклада нужен свободный трофей')
-            await page.keyboard.press('Escape')
+            await verifyWorkerShortage(page, miraId)
             const character = await openQuestJournal(page)
             const journal = character.getByRole('region', { name: 'Активные квесты' })
             await expect(journal).toBeVisible()
@@ -177,7 +208,7 @@ for (const scenario of scenarios) {
         await expect
             .poll(() =>
                 page.evaluate(
-                    () => window.__ratataTest!.getState().snapshot?.party?.activeJob?.status
+                    () => window.__ratataTest!.getState().snapshot?.party?.activeJobs[0]?.status
                 )
             )
             .not.toBe('active')
@@ -190,11 +221,11 @@ for (const scenario of scenarios) {
         await page.keyboard.press('Enter')
         await expect
             .poll(() =>
-                page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob)
+                page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJobs[0])
             )
             .toMatchObject({ id: 'slime_hunt', rewardMode: guildMode, status: 'active' })
         const guildInstance = await page.evaluate(
-            () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
+            () => window.__ratataTest!.getState().snapshot!.party!.activeJobs[0]!.instanceId
         )
         try {
             const character = await openQuestJournal(page)
@@ -210,6 +241,82 @@ for (const scenario of scenarios) {
             await abandonGuildContract(page, guildInstance)
         }
     })
+}
+
+test('accepts and tracks two guild quests through Mira independently', async ({ page }) => {
+    test.setTimeout(60_000)
+    await joinSocial(page, `quests-${Date.now().toString(36)}`)
+    const miraId = await approachMira(page)
+    const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
+    const titles = ['Зачистка троп', 'Кости старого тракта']
+    for (const title of titles) {
+        await whisperQuestRequest(page, miraId, `Хочу взять «${title}»`)
+        await expect(offer.getByRole('heading', { name: title, exact: true })).toBeVisible()
+        await offer.getByRole('button', { name: 'Взять', exact: true }).click()
+        await expect(offer).toBeHidden()
+    }
+    const active = () =>
+        page.evaluate(
+            () =>
+                window
+                    .__ratataTest!.getState()
+                    .snapshot?.party?.activeJobs.map(({ id, instanceId }) => ({
+                        id,
+                        instanceId,
+                    })) ?? []
+        )
+    await expect
+        .poll(async () => (await active()).map(({ id }) => id))
+        .toEqual(['slime_hunt', 'skeleton_hunt'])
+    const journal = await openQuestJournal(page)
+    const quests = journal.getByRole('region', { name: 'Активные квесты' })
+    for (const title of titles) {
+        await expect(quests.getByRole('button', { name: new RegExp(title, 'u') })).toBeVisible()
+    }
+    await page.keyboard.press('Escape')
+    const [slimes, skeletons] = await active()
+    await abandonGuildContract(page, slimes!.instanceId)
+    expect(await active()).toEqual([skeletons])
+    await abandonGuildContract(page, skeletons!.instanceId)
+})
+
+async function waitForWorkerOrder(page: Page): Promise<string> {
+    const workerName = () =>
+        page.evaluate(
+            () =>
+                window
+                    .__ratataTest!.getState()
+                    .snapshot?.party?.jobs.find(
+                        ({ workRequest }) => workRequest?.stage === 'waiting'
+                    )?.workRequest?.workerName
+        )
+    await expect.poll(workerName, { timeout: 125_000 }).toBeTruthy()
+    return (await workerName())!
+}
+
+async function openContextualWorkerOffer(
+    page: Page,
+    miraId: string,
+    workerName: string
+): Promise<void> {
+    const name = workerName.split(' ').at(-1)!
+    await whisperQuestRequest(page, miraId, 'Давай я возьму этот квест')
+    const whisper = page.getByRole('dialog', { name: /^Шёпот:/u })
+    await expect(whisper.getByText(/Какой заказ\?/u)).toBeVisible()
+    await whisperQuestRequest(page, miraId, `Заказ ${name}`)
+    const offer = page.getByRole('dialog', { name: 'Предложение поручения', exact: true })
+    await expect(offer.getByRole('heading', { name: new RegExp(name, 'u') })).toBeVisible()
+}
+
+async function verifyWorkerShortage(page: Page, miraId: string): Promise<void> {
+    await whisperQuestRequest(page, miraId, 'Я сделал задание')
+    const turnIn = page.getByRole('dialog', { name: 'Сдать поручение', exact: true })
+    await expect(turnIn.getByText(/доступно 0 из 1 · не хватает 1/u)).toBeVisible()
+    await expect(turnIn.getByRole('button', { name: 'Передать трофей и доложить' })).toBeDisabled()
+    await turnIn.getByRole('button', { name: 'Вернуться к разговору' }).click()
+    await expect(turnIn).toBeHidden()
+    await expect(page.getByRole('dialog', { name: /^Шёпот:/u })).toBeVisible()
+    await page.keyboard.press('Escape')
 }
 
 async function nearbyQuestRequest(page: Page, miraId: string, text: string): Promise<void> {

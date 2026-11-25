@@ -5,13 +5,12 @@ import {
 
 import type { GameCharacter } from './character'
 import { questTransferReachable } from './npcQuestTypes'
+import { QuestChatChoices, type QuestChoice } from './questChatChoices'
 import {
     localizedQuestText,
     localizedQuestTitle,
-    namedQuest,
     type QuestChatTitle,
     questCompletionQuestion,
-    refersToWorker,
 } from './questChatWords'
 import { questConversationJobs } from './questConversation'
 import {
@@ -26,8 +25,8 @@ import { workerReportText } from './questWorkerDialogue'
 
 export interface QuestQuestion extends QuestContact {
     playerId: string
-    kind: 'choose' | 'confirm'
-    jobs: Array<Pick<NpcQuestSnapshot, 'instanceId' | 'revision'>>
+    kind: 'take' | 'submit' | 'confirm' | 'topic'
+    choices: QuestChoice[]
 }
 
 export interface ReplyContact {
@@ -38,6 +37,14 @@ export interface ReplyContact {
 
 export class QuestChatReplies {
     private readonly questions = new Map<string, QuestQuestion>()
+
+    public otherIssuerOffer(request: ReplyContact): void {
+        this.say(
+            request,
+            'У тебя уже открыты условия другого заказчика. Реши, берёшь ли то поручение.',
+            'You already have an offer from another quest giver. Decide whether to take that one first.'
+        )
+    }
 
     public question({
         player,
@@ -94,7 +101,7 @@ export class QuestChatReplies {
             issuer,
             player,
             now
-        ).filter((job) => this.matchesJob(player, job, text))
+        ).filter((job) => this.choices.matchesJob(player, job, text))
         if (jobs.length === 1 && jobs[0] !== undefined) {
             this.rememberQuestion(issuer, player, jobs[0], now)
         }
@@ -106,39 +113,28 @@ export class QuestChatReplies {
         job: NpcQuestSnapshot,
         now: number
     ): void {
-        this.remember({ issuer, player, now }, [job], 'confirm')
+        this.remember(
+            { issuer, player, now },
+            [this.choices.jobChoice(player, job)],
+            'confirm'
+        )
+    }
+
+    public rememberTopic(contact: ReplyContact, choice: QuestChoice): void {
+        this.remember(contact, [choice], 'topic')
     }
 
     private remember(
         { issuer, player, now }: ReplyContact,
-        jobs: NpcQuestSnapshot[],
+        choices: QuestChoice[],
         kind: QuestQuestion['kind']
     ): void {
         this.questions.set(questionKey(player.id, issuer.id), {
             ...questContactAt(issuer, player, now + 30_000),
             playerId: player.id,
             kind,
-            jobs: jobs.map(({ instanceId, revision }) => ({
-                instanceId,
-                revision,
-            })),
+            choices,
         })
-    }
-
-    public matchesJob(
-        player: GameCharacter,
-        job: NpcQuestSnapshot,
-        text: string
-    ): boolean {
-        if (namedQuest(text, job)) {
-            return true
-        }
-        const request = activeWorkerRequest(this.environment, player, job)
-        const worker =
-            request === undefined
-                ? undefined
-                : this.environment.getCharacter(request.workerId)
-        return worker !== undefined && refersToWorker(text, worker)
     }
 
     public update(now: number): void {
@@ -158,7 +154,11 @@ export class QuestChatReplies {
         this.questions.clear()
     }
 
-    public constructor(private readonly environment: QuestTurnInEnvironment) {}
+    public readonly choices: QuestChatChoices
+
+    public constructor(private readonly environment: QuestTurnInEnvironment) {
+        this.choices = new QuestChatChoices(environment)
+    }
 
     public askWhich(contact: ReplyContact, jobs: QuestChatTitle[]): boolean {
         if (jobs.length === 0) {
@@ -179,12 +179,13 @@ export class QuestChatReplies {
         )
     }
 
-    public askWhichToSubmit(
+    public askWhichQuest(
         contact: ReplyContact,
-        jobs: NpcQuestSnapshot[]
+        choices: QuestChoice[],
+        kind: 'take' | 'submit'
     ): void {
-        if (this.askWhich(contact, jobs) && jobs.length > 0) {
-            this.remember(contact, jobs, 'choose')
+        if (this.askWhich(contact, choices) && choices.length > 0) {
+            this.remember(contact, choices, kind)
         }
     }
 
@@ -274,7 +275,12 @@ export class QuestChatReplies {
     ): void {
         const [ru, en] = workerReportText(contact, request, this.environment)
         if (this.say(contact, ru, en)) {
-            this.remember(contact, [job], 'confirm')
+            this.rememberQuestion(
+                contact.issuer,
+                contact.player,
+                job,
+                contact.now
+            )
         }
     }
 

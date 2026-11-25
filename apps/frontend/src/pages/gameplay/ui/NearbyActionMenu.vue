@@ -3,7 +3,13 @@ import { computed, inject, nextTick, onBeforeUnmount, ref, useId, watch } from '
 
 import { type DialogueNeighbors, DialogueTargetSwitcher } from '@/entities/dialogues'
 import { tGame } from '@/shared/lib/i18n'
-import { UiButton, UiFrame } from '@/shared/ui/common'
+import {
+    dangerInteractionButtonColors,
+    interactionButtonColors,
+    UiButton,
+    UiFrame,
+} from '@/shared/ui/common'
+import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 import { isConfirmationKey } from '../../../game/ui/keyboardOwnership'
 import type { NearbyAction } from '../../../game/ui/nearbyActions'
@@ -20,6 +26,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [id: string]; close: []; switchCharacter: [key: string] }>()
 const playUiSound = inject(gameUiSoundKey)
+const theme = useDarkPanelTheme()
 const menu = ref<HTMLElement>()
 const panel = ref<HTMLElement>()
 const closeButton = ref<InstanceType<typeof UiButton>>()
@@ -159,6 +166,7 @@ onBeforeUnmount(returnFocus)
         class="nearby-action-panel adventure-window game-frame-host"
         :role="detailsOnly ? 'dialog' : undefined"
         :aria-labelledby="labelId"
+        :style="darkPanelThemeStyle(theme)"
         @keydown.stop="handleKey"
         @keyup.stop
         @pointerdown.stop
@@ -170,7 +178,10 @@ onBeforeUnmount(returnFocus)
             <UiButton
                 ref="closeButton"
                 size="small"
+                border="border-001"
+                native-border-width
                 icon
+                :colors="interactionButtonColors"
                 :tabindex="detailsOnly ? 0 : -1"
                 :aria-label="tGame('game.world.closeActions')"
                 @click="emit('close')"
@@ -189,9 +200,12 @@ onBeforeUnmount(returnFocus)
         <div v-if="!detailsOnly" ref="menu" role="menu" :aria-labelledby="labelId" tabindex="-1">
             <UiButton
                 size="small"
+                native-border-width
                 v-for="action in actions"
                 :key="action.id"
                 role="menuitem"
+                :variant="action.danger ? 'danger' : undefined"
+                :colors="action.danger ? dangerInteractionButtonColors : interactionButtonColors"
                 :data-action-id="action.id"
                 :tabindex="action.id === activeId && !action.disabled ? 0 : -1"
                 :disabled="action.disabled"
@@ -226,6 +240,7 @@ onBeforeUnmount(returnFocus)
     transform: translate(-50%, -50%);
     padding: 1rem;
     border: 2px solid transparent;
+    color: var(--ui-dark-panel-text);
     pointer-events: auto;
 }
 .nearby-action-panel__header {
@@ -240,6 +255,7 @@ onBeforeUnmount(returnFocus)
 }
 h2 {
     margin: 0;
+    color: var(--ui-dark-panel-title);
     font-size: 1rem;
 }
 button {
@@ -262,6 +278,6 @@ button {
     margin: 0.8rem 0 0;
     font-size: 0.75rem;
     line-height: 1.5;
-    color: #c0c7b6;
+    color: var(--ui-dark-panel-text);
 }
 </style>

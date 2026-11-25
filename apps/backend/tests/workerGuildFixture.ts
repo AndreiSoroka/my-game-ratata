@@ -60,7 +60,8 @@ export function fixture() {
     let unsafe = false
     const gateway: WorkerGuildGateway = {
         list: () => [definition],
-        active: (key) => (claimant === key ? request : null),
+        active: (key, id) =>
+            claimant === key && id === request.id ? request : null,
         accept: vi.fn((_id: string, key: string) => {
             if (claimant !== null) {
                 return 'У обращения уже есть исполнитель.'
@@ -113,9 +114,11 @@ export function fixture() {
             characters,
             'party_equal',
             1000
-        )
+        ).notice
     const instance = () => {
-        const value = guild.snapshot('solo:hero')?.instanceId
+        const value = guild
+            .snapshots('solo:hero')
+            .find(({ id }) => id === request.id)?.instanceId
         if (value === undefined) {
             throw new Error('Expected active job')
         }

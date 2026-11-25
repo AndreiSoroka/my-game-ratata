@@ -25,4 +25,13 @@ type Story = StoryObj<QuestItemListProps>
 
 export const Default: Story = {}
 
+export const MissingItems: Story = {
+    args: {
+        items: [
+            { itemId: 'slime_heart', quantity: 3, available: 1 },
+            { itemId: 'bone', quantity: 1 },
+        ],
+    },
+}
+
 export const Reward: Story = { args: { kind: 'reward' } }

@@ -157,6 +157,7 @@ export class GameRoom {
     private readonly closeConversations = (id: string): void => {
         this.adventure.closeConversations(id)
         this.social.npcSpeech.turns.close(id)
+        this.social.merchantVisits.cancelFor(id)
     }
 
     public setEmptyWorldMode(mode: WorldEmptyMode): void {

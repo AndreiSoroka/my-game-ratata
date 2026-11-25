@@ -64,14 +64,28 @@ export function advanceControllers(
             pauseWorkerActivity(character, 'control', now)
             continue
         }
-        if (room.social.society.controlsVisit(character)) {
-            pauseWorkerActivity(character, 'conversation', now)
+        if (advanceSocialController(character, room, now)) {
             continue
         }
         room.scenarios.advancePolicy(character, controller, room, now)
         recordIdleYield(character, room, now, yielding)
     }
     return yielding
+}
+
+function advanceSocialController(
+    actor: GameCharacter,
+    room: GameRoom,
+    now: number
+): boolean {
+    if (room.social.merchantVisits.advance(actor, now)) {
+        return true
+    }
+    if (room.social.society.controlsVisit(actor)) {
+        pauseWorkerActivity(actor, 'conversation', now)
+        return true
+    }
+    return false
 }
 
 function scenarioOwnsTick(

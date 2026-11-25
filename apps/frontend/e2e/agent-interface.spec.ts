@@ -95,7 +95,7 @@ test.describe('AI player interface', () => {
                 })
                 const final = await page.evaluate(() => window.__ratataTest!.getState())
                 expect(final.player?.id).toBe(initial.playerId)
-                expect(final.snapshot?.party?.activeJob).toMatchObject({
+                expect(final.snapshot?.party?.activeJobs[0]).toMatchObject({
                     instanceId,
                     status: 'active',
                 })
@@ -122,11 +122,13 @@ async function acceptObservedWorkerContract(page: Page, clerkId: string): Promis
     })
     await expect
         .poll(() =>
-            page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob?.status)
+            page.evaluate(
+                () => window.__ratataTest!.getState().snapshot?.party?.activeJobs[0]?.status
+            )
         )
         .toBe('active')
     return page.evaluate(
-        () => window.__ratataTest!.getState().snapshot!.party!.activeJob!.instanceId
+        () => window.__ratataTest!.getState().snapshot!.party!.activeJobs[0]!.instanceId
     )
 }
 

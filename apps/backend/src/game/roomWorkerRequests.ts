@@ -20,7 +20,7 @@ export function createWorkerGuildGateway(
 ): WorkerGuildGateway {
     return {
         list: () => service.list().map(workRequestDefinition),
-        active: (key) => service.active(key),
+        active: (key, id) => service.active(key, id),
         accept: (id, key, members, characters, now) =>
             service.accept(id, key, members, characters, now),
         report: (id, key, actor, now) =>

@@ -25,6 +25,7 @@ export interface UiButtonColors {
 
 export interface UiButtonProps {
     border?: FantasyBorderVariant
+    nativeBorderWidth?: boolean
     appearance?: UiButtonAppearance
     panel?: FantasyPanelVariant
     panelAppearance?: UiButtonPanelAppearance

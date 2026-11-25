@@ -1,4 +1,5 @@
 import {
+    type AdventureSnapshot,
     type MarketItemId,
     type MarketSide,
     type MarketSnapshot,
@@ -11,25 +12,30 @@ import type { MarketTradeSelection } from './marketTradeSelection'
 export function createMarketTradeStore(
     getMarket: () => MarketSnapshot,
     getGold: () => number,
-    isBlocked: () => boolean | undefined
+    isBlocked: () => boolean | undefined,
+    getInventory: () => AdventureSnapshot['marketInventory']
 ) {
     const side = ref<MarketSide>('buy')
-    const quantity = ref<number | ''>(1)
+    const quantity = ref(1)
+    const quantityValid = ref(true)
     const quotedRows = computed(() =>
         getMarket().rows.map((row) => ({
             row,
-            quote:
-                typeof quantity.value === 'number'
-                    ? quoteMarketTradeBreakdown(row, side.value, quantity.value)
-                    : null,
+            inventory: getInventory()?.[row.itemId] ?? { owned: 0, sellable: 0 },
+            quote: quantityValid.value
+                ? quoteMarketTradeBreakdown(row, side.value, quantity.value)
+                : null,
         }))
     )
 
-    function canTrade(expectedTotal: number | null): expectedTotal is number {
+    function canTrade(itemId: MarketItemId, expectedTotal: number | null): expectedTotal is number {
         return (
             !isBlocked() &&
+            quantityValid.value &&
             expectedTotal !== null &&
-            (side.value === 'sell' || getGold() >= expectedTotal)
+            (side.value === 'sell'
+                ? (getInventory()?.[itemId]?.sellable ?? 0) >= quantity.value
+                : getGold() >= expectedTotal)
         )
     }
 
@@ -37,9 +43,9 @@ export function createMarketTradeStore(
         itemId: MarketItemId,
         expectedTotal: number | null
     ): MarketTradeSelection | undefined {
-        if (typeof quantity.value !== 'number' || !canTrade(expectedTotal)) return undefined
+        if (!canTrade(itemId, expectedTotal)) return undefined
         return { side: side.value, itemId, quantity: quantity.value, expectedTotal }
     }
 
-    return { side, quantity, quotedRows, canTrade, selectTrade }
+    return { side, quantity, quantityValid, quotedRows, canTrade, selectTrade }
 }

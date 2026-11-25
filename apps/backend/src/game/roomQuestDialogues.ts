@@ -14,7 +14,7 @@ import { configureNpcQuestDialogue } from './npcQuestDialogue'
 import type { NpcQuestService } from './npcQuests'
 import type { PartyService } from './parties'
 import { questBoardIssuerId } from './questBoardCatalog'
-import { questSpeech } from './questChatWords'
+import { questSpeech, refersToQuestInContext } from './questChatWords'
 import { conversationContracts } from './questConversation'
 import { QuestTurnInService } from './questTurnIn'
 import type { GameRoom } from './room'
@@ -84,14 +84,15 @@ export class RoomQuestDialogues {
         ).questOffer
         const issuerQuests = this.contracts(issuerId, recipientId, now)
         const player = this.environment.room.getCharacter(recipientId)
-        const request =
-            this.environment.parties.boardActiveJob(recipientId)?.workRequest
+        const activeWorkerRequests = this.environment.parties
+            .boardActiveJobs(recipientId)
+            .flatMap(({ workRequest }) =>
+                workRequest?.clerkId === issuerId ? [workRequest] : []
+            )
         return {
             questOffer: offer?.issuerId === issuerId ? offer : null,
             issuerQuests,
-            ...(request?.clerkId === issuerId
-                ? { activeWorkerRequest: request }
-                : {}),
+            activeWorkerRequests,
             ...(issuerId !== questBoardIssuerId || player === undefined
                 ? {}
                 : {
@@ -131,7 +132,10 @@ export class RoomQuestDialogues {
         }
         const speech = questSpeech(text)
         const askedBy =
-            speech === 'yes' || speech === 'report' || speech === undefined
+            speech === 'yes' ||
+            speech === 'report' ||
+            speech === undefined ||
+            refersToQuestInContext(text)
                 ? this.turnIns.questionIssuer(actor, at)
                 : undefined
         if (askedBy !== undefined) {

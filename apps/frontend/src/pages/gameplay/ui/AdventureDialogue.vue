@@ -14,6 +14,7 @@ import { dialogueSpeechKeys } from '../model/dialogueSpeechKeys'
 import { speechBubbleId } from '../model/speechReceipts'
 import { useEscapeOwner } from '../model/uiEscapeOwners'
 import { navigateDialogueActions, navigatePanelFocus } from '../model/uiKeyboard'
+import { useAdventureDialogueView } from '../model/useAdventureDialogueView'
 import SocialWindow from './SocialWindow.vue'
 
 const props = defineProps<{
@@ -32,7 +33,16 @@ const { trade, repair, workshopOrder } = createAdventureServiceCommands(
 )
 const panel = ref<HTMLElement>()
 const shopWindow = ref<InstanceType<typeof SocialWindow>>()
-const view = ref<'conversation' | 'shop' | 'repair' | 'demand' | 'orders'>('conversation')
+const {
+    view,
+    shopVisible,
+    conversationVisible,
+    marketSide,
+    shopRequest,
+    isWhisperPartner,
+    returnToWhisper,
+    openShop,
+} = useAdventureDialogueView(() => props.adventure.dialogue)
 const isSign = computed(() => props.adventure.dialogue?.kind === 'sign')
 const dialogueName = computed(() => {
     const dialogue = props.adventure.dialogue
@@ -63,7 +73,6 @@ const choices = computed(() =>
 const hasNeighbors = computed(
     () => !isSign.value && Boolean(props.neighbors?.left || props.neighbors?.right)
 )
-const shopVisible = computed(() => view.value === 'shop' && props.adventure.dialogue?.canTrade)
 const viewTitle = computed(() =>
     view.value === 'conversation'
         ? tLocalized(props.adventure.dialogue?.titleMessage, props.adventure.dialogue?.title ?? '')
@@ -100,7 +109,7 @@ function focusFirstAction(id?: 'trade'): void {
 }
 function choose(choiceId: string): void {
     if (props.switchPending) return
-    if (choiceId === 'trade' && props.adventure.dialogue?.canTrade) view.value = 'shop'
+    if (choiceId === 'trade' && props.adventure.dialogue?.canTrade) openShop()
     if (choiceId === 'repair') view.value = 'repair'
     if (choiceId === 'city_report') view.value = 'demand'
     if (choiceId === 'orders') view.value = 'orders'
@@ -111,23 +120,12 @@ function backToConversation(): void {
     if (props.switchPending) return
     const fromShop = view.value === 'shop'
     view.value = 'conversation'
+    if (fromShop && returnToWhisper()) {
+        sendActiveCommand({ choiceId: 'close', type: 'dialogue_choice' })
+        return
+    }
     focusFirstAction(fromShop ? 'trade' : undefined)
 }
-watch(
-    () => {
-        const { npcId, initialView, speechId } = props.adventure.dialogue ?? {}
-        return `${npcId}:${initialView}:${initialView ? speechId : ''}`
-    },
-    () => {
-        const { initialView, canTrade } = props.adventure.dialogue ?? {}
-        view.value =
-            (initialView === 'shop' && !canTrade ? undefined : initialView) ?? 'conversation'
-    },
-    { immediate: true }
-)
-watch(shopVisible, (visible) => {
-    if (!visible && view.value === 'shop') backToConversation()
-})
 watch(
     () => props.switchPending,
     (pending) => {
@@ -142,7 +140,7 @@ function escapeDialogue(): void {
     else sendActiveCommand({ choiceId: 'close', type: 'dialogue_choice' })
 }
 useEscapeOwner({
-    active: () => Boolean(props.adventure.dialogue && !shopVisible.value),
+    active: () => conversationVisible.value,
     escape: escapeDialogue,
     element: panel,
 })
@@ -160,6 +158,10 @@ watch(
     () => props.adventure.dialogue?.npcId,
     (key, oldKey) => {
         if (!key) {
+            if (isWhisperPartner(oldKey)) {
+                previousFocus = undefined
+                return
+            }
             const canvas = document.querySelector<HTMLCanvasElement>('[data-game-canvas]')
             ;(canvas ?? (previousFocus?.isConnected ? previousFocus : undefined))?.focus()
             previousFocus = undefined
@@ -174,7 +176,7 @@ watch(
 </script>
 <template>
     <section
-        v-if="adventure.dialogue && !shopVisible"
+        v-if="adventure.dialogue && conversationVisible"
         ref="panel"
         @keydown.stop="handleKeys"
         @keyup.stop
@@ -265,7 +267,7 @@ watch(
     <SocialWindow
         v-if="shopVisible"
         ref="shopWindow"
-        :key="adventure.dialogue?.npcId"
+        :key="`${adventure.dialogue?.npcId}:${shopRequest}`"
         :title="viewTitle"
         layout="shop"
         @close="backToConversation"
@@ -276,6 +278,9 @@ watch(
             :gold="adventure.gold"
             :blocked-reason="tradeBlockedReason"
             :market="adventure.market"
+            :market-side="marketSide"
+            :market-sides="adventure.dialogue?.marketSides"
+            :market-inventory="adventure.marketInventory"
             :inert="switchPending || undefined"
             @buy="trade"
             @trade="trade"

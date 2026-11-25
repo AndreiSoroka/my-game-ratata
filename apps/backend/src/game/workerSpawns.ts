@@ -6,7 +6,7 @@ import {
 
 import { GameCharacter } from './character'
 import { EconomyWorkerController } from './economyWorkers'
-import { createItemInstance, equipDirect } from './inventory'
+import { addInventoryItem, createItemInstance, equipDirect } from './inventory'
 import { citySpawnPosition } from './mapCityAnchors'
 import type { NavigationService } from './navigation'
 import { initializeNpcProgression } from './npcProgression'
@@ -94,6 +94,12 @@ export function createEconomyWorkers(
             equipDirect(
                 character.equipment,
                 createItemInstance(definition.tool)
+            )
+        }
+        if (definition.job === 'farmer') {
+            addInventoryItem(
+                character.inventory,
+                createItemInstance('wheat_seed', 10)
             )
         }
         return {

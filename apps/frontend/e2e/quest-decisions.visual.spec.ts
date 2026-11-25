@@ -92,6 +92,19 @@ test('disables both actions while a turn-in is pending', async ({ page }) => {
     await expect(panel).toHaveScreenshot('quest-turn-in-pending-390.png')
 })
 
+test('explains which delivery item is missing and keeps the back action enabled', async ({
+    page,
+}) => {
+    const windowStory = { ...turnIn, story: 'pages-gameplay-questturninwindow' }
+    const panel = await openPanel(page, windowStory, 390, 'missing-items')
+    const missing = panel.getByRole('listitem').filter({ hasText: 'не хватает 2' })
+    await expect(missing).toHaveText('Слизневое сердце · доступно 1 из 3 · не хватает 2')
+    await expect(missing).toHaveCSS('color', 'rgb(158, 62, 44)')
+    await expect(panel.getByRole('button', { name: turnIn.confirm, exact: true })).toBeDisabled()
+    await expect(panel.getByRole('button', { name: turnIn.cancel, exact: true })).toBeEnabled()
+    await expect(panel).toHaveScreenshot('quest-turn-in-missing-items-390.png')
+})
+
 test('lets the player choose the reward split when handing in a delivery before acceptance', async ({
     page,
 }) => {

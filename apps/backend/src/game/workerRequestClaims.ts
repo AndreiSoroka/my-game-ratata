@@ -9,6 +9,7 @@ export function releaseWorkerClaim(incident: WorkerIncident): void {
     incident.claim = null
     incident.returnReady = false
     incident.trialPoint = null
+    delete incident.seedVisit
     if (['outbound', 'working', 'returning'].includes(incident.view.stage)) {
         incident.view.stage = 'returning'
     } else if (openIncident(incident)) {

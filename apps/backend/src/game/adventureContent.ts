@@ -8,8 +8,10 @@ import {
     type AuthoredTextKey,
     BASE_STOCK_MERCHANT_IDS,
     type CityBellState,
+    HERBALIST_MERCHANT_ID,
     type LocalizedMessage,
     type MarketItemId,
+    type MarketSide,
     PORTABLE_LIGHT_ITEMS,
     WORKSHOP_DEFINITIONS,
     workshopFor,
@@ -55,6 +57,7 @@ export const adventureNpcRoles: Record<
             { quest: id === 'npc_friendly_girl_1', trade: true },
         ])
     ),
+    [HERBALIST_MERCHANT_ID]: { quest: false, trade: true },
     ...Object.fromEntries(
         WORKSHOP_DEFINITIONS.map((workshop) => [
             workshop.npcId,
@@ -70,8 +73,12 @@ export const adventureNpcRoles: Record<
 
 export function npcMarketItemAllowed(
     npcId: string | undefined,
-    itemId: MarketItemId
+    itemId: MarketItemId,
+    side?: MarketSide
 ): boolean {
+    if (npcId === HERBALIST_MERCHANT_ID) {
+        return itemId === 'herbs' && side !== 'buy'
+    }
     const workshop = npcId === undefined ? undefined : workshopFor(npcId)
     return workshop === undefined || workshop.items.includes(itemId)
 }
@@ -91,6 +98,18 @@ export function adventureDialogue(
     override?: { text: string; textMessage?: LocalizedMessage }
 ): AdventureDialogue {
     const role = adventureNpcRoles[npcId]
+    if (npcId === HERBALIST_MERCHANT_ID) {
+        const dialogue = residentDialogue(npcId, npcName, override)
+        return {
+            ...dialogue,
+            canTrade: true,
+            marketSides: ['sell'],
+            choices: [
+                adventureChoice('trade', 'dialogue.trade'),
+                ...dialogue.choices,
+            ],
+        }
+    }
     if (role === undefined) {
         return residentDialogue(npcId, npcName, override)
     }

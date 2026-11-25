@@ -177,8 +177,8 @@ it('delivers an autonomous question with no modal, then shows conditions once af
         f.speech().filter((e) => e.text === 'Хорошо, вот условия.')
     ).toHaveLength(1)
     expect(
-        f.room.social.quests.snapshot(f.alice.actor.id, Date.now()).quest
-    ).toBeNull()
+        f.room.social.quests.snapshot(f.alice.actor.id, Date.now()).quests
+    ).toEqual([])
     expect(f.invitation()).toBeNull()
     await f.advance(500)
     expect(

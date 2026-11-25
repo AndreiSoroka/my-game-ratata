@@ -6,16 +6,19 @@ import {
 
 import type { GameCharacter } from './character'
 import type { NpcQuestResult } from './npcQuests'
+import type { NpcQuestDecisionContext } from './npcQuestTypes'
 import { QuestBoardCatalog } from './questBoardCatalog'
 import { QuestChat } from './questChat'
 import { questConversationJobs } from './questConversation'
 import { executeQuestTurnIn } from './questTurnInExecution'
 import {
     currentQuestContact,
+    freshTurnInDialogue,
     type QuestContact,
     questContactAt,
     type QuestTurnInEnvironment,
-    readyTurnInAction,
+    turnInPreviewAction,
+    turnInReadiness,
 } from './questTurnInRules'
 
 interface Pending extends QuestContact {
@@ -67,18 +70,27 @@ export class QuestTurnInService {
         return this.chat.replies.questionIssuer(player, now)
     }
 
-    /** The affirmative or explicit hand-in must already have come from the player. */
     public open(
         issuer: GameCharacter,
         playerId: string,
         instanceId: string,
-        now: number
+        now: number,
+        context?: NpcQuestDecisionContext
     ): NpcQuestResult {
         const player = this.environment.getCharacter(playerId)
-        const view = player === undefined ? null : this.snapshot(player, now)
-        return view?.issuerId === issuer.id && view.instanceId === instanceId
-            ? result(true)
-            : result(false, 'Попросите сдачу в разговоре с заказчиком рядом.')
+        if (player !== undefined) {
+            const view = this.snapshot(player, now)
+            if (
+                (view?.issuerId === issuer.id &&
+                    view.instanceId === instanceId) ||
+                (view === null &&
+                    freshTurnInDialogue(context, playerId, now) &&
+                    this.chat.openFromDialogue(player, issuer, instanceId, now))
+            ) {
+                return result(true)
+            }
+        }
+        return result(false, 'Попросите сдачу в разговоре с заказчиком рядом.')
     }
 
     public snapshot(
@@ -95,14 +107,15 @@ export class QuestTurnInService {
             pending,
             now
         )
-        if (
-            issuer === undefined ||
-            !this.stillReady(player, issuer, pending.view, now)
-        ) {
+        const readiness =
+            issuer === undefined
+                ? undefined
+                : this.readiness(player, issuer, pending.view, now)
+        if (readiness === undefined) {
             this.pending.delete(player.id)
             return null
         }
-        return structuredClone(pending.view)
+        return { ...structuredClone(pending.view), ...readiness }
     }
 
     public confirm(
@@ -129,10 +142,25 @@ export class QuestTurnInService {
         if (view.preAcceptance !== true && rewardMode !== undefined) {
             return result(false, 'Распределение награды уже закреплено.')
         }
-        this.pending.delete(player.id)
         if (!accept) {
+            this.pending.delete(player.id)
             return result(true)
         }
+        if (view.canConfirm !== true) {
+            const pending = this.pending.get(player.id)
+            if (pending !== undefined) {
+                pending.view.id =
+                    this.environment.adventure.questFunding.newId(
+                        'quest-confirm'
+                    )
+            }
+            const error =
+                this.environment.localeFor(player.id) === 'en'
+                    ? 'The hand-in requirements changed. Review the quest again.'
+                    : 'Условия сдачи изменились. Проверьте поручение ещё раз.'
+            return result(false, error)
+        }
+        this.pending.delete(player.id)
         const outcome = this.submit(player, view, now, rewardMode)
         if (outcome.accepted) {
             this.completed.set(confirmationId, player.id)
@@ -223,17 +251,18 @@ export class QuestTurnInService {
             : this.catalog.redeem(issuer, player, board, mode, now)
     }
 
-    private stillReady(
+    private readiness(
         player: GameCharacter,
         issuer: GameCharacter,
         view: QuestTurnInPromptSnapshot,
         now: number
-    ): boolean {
+    ) {
         if (view.preAcceptance === true) {
             const board = this.boardOrder(player, view, now)
-            return (
-                board !== undefined && this.catalog.directReady(player, board)
-            )
+            return board !== undefined &&
+                this.catalog.directPreviewable(player, board, now)
+                ? turnInReadiness(this.environment, player, view)
+                : undefined
         }
         const job = questConversationJobs(
             this.environment,
@@ -241,10 +270,10 @@ export class QuestTurnInService {
             player,
             now
         ).find((entry) => entry.instanceId === view.instanceId)
-        return (
-            job?.revision === view.revision &&
-            readyTurnInAction(this.environment, player, job) === view.action
-        )
+        return job?.revision === view.revision &&
+            turnInPreviewAction(this.environment, player, job) === view.action
+            ? turnInReadiness(this.environment, player, view, job)
+            : undefined
     }
 
     private store(
@@ -252,7 +281,7 @@ export class QuestTurnInService {
         issuer: GameCharacter,
         view: QuestTurnInPromptSnapshot,
         now: number
-    ): void {
+    ): boolean {
         const current = this.snapshot(player, now)
         if (
             current?.instanceId === view.instanceId &&
@@ -263,7 +292,7 @@ export class QuestTurnInService {
                 ...questContactAt(issuer, player, view.expiresAt),
                 view: { ...view, id: current.id },
             })
-            return
+            return true
         }
         const exchange = this.environment.exchanges.snapshot(player.id)
         if (
@@ -276,12 +305,13 @@ export class QuestTurnInService {
                 now
             )
             if (!cancelled.accepted) {
-                return
+                return false
             }
         }
         this.pending.set(player.id, {
             ...questContactAt(issuer, player, view.expiresAt),
             view,
         })
+        return true
     }
 }

@@ -188,17 +188,20 @@ it('credits only the explicit nearby inquiry and can accept a new contract after
         22
     )
     f.service.update(22)
-    expect(f.service.snapshot(f.player.id, 22).quest?.progress).toEqual([0])
+    expect(f.service.snapshot(f.player.id, 22).quests?.[0]?.progress).toEqual([
+        0,
+    ])
     const inquiry = f.service.inquire(f.player, id, 0, 23)
     expect(inquiry.accepted).toBe(true)
     expect(
         inquiry.events.filter((event) => event.kind === 'chat')
     ).toHaveLength(1)
-    expect(f.service.snapshot(f.player.id, 23).quest?.status).toBe('ready')
+    expect(f.service.snapshot(f.player.id, 23).quests?.[0]?.status).toBe(
+        'ready'
+    )
     f.player.position = { ...f.issuer.position }
     expect(f.turnIn(id).accepted).toBe(true)
-    expect(f.service.snapshot(f.player.id, 30).quest).toBeNull()
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(f.service.snapshot(f.player.id, 30).quests).toEqual([])
     expect(
         f.service.propose(f.issuer, f.player.id, f.draft(), 31).accepted
     ).toBe(true)
@@ -215,9 +218,11 @@ it('credits only the explicit nearby inquiry and can accept a new contract after
             32
         ).accepted
     ).toBe(true)
-    const activeId = f.service.snapshot(f.player.id, 32).quest?.instanceId
+    const activeId = f.service.snapshot(f.player.id, 32).quests?.[0]?.instanceId
     expect(f.turnIn(id).accepted).toBe(true)
-    expect(f.service.snapshot(f.player.id, 32).quest?.instanceId).toBe(activeId)
+    expect(f.service.snapshot(f.player.id, 32).quests?.[0]?.instanceId).toBe(
+        activeId
+    )
     expect(f.adventure.walletFor(f.player.id).gold).toBe(10)
 })
 

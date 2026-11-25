@@ -44,7 +44,13 @@ export async function abandonGuildContract(page: Page, instanceId: string): Prom
     )
     await expect
         .poll(() =>
-            page.evaluate(() => window.__ratataTest!.getState().snapshot?.party?.activeJob?.status)
+            page.evaluate(
+                (id) =>
+                    window
+                        .__ratataTest!.getState()
+                        .snapshot?.party?.activeJobs.some((job) => job.instanceId === id) ?? false,
+                instanceId
+            )
         )
-        .not.toBe('active')
+        .toBe(false)
 }

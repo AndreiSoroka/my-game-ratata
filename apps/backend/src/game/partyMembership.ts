@@ -36,14 +36,12 @@ export function resolvePartyGroup(
 export function partyContractGroup(
     actorId: string,
     parties: ReadonlyMap<string, PartyRecord>,
-    membership: ReadonlyMap<string, string>,
-    guild: GuildService
+    membership: ReadonlyMap<string, string>
 ) {
     const group = resolvePartyGroup(actorId, parties, membership)
     return {
         ...group,
         leaderId: parties.get(group.key)?.leaderId ?? actorId,
-        occupied: guild.hasActiveJob(group.key),
     }
 }
 

@@ -11,7 +11,7 @@ export interface KnownContracts {
     issuerQuests: NpcQuestSnapshot[]
     questHistory: QuestHistoryEntry[]
     availableOrders?: QuestBoardEntry[]
-    activeWorkerRequest?: WorkRequestSnapshot
+    activeWorkerRequests?: WorkRequestSnapshot[]
 }
 /** The journal stays complete on the server; a model receives current contracts and relevant history. */
 export function projectContracts(
@@ -30,9 +30,9 @@ export function projectContracts(
         ...(value.availableOrders === undefined
             ? {}
             : { availableOrders: value.availableOrders }),
-        ...(value.activeWorkerRequest === undefined
+        ...(value.activeWorkerRequests === undefined
             ? {}
-            : { activeWorkerRequest: value.activeWorkerRequest }),
+            : { activeWorkerRequests: value.activeWorkerRequests }),
     }
 }
 function terminal(status: string): boolean {

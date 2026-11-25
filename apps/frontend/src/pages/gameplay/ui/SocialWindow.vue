@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import './socialWindows.css'
 
-import { nextTick, onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 
 import { isConfirmationKey } from '@/game/ui/keyboardOwnership'
 import { DarkWindowFrame } from '@/shared/ui/common'
@@ -17,12 +17,14 @@ const props = defineProps<{
     title: string
     modal?: boolean
     layout?: 'exchange' | 'quest' | 'shop'
+    suspended?: boolean | undefined
 }>()
 const emit = defineEmits<{ close: [] }>()
 defineSlots<{ default?: () => unknown; below?: () => unknown }>()
 const panel = ref<HTMLElement>()
+let suspendedFocus: HTMLElement | undefined
 useEscapeOwner({
-    active: () => true,
+    active: () => !props.suspended,
     escape: () => emit('close'),
     element: panel,
     priority: props.modal ? 130 : 110,
@@ -63,6 +65,7 @@ function trapTab(event: KeyboardEvent): void {
 }
 async function focusInitialAction(): Promise<void> {
     await nextTick()
+    if (props.suspended) return
     const firstAction =
         props.layout === 'shop'
             ? panel.value?.querySelector<HTMLButtonElement>(
@@ -72,10 +75,30 @@ async function focusInitialAction(): Promise<void> {
     ;(firstAction ?? panel.value)?.focus()
 }
 onMounted(focusInitialAction)
+watch(
+    () => props.suspended,
+    (suspended) => {
+        const focused = document.activeElement
+        if (suspended) {
+            if (focused instanceof HTMLElement && panel.value?.contains(focused)) {
+                suspendedFocus = focused
+            }
+            return
+        }
+        const restore = suspendedFocus
+        suspendedFocus = undefined
+        if (restore?.isConnected) {
+            void nextTick(() => {
+                if (!props.suspended) restore.focus()
+            })
+        } else void focusInitialAction()
+    }
+)
 defineExpose({ focusInitialAction })
 </script>
 <template>
     <div
+        v-show="!suspended"
         class="social-surface"
         :class="{
             'social-surface--modal': modal,

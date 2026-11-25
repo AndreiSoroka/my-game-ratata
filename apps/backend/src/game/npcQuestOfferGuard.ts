@@ -40,14 +40,6 @@ export function questProposalGuard(
         return rejected(replacementError)
     }
     if (
-        (typeof source === 'string' || source.authoredId === undefined) &&
-        context.environment.parties.contractGroup(targetId).occupied
-    ) {
-        return rejected(
-            'У собеседника уже есть действующий договор. Напомните его условия вместо нового предложения.'
-        )
-    }
-    if (
         current === undefined ||
         !questOfferAvailable(current, context.environment, now)
     ) {

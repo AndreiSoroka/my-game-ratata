@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { fixture } from './workerGuildFixture'
 
-describe('worker contracts through the shared guild slot', () => {
+describe('worker contracts through the guild', () => {
     it('keeps a ready worker locked when an atomic payment fails and retries once', () => {
         const f = fixture()
         f.accept()
@@ -17,7 +17,7 @@ describe('worker contracts through the shared guild slot', () => {
             2000
         )
         expect(f.gateway.complete).not.toHaveBeenCalled()
-        expect(f.guild.snapshot('solo:hero')?.status).toBe('ready')
+        expect(f.guild.snapshots('solo:hero')[0]?.status).toBe('ready')
         f.turnIn()
         expect(f.gateway.complete).toHaveBeenCalledTimes(1)
         expect(f.wallet.snapshot(f.actor.id).gold).toBe(30)
@@ -34,14 +34,14 @@ describe('worker contracts through the shared guild slot', () => {
             f.members,
             f.characters
         )
-        expect(f.guild.snapshot('solo:hero')?.id).toBe('slime_hunt')
+        expect(f.guild.snapshots('solo:hero')[0]?.id).toBe('slime_hunt')
     })
 
     it('claims exclusively, gates payment on the worker’s return, and rechecks danger at hand-in', () => {
         const f = fixture()
         f.accept()
         f.accept('other-group')
-        expect(f.guild.snapshot('other-group')).toBeNull()
+        expect(f.guild.snapshots('other-group')).toEqual([])
         const instanceId = f.instance()
         f.guild.report('solo:hero', 'obsolete', f.actor, 1001)
         expect(f.gateway.report).not.toHaveBeenCalled()
@@ -72,7 +72,7 @@ describe('worker contracts through the shared guild slot', () => {
         expect(f.instance()).not.toBe(old)
         f.guild.report('solo:hero', old, f.actor, 1102)
         f.guild.abandon('solo:hero', old, 1103)
-        expect(f.guild.snapshot('solo:hero')?.status).toBe('active')
+        expect(f.guild.snapshots('solo:hero')[0]?.status).toBe('active')
         expect(f.gateway.report).not.toHaveBeenCalled()
         expect(f.gateway.abandon).toHaveBeenCalledTimes(1)
         expect(f.wallet.snapshot(f.actor.id).gold).toBe(0)
@@ -83,8 +83,8 @@ describe('worker contracts through the shared guild slot', () => {
         f.accept()
         const id = f.instance()
         f.guild.moveJob('solo:hero', 'party_1')
-        expect(f.guild.snapshot('solo:hero')).toBeNull()
-        expect(f.guild.snapshot('party_1')?.instanceId).toBe(id)
+        expect(f.guild.snapshots('solo:hero')).toEqual([])
+        expect(f.guild.snapshots('party_1')[0]?.instanceId).toBe(id)
         f.guild.update('party_1', f.members, f.characters)
         expect(f.gateway.refreshGroup).toHaveBeenLastCalledWith(
             'party_1',
@@ -98,7 +98,7 @@ describe('worker contracts through the shared guild slot', () => {
         expect(f.gateway.releaseGroup).not.toHaveBeenCalled()
     })
 
-    it('shares one contract slot with static jobs and refuses a second acceptance', () => {
+    it('accepts a worker contract alongside an authored hunt and abandons only the named instance', () => {
         const f = fixture()
         f.guild.accept(
             'solo:hero',
@@ -108,7 +108,15 @@ describe('worker contracts through the shared guild slot', () => {
             f.characters
         )
         f.accept()
-        expect(f.gateway.accept).not.toHaveBeenCalled()
-        expect(f.guild.snapshot('solo:hero')?.id).toBe('slime_hunt')
+        expect(f.gateway.accept).toHaveBeenCalledTimes(1)
+        expect(f.guild.snapshots('solo:hero').map(({ id }) => id)).toEqual([
+            'slime_hunt',
+            f.request.id,
+        ])
+        f.guild.abandon('solo:hero', f.instance(), 2000)
+        expect(f.gateway.abandon).toHaveBeenCalledTimes(1)
+        expect(f.guild.snapshots('solo:hero').map(({ id }) => id)).toEqual([
+            'slime_hunt',
+        ])
     })
 })

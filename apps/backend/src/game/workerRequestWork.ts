@@ -20,6 +20,7 @@ export interface WorkerStepResult {
     reason: string | null
     block?: WorkerActivitySnapshot['reason']
     until?: number
+    seedPlotId?: string
 }
 export type WorkerCommand = (
     message: AdventureClientMessage
@@ -261,6 +262,7 @@ function farmStep(
             done: false,
             block: 'seeds',
             reason: 'Для настоящего посева на проверке нужно семя пшеницы.',
+            seedPlotId: plot.id,
         }
     }
     const result = perform({

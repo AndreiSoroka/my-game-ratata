@@ -7,19 +7,18 @@ import { QuestTurnInService } from '../src/game/questTurnIn'
 import { WhisperService } from '../src/game/whispers'
 import { npcQuestFixture } from './npcQuestFixture'
 
-function fixture() {
+function fixture(quantities = [3]) {
     const f = npcQuestFixture()
-    f.player.inventory.push(createItemInstance('herbs', 3))
+    const herbs = createItemInstance('herbs', 3)
+    f.player.inventory.push(herbs)
     const instanceId = f.accept(
         f.draft({
-            objectives: [
-                {
-                    kind: 'deliver',
-                    itemId: 'herbs',
-                    quantity: 3,
-                    recipientId: f.issuer.id,
-                },
-            ],
+            objectives: quantities.map((quantity) => ({
+                kind: 'deliver',
+                itemId: 'herbs',
+                quantity,
+                recipientId: f.issuer.id,
+            })),
         })
     )
     const environment = {
@@ -51,7 +50,7 @@ function fixture() {
         }
         return view
     }
-    return { ...f, environment, instanceId, turnIn, prompt }
+    return { ...f, environment, herbs, instanceId, turnIn, prompt }
 }
 
 it('opens ready terms, pays only on the owning player click and replays without a second transfer', () => {
@@ -63,6 +62,7 @@ it('opens ready terms, pays only on the owning player click and replays without 
         rewardGold: 10,
         source: 'npc',
         action: 'turn_in',
+        canConfirm: true,
     })
     expect(f.adventure.snapshot(f.player.id).gold).toBe(0)
     expect(f.turnIn.confirm(f.friend, view.id, true, 31).accepted).toBe(false)
@@ -79,6 +79,62 @@ it('opens ready terms, pays only on the owning player click and replays without 
         conversationContracts(f.environment, f.issuer.id, f.player.id, 33)[0]
             ?.status
     ).toBe('completed')
+})
+
+it('keeps delivery requirements visible at zero, counts only free items and aggregates duplicate requirements', () => {
+    const f = fixture([2, 1])
+    f.player.inventory.splice(0)
+    expect(f.turnIn.heard(f.player, f.issuer, 'Хочу сдать квест', 30)).toBe(
+        true
+    )
+    const view = f.prompt()
+    expect(view).toMatchObject({
+        canConfirm: false,
+        missingItems: [{ itemId: 'herbs', required: 3, available: 0 }],
+    })
+
+    f.player.inventory.push(f.herbs)
+    const reservations = f.adventure.questFunding.reservations
+    expect(
+        reservations.reserve(
+            'promised-herb',
+            {
+                inventory: f.player.inventory,
+                wallet: f.adventure.walletFor(f.player.id),
+            },
+            0,
+            [{ instanceId: f.herbs.instanceId, quantity: 1 }]
+        )
+    ).toBe(true)
+    expect(f.prompt(31)).toMatchObject({
+        id: view.id,
+        canConfirm: false,
+        missingItems: [{ itemId: 'herbs', required: 3, available: 2 }],
+    })
+    expect(reservations.release('promised-herb')).toBe(true)
+    const ready = f.prompt(32)
+    expect(ready).toMatchObject({ id: view.id, canConfirm: true })
+    expect(ready.missingItems).toBeUndefined()
+    expect(f.turnIn.confirm(f.player, view.id, true, 33).accepted).toBe(true)
+    expect(f.adventure.snapshot(f.player.id).gold).toBe(10)
+})
+
+it('shows a transfer blocker while the quest giver and player can talk across a table', () => {
+    const f = fixture()
+    f.putTableBetweenPlayerAndIssuer()
+    expect(f.turnIn.heard(f.player, f.issuer, 'Хочу сдать квест', 30)).toBe(
+        true
+    )
+    const view = f.prompt()
+    expect(view).toMatchObject({
+        canConfirm: false,
+        blockedReason: 'approach_issuer',
+    })
+    expect(view.missingItems).toBeUndefined()
+    f.player.position = { ...f.issuer.position }
+    const ready = f.prompt(31)
+    expect(ready).toMatchObject({ id: view.id, canConfirm: true })
+    expect(ready.blockedReason).toBeUndefined()
 })
 
 it('does not treat yes, an unrelated conversation or a negative statement as surrender', () => {
@@ -142,15 +198,32 @@ it('rechecks actual deliveries, location, life and reach before any asset mutati
     const view = f.prompt()
     const herbs = f.player.inventory.splice(0)
     expect(f.turnIn.confirm(f.player, view.id, true, 31).accepted).toBe(false)
+    const updated = f.prompt(31)
+    expect(updated.id).not.toBe(view.id)
+    expect(updated).toMatchObject({
+        canConfirm: false,
+        missingItems: [{ itemId: 'herbs', required: 3, available: 0 }],
+    })
     f.player.inventory.push(...herbs)
     f.player.locationId = 'map-2-1'
-    expect(f.turnIn.confirm(f.player, view.id, true, 32).accepted).toBe(false)
+    expect(f.turnIn.confirm(f.player, updated.id, true, 32).accepted).toBe(
+        false
+    )
+    expect(f.turnIn.snapshot(f.player, 32)).toBeNull()
     f.player.locationId = f.issuer.locationId
+    f.turnIn.heard(f.player, f.issuer, 'готово', 32)
+    const afterTravel = f.prompt(32)
     f.player.position.x += 100
-    expect(f.turnIn.confirm(f.player, view.id, true, 33).accepted).toBe(false)
+    expect(f.turnIn.confirm(f.player, afterTravel.id, true, 33).accepted).toBe(
+        false
+    )
     f.player.position.x -= 100
+    f.turnIn.heard(f.player, f.issuer, 'готово', 33)
+    const beforeDeath = f.prompt(33)
     f.issuer.applyDamage(f.issuer.hp, 34)
-    expect(f.turnIn.confirm(f.player, view.id, true, 34).accepted).toBe(false)
+    expect(f.turnIn.confirm(f.player, beforeDeath.id, true, 34).accepted).toBe(
+        false
+    )
     expect(f.adventure.snapshot(f.player.id).gold).toBe(0)
     expect(f.player.inventory).toHaveLength(1)
 })

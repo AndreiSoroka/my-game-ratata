@@ -33,7 +33,7 @@ function party(members: PartyMemberSnapshot[]): PartySnapshot {
         members,
         invitations: [],
         jobs: [],
-        activeJob: null,
+        activeJobs: [],
         notice: null,
     }
 }

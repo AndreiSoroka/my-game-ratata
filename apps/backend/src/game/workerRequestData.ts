@@ -39,6 +39,11 @@ export interface WorkerIncident {
     claim: WorkerRequestClaim | null
     published: boolean
     returnReady: boolean
+    seedAdvanceUsed?: true
+    seedVisit?: {
+        plotId: string
+        retry?: { at: number; reason: string; block: 'bag' | 'seeds' }
+    }
     threatObservedAt?: number
     activityReason?: WorkerActivitySnapshot['reason']
     activityIntent?: WorkerActivitySnapshot['intent']

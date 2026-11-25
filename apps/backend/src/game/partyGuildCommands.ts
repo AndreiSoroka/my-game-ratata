@@ -28,7 +28,6 @@ interface GuildCommandContext {
     award: QuestGoldAwarder
     now: number
     issuer?: GameCharacter
-    negotiated?: NegotiatedWorkerReward
 }
 
 export function executeGuildCommand(input: GuildCommandContext): string {
@@ -43,9 +42,9 @@ export function executeGuildCommand(input: GuildCommandContext): string {
                 characters,
                 message.rewardMode,
                 now,
-                input.negotiated,
+                undefined,
                 input.issuer?.id
-            )
+            ).notice
         case 'guild_report':
             return guild.report(group.key, message.instanceId, actor, now)
         case 'guild_abandon':
@@ -98,12 +97,13 @@ export function findGuildContact(
     characters: ReadonlyMap<string, GameCharacter>,
     canContact: (actor: GameCharacter, npc: GameCharacter) => boolean,
     now: number,
-    questId?: string
+    questId?: string,
+    instanceId?: string
 ): GameCharacter | undefined {
     return [...characters.values()].find(
         (npc) =>
             canContact(actor, npc) &&
-            guild.contactAllowed(key, actor, npc, now, questId)
+            guild.contactAllowed(key, actor, npc, now, questId, instanceId)
     )
 }
 
@@ -121,7 +121,8 @@ export function partyGuildContact(
     environment: PartyGuildEnvironment,
     actor: GameCharacter,
     now: number,
-    questId?: string
+    questId?: string,
+    instanceId?: string
 ) {
     return findGuildContact(
         environment.guild(),
@@ -130,17 +131,13 @@ export function partyGuildContact(
         environment.characters(),
         environment.canContact,
         now,
-        questId
+        questId,
+        instanceId
     )
 }
 
 export function createPartyGuildAction(environment: PartyGuildEnvironment) {
-    return (
-        actor: GameCharacter,
-        message: GuildCommand,
-        now: number,
-        negotiated?: NegotiatedWorkerReward
-    ): [] => {
+    return (actor: GameCharacter, message: GuildCommand, now: number): [] => {
         const group = environment.group(actor.id)
         const contact =
             message.type === 'guild_abandon'
@@ -151,7 +148,10 @@ export function createPartyGuildAction(environment: PartyGuildEnvironment) {
                       now,
                       message.type === 'guild_accept'
                           ? message.questId
-                          : undefined
+                          : undefined,
+                      message.type === 'guild_accept'
+                          ? undefined
+                          : message.instanceId
                   )
         return handleGuildCommand({
             guild: environment.guild(),
@@ -164,12 +164,7 @@ export function createPartyGuildAction(environment: PartyGuildEnvironment) {
             notices: environment.notices,
             leaderId: environment.leader(group.key),
             ...(contact === undefined ? {} : { issuer: contact }),
-            ...(negotiated === undefined ? {} : { negotiated }),
-            contact:
-                message.type === 'guild_abandon' ||
-                (contact !== undefined &&
-                    (negotiated === undefined ||
-                        contact.id === negotiated.issuerId)),
+            contact: message.type === 'guild_abandon' || contact !== undefined,
         })
     }
 }
@@ -181,12 +176,14 @@ export function createBoardGuildAcceptance(environment: PartyGuildEnvironment) {
         issuer: GameCharacter,
         rewardMode: QuestRewardMode,
         now: number,
-        report = false
+        report = false,
+        negotiated?: NegotiatedWorkerReward
     ): NpcQuestResult => {
         const { key, members } = environment.group(actor.id)
         const guild = environment.guild()
         if (
             !available(actor) ||
+            (negotiated !== undefined && negotiated.issuerId !== issuer.id) ||
             (environment.leader(key) ?? actor.id) !== actor.id ||
             !canAcceptBoardFrom(environment, actor, issuer, now, questId)
         ) {
@@ -196,14 +193,7 @@ export function createBoardGuildAcceptance(environment: PartyGuildEnvironment) {
                 events: [],
             }
         }
-        if (guild.hasActiveJob(key)) {
-            return {
-                accepted: false,
-                error: 'Сначала завершите действующий договор.',
-                events: [],
-            }
-        }
-        const notice = guild.accept(
+        const { instanceId, notice } = guild.accept(
             key,
             questId,
             actor.id,
@@ -211,11 +201,11 @@ export function createBoardGuildAcceptance(environment: PartyGuildEnvironment) {
             environment.characters(),
             rewardMode,
             now,
-            undefined,
+            negotiated,
             issuer.id,
             report ? actor : undefined
         )
-        const accepted = guild.snapshot(key)?.id === questId
+        const accepted = instanceId !== undefined
         if (accepted) {
             for (const id of members) {
                 environment.notices.set(id, notice)

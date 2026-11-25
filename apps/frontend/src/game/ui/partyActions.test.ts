@@ -12,7 +12,7 @@ describe('pending party invitation eligibility', () => {
             leaderId: null,
             members: [],
             jobs: [],
-            activeJob: null,
+            activeJobs: [],
             notice: null,
             invitations: [
                 {

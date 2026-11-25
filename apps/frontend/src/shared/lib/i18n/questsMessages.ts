@@ -9,6 +9,7 @@ export const questsMessages = {
     slimes: ['враждебные слизни', 'hostile slimes'],
     skeletons: ['скелеты', 'skeletons'],
     adventurersJournal: ['ЖУРНАЛ ПУТЕШЕСТВЕННИКА', 'ADVENTURER’S JOURNAL'],
+    approachQuestGiver: ['Подойдите ближе к заказчику.', 'Move closer to the quest giver.'],
     afterDefeatingSlimeApproachIts: [
         'После победы подойдите к телу слизня, повернитесь к нему и нажмите',
         'After defeating a slime, approach its body, face it and press',
@@ -40,10 +41,6 @@ export const questsMessages = {
         'Victories during the active contract count. You do not need to turn in hearts or other items.',
     ],
     completed: ['Завершено', 'Completed'],
-    completeOrCancelYourCurrent: [
-        'Сначала завершите или отмените текущий договор.',
-        'Complete or cancel your current contract first.',
-    ],
     confirmationExpiredAskQuestGiver: [
         'Подтверждение устарело. Попросите заказчика проверить договор снова.',
         'Confirmation expired. Ask the quest giver to check the contract again.',
@@ -106,6 +103,10 @@ export const questsMessages = {
     requestCancelled: ['Обращение отменено', 'Request cancelled'],
     requestTerms: ['Условия поручения', 'Request terms'],
     requiredItems: ['Нужные предметы', 'Required items'],
+    requiredItemShortage: [
+        '{name} · доступно {available} из {required} · не хватает {missing}',
+        '{name} · {available} of {required} available · {missing} missing',
+    ],
     reward: ['Награда:', 'Reward:'],
     rewardDistribution: ['Распределение награды', 'Reward distribution'],
     rewardDistributionWasFixedAt: [
@@ -152,6 +153,10 @@ export const questsMessages = {
     turnInContract: ['Сдать контракт', 'Turn in contract'],
     turnInQuest: ['Сдать поручение', 'Turn in quest'],
     turnInQuestGiver: ['Сдать заказчику', 'Turn in to quest giver'],
+    unfinishedTurnInObjectives: [
+        'Выполните оставшиеся цели поручения.',
+        'Complete the remaining quest objectives.',
+    ],
     unpaidRequest: ['Просьба без награды.', 'An unpaid request.'],
     verificationSucceeded: [
         'Проверка пройдена — получите награду',
@@ -178,10 +183,6 @@ export const questsMessages = {
     workerWaits: ['Работник ждёт у распорядителя', 'Worker is waiting at the steward'],
     workshopOrders: ['Заказы ремесленникам', 'Workshop orders'],
     worksite: ['Участок', 'Worksite'],
-    youCanHaveOneActive: [
-        'У отряда может быть один общий договор.',
-        'A party can have one shared contract at a time.',
-    ],
     youChooseThisWhenYou: [
         'Выбор фиксируется при принятии задания.',
         'You choose this when you accept the quest.',

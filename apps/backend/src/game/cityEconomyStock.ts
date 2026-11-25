@@ -11,7 +11,10 @@ import {
     type InventoryItemInstance,
     itemQuantity,
 } from './inventory'
-import { availableInventoryQuantity } from './rewardReservations'
+import {
+    availableInventoryQuantity,
+    availableItemQuantity,
+} from './rewardReservations'
 export const periodMs = 600_000
 export interface CityCommodityDefinition {
     itemId: MarketItemId
@@ -97,6 +100,41 @@ export interface CityState {
     lastDeliveryAt: Map<MarketItemId, number>
     revision: number
     history: StockEvent[]
+}
+
+export function depositHerbs(
+    source: InventoryItemInstance[],
+    city: CityState,
+    now: number
+): void {
+    const herbs = availableItemQuantity(source, 'herbs')
+    if (herbs === 0) {
+        return
+    }
+    const definition = CITY_COMMODITIES.find(({ itemId }) => itemId === 'herbs')
+    if (definition === undefined) {
+        return
+    }
+    const quantity = Math.min(
+        herbs,
+        definition.target * 2 - countInventoryItem(city.inventory, 'herbs')
+    )
+    if (
+        quantity > 0 &&
+        transferQuantity(source, city.inventory, 'herbs', quantity, Infinity)
+    ) {
+        recordStockDelivery(city, 'herbs', quantity, now)
+    }
+}
+
+export function recordStockDelivery(
+    city: CityState,
+    itemId: MarketItemId,
+    quantity: number,
+    at: number
+): void {
+    city.revision += 1
+    city.history.push({ at, itemId, quantity, kind: 'delivery' })
 }
 
 export function transferQuantity(

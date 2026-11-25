@@ -2,13 +2,14 @@
 import './socialWindows.css'
 
 import type { CharacterSnapshot, ClientMessage, WorldSnapshot } from '@my-game-ratata/contracts'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { focusWorldInput } from '@/game/ui/keyboardOwnership'
 import { tGame } from '@/shared/lib/i18n'
 import { UiButton } from '@/shared/ui/common'
 import { ExchangeInvitationWidget } from '@/widgets/exchanges'
 
+import { marketWindowContext } from '../model/marketWindowContext'
 import ExchangeWindow from './ExchangeSessionWindow.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
 import QuestTurnInWindow from './QuestTurnInWindow.vue'
@@ -21,6 +22,8 @@ const props = defineProps<{
     connected: boolean
 }>()
 const emit = defineEmits<{ command: [message: ClientMessage]; open: [] }>()
+const marketContext = inject(marketWindowContext, undefined)
+const shopOpen = computed(() => marketContext?.shopOpen.value ?? false)
 const whisperTarget = ref<string>()
 const openedExchangeId = ref<string>()
 const hiddenExchangeId = ref<string>()
@@ -56,8 +59,21 @@ const whisperVisible = computed(
         whisper.value?.partnerId === whisperTarget.value
 )
 const hasOpenWindow = computed(
-    () => hasQuestWindow.value || Boolean(visibleExchange.value) || whisperVisible.value
+    () =>
+        hasQuestWindow.value ||
+        Boolean(visibleExchange.value) ||
+        (whisperVisible.value && !shopOpen.value)
 )
+watch(
+    () => (whisperVisible.value ? whisper.value?.partnerId : undefined),
+    (partnerId) => {
+        if (marketContext) marketContext.whisperPartnerId.value = partnerId
+    },
+    { immediate: true }
+)
+onBeforeUnmount(() => {
+    if (marketContext) marketContext.whisperPartnerId.value = undefined
+})
 function prepare(): void {
     emit('open')
     emit('command', { type: 'release_input' })
@@ -224,7 +240,11 @@ defineExpose({ command, hasOpenWindow })
             @cancel="cancelInvitation"
         />
     </div>
-    <div v-if="available && whisper && !hasOpenWindow" ref="hints" class="social-hints">
+    <div
+        v-if="available && whisper && !hasOpenWindow && !shopOpen"
+        ref="hints"
+        class="social-hints"
+    >
         <UiButton variant="success" @click="showWhisper">
             {{ tGame('game.world.whisper') }} {{ whisper.partnerName
             }}{{ whisper.messages.length ? tGame('game.world.newSpeechSuffix') : '' }}
@@ -247,15 +267,6 @@ defineExpose({ command, hasOpenWindow })
         :server-time="snapshot.serverTime"
         :player-id="player.id"
         :conversation="whisper"
-        :occupied="
-            Boolean(
-                snapshot.party?.activeJob &&
-                ['active', 'ready', 'reward_missing'].includes(snapshot.party.activeJob.status)
-            ) ||
-            Boolean(
-                social?.quest && ['active', 'ready', 'reward_missing'].includes(social.quest.status)
-            )
-        "
         @command="command"
     />
     <ExchangeWindow
@@ -270,6 +281,7 @@ defineExpose({ command, hasOpenWindow })
     />
     <WhisperWindow
         v-else-if="whisperVisible && whisper"
+        :suspended="shopOpen"
         :conversation="whisper"
         :player-id="player.id"
         @close="closeWhisper"

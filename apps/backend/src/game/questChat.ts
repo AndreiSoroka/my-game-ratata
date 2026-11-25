@@ -9,22 +9,21 @@ import {
     type QuestBoardCatalog,
     questBoardIssuerId,
 } from './questBoardCatalog'
+import {
+    boardQuestChoice,
+    type QuestChoice,
+    topicForSubmit,
+} from './questChatChoices'
 import { QuestChatOrders } from './questChatOrders'
 import { QuestChatReplies, type QuestQuestion } from './questChatReplies'
+import { QuestChatTurnIns } from './questChatTurnIns'
 import {
-    namedQuest,
-    questClarification,
+    asksToHandIn,
     questSpeech,
-    unnamedHandIn,
     workerReportSubject,
 } from './questChatWords'
 import { questConversationJobs } from './questConversation'
-import {
-    createTurnInPrompt,
-    type QuestTurnInEnvironment,
-    readyTurnInAction,
-    turnInContact,
-} from './questTurnInRules'
+import { type QuestTurnInEnvironment, turnInContact } from './questTurnInRules'
 
 interface Speaker {
     player: GameCharacter
@@ -41,18 +40,25 @@ export interface QuestChatRequest extends Speaker {
 export class QuestChat {
     public readonly replies: QuestChatReplies
     private readonly boardDialogue: QuestChatOrders
+    private readonly turnIns: QuestChatTurnIns
 
     public constructor(
         private readonly environment: QuestTurnInEnvironment,
         private readonly catalog: QuestBoardCatalog,
-        private readonly show: (
+        show: (
             player: GameCharacter,
             issuer: GameCharacter,
             view: QuestTurnInPromptSnapshot,
             now: number
-        ) => void
+        ) => boolean
     ) {
         this.replies = new QuestChatReplies(environment)
+        this.turnIns = new QuestChatTurnIns(
+            environment,
+            catalog,
+            this.replies,
+            show
+        )
         this.boardDialogue = new QuestChatOrders(
             environment,
             catalog,
@@ -74,25 +80,65 @@ export class QuestChat {
         if (speech === undefined && question === undefined) {
             return false
         }
+        const request = this.request(player, issuer, text, now)
+        if (
+            speech === 'submit' &&
+            issuer.id !== questBoardIssuerId &&
+            request.jobs.length === 0 &&
+            question?.kind !== 'submit'
+        ) {
+            return false
+        }
+        return this.handle(request, speech, question)
+    }
 
-        const board = issuer.id === questBoardIssuerId
-        const request = {
+    public openFromDialogue(
+        player: GameCharacter,
+        issuer: GameCharacter,
+        instanceId: string,
+        now: number
+    ): boolean {
+        if (!turnInContact(this.environment, player, issuer, now)) {
+            return false
+        }
+        const request = this.request(player, issuer, '', now)
+        const job = request.jobs.find(
+            (entry) => entry.instanceId === instanceId
+        )
+        if (job !== undefined) {
+            return this.turnIns.openJob(request, job)
+        }
+        const order = request.orders.find(
+            ({ entry }) => entry.id === instanceId
+        )
+        return order !== undefined && this.turnIns.openDirect(request, order)
+    }
+
+    private request(
+        player: GameCharacter,
+        issuer: GameCharacter,
+        text: string,
+        now: number
+    ): QuestChatRequest {
+        return {
             player,
             issuer,
             text,
             now,
             jobs: questConversationJobs(this.environment, issuer, player, now),
-            orders: board ? this.catalog.available(player, now) : [],
+            orders:
+                issuer.id === questBoardIssuerId
+                    ? this.catalog.available(player, now)
+                    : [],
         }
-        return this.handle(request, speech, question, board)
     }
 
     private handle(
         request: QuestChatRequest,
         speech: ReturnType<typeof questSpeech>,
-        question: QuestQuestion | undefined,
-        board: boolean
+        question: QuestQuestion | undefined
     ): boolean {
+        const board = request.issuer.id === questBoardIssuerId
         switch (speech) {
             case undefined:
                 return this.clarify(request, question)
@@ -100,122 +146,63 @@ export class QuestChat {
                 return this.confirmQuestion(request, question)
             case 'report':
                 return this.report(request, question)
-            case 'recommend':
             case 'take':
+                return board && this.boardDialogue.take(request, question)
+            case 'recommend':
             case 'status':
             case 'details':
                 return board && this.boardDialogue.heard(request, speech)
             case 'submit':
-                return (
-                    (board || request.jobs.length > 0) && this.submit(request)
-                )
+                return this.submit(request, question)
         }
     }
 
-    private submit(request: QuestChatRequest): boolean {
-        const jobs = request.jobs.filter((job) =>
-            this.replies.matchesJob(request.player, job, request.text)
+    private submit(
+        request: QuestChatRequest,
+        question: QuestQuestion | undefined
+    ): boolean {
+        const { player, orders, text, now } = request
+        const jobs = this.jobChoices(request)
+        const named = [...jobs, ...orders.map(boardQuestChoice)].filter(
+            (choice) => this.replies.choices.matchesChoice(choice, text)
         )
-        const orders = request.orders.filter(({ entry }) =>
-            namedQuest(request.text, entry)
-        )
-        if (jobs.length + orders.length > 1) {
-            this.replies.askWhich(request, [
-                ...jobs,
-                ...orders.map(({ entry }) => entry),
-            ])
-        } else if (jobs[0] !== undefined) {
-            this.openOrExplain(request, jobs[0])
-        } else if (orders[0] !== undefined) {
-            this.submitDirect(request, orders[0])
-        } else if (!unnamedHandIn(request.text)) {
-            this.replies.askWhichToSubmit(request, request.jobs)
-        } else {
-            this.submitGeneric(request)
+        if (named.length > 0) {
+            return this.turnIns.selectForSubmit(request, named)
         }
-        return true
-    }
-
-    private submitDirect(request: QuestChatRequest, order: BoardQuest): void {
-        const { player, issuer, now } = request
-        if (this.catalog.directReady(player, order)) {
-            this.show(
-                player,
-                issuer,
-                this.catalog.directPrompt(issuer, order, now),
-                now
-            )
-        } else if (this.replies.approachIfBlocked(request)) {
-            return
-        } else if (
-            order.objectives.length > 0 &&
-            order.objectives.every((objective) => objective.kind === 'deliver')
-        ) {
-            this.replies.explainDelivery(
-                request,
-                this.catalog.groupCanTake(player, order)
-            )
-        } else {
-            this.replies.say(
-                request,
-                'Сначала возьми этот заказ. Прогресс начнёт считаться после принятия.',
-                'Take the order first. Progress starts once you accept it.'
-            )
+        const topic = topicForSubmit(text, question, jobs)
+        if (topic !== undefined) {
+            return this.turnIns.selectForSubmit(request, [topic])
         }
-    }
-
-    private submitGeneric(request: QuestChatRequest): void {
-        const { player, jobs, orders } = request
-        const ready = jobs.filter(
-            (candidate) =>
-                readyTurnInAction(this.environment, player, candidate) !==
-                undefined
-        )
-        if (ready.length === 1 && ready[0] !== undefined) {
-            this.openOrExplain(request, ready[0])
-        } else if (ready.length > 1) {
-            this.replies.askWhichToSubmit(request, ready)
-        } else {
-            const deliveries = orders.filter((candidate) =>
-                this.catalog.directReady(player, candidate)
-            )
-            const bell = deliveries.find(
-                ({ entry }) => entry.source === 'story'
-            )
-            const hunt = jobs.find((job) => job.id === 'slime_hunt')
-            if (bell !== undefined && hunt !== undefined) {
-                this.boardDialogue.describeOrder(request, bell, hunt)
-                return
-            }
-            if (jobs.length === 1 && jobs[0] !== undefined) {
-                this.openOrExplain(request, jobs[0])
-            } else if (jobs.length > 0) {
-                this.replies.askWhichToSubmit(request, jobs)
-            } else {
-                this.replies.askWhich(request, [
-                    ...deliveries.map(({ entry }) => entry),
-                ])
-            }
-        }
+        const direct =
+            jobs.length === 0 || asksToHandIn(text)
+                ? orders
+                      .filter((order) =>
+                          this.catalog.directPreviewable(player, order, now)
+                      )
+                      .map(boardQuestChoice)
+                : []
+        return this.turnIns.selectForSubmit(request, [...jobs, ...direct])
     }
 
     private clarify(
         request: QuestChatRequest,
         question: QuestQuestion | undefined
     ): boolean {
-        if (question === undefined) {
+        if (question === undefined || question.kind === 'topic') {
             return false
         }
-        const matches = this.questionJobs(request, question).filter(
-            (job) =>
-                questClarification(request.text, job) &&
-                this.replies.matchesJob(request.player, job, request.text)
+        const matches = question.choices.filter((choice) =>
+            this.replies.choices.matchesClarification(choice, request.text)
         )
-        const job = matches.length === 1 ? matches[0] : undefined
-        if (job === undefined) {
+        const choice = matches.length === 1 ? matches[0] : undefined
+        if (choice === undefined) {
             return false
         }
-        this.openOrExplain(request, job)
+        if (question.kind === 'take') {
+            this.boardDialogue.takeChoice(request, choice)
+        } else {
+            this.turnIns.submitChoice(request, choice)
+        }
         return true
     }
 
@@ -223,15 +210,23 @@ export class QuestChat {
         request: QuestChatRequest,
         question: QuestQuestion | undefined
     ): boolean {
-        if (question?.kind !== 'confirm') {
+        const choice = question?.choices[0]
+        if (choice === undefined || question === undefined) {
             return false
         }
-        const [job] = this.questionJobs(request, question)
-        if (job === undefined) {
-            return false
+        if (
+            question.kind === 'topic' &&
+            choice.source === 'board' &&
+            request.issuer.id === questBoardIssuerId
+        ) {
+            this.boardDialogue.takeChoice(request, choice)
+            return true
         }
-        this.openOrExplain(request, job)
-        return true
+        if (question.kind === 'confirm') {
+            this.turnIns.submitChoice(request, choice)
+            return true
+        }
+        return false
     }
 
     private report(
@@ -243,68 +238,59 @@ export class QuestChat {
         )
         const subject = workerReportSubject(request.text)
         const matches = workers.filter((job) =>
-            this.replies.matchesJob(
+            this.replies.choices.matchesJob(
                 request.player,
                 job,
                 subject ?? request.text
             )
         )
         if (subject !== undefined && matches.length === 0) {
-            this.replies.askWhichToSubmit(request, workers)
+            this.replies.askWhichQuest(
+                request,
+                this.jobChoices(request, workers),
+                'submit'
+            )
             return true
         }
-        const [bound] =
-            question?.kind === 'confirm'
-                ? this.questionJobs(request, question).filter(
-                      (job) => job.workerRequestId !== undefined
-                  )
-                : []
+        if (matches.length > 1) {
+            this.replies.askWhichQuest(
+                request,
+                this.jobChoices(request, matches),
+                'submit'
+            )
+            return true
+        }
+        const choice =
+            question?.kind === 'confirm' ? question.choices[0] : undefined
+        const bound = workers.find(
+            (job) =>
+                job.instanceId === choice?.instanceId &&
+                job.revision === choice.revision
+        )
         const job =
             matches[0] ??
             bound ??
             (workers.length === 1 ? workers[0] : undefined)
         if (job === undefined) {
+            if (workers.length > 1) {
+                this.replies.askWhichQuest(
+                    request,
+                    this.jobChoices(request, workers),
+                    'submit'
+                )
+                return true
+            }
             return false
         }
-        this.openOrExplain(request, job)
+        this.turnIns.openOrExplain(request, job)
         return true
     }
 
-    private questionJobs(
-        { jobs }: QuestChatRequest,
-        question: QuestQuestion | undefined
-    ): NpcQuestSnapshot[] {
-        return jobs.filter(
-            (job) =>
-                question?.jobs.some(
-                    ({ instanceId, revision }) =>
-                        instanceId === job.instanceId &&
-                        revision === job.revision
-                ) === true
-        )
-    }
-
-    private openOrExplain(request: Speaker, job: NpcQuestSnapshot): void {
-        const { issuer, player, now } = request
-        this.replies.clearQuestion(request)
-        const action = readyTurnInAction(this.environment, player, job)
-        if (action !== undefined) {
-            this.show(
-                player,
-                issuer,
-                createTurnInPrompt(
-                    this.environment,
-                    issuer,
-                    player.id,
-                    job,
-                    action,
-                    now
-                ),
-                now
-            )
-        } else {
-            this.replies.explain(request, job)
-        }
+    private jobChoices(
+        { player, jobs }: QuestChatRequest,
+        choices = jobs
+    ): QuestChoice[] {
+        return choices.map((job) => this.replies.choices.jobChoice(player, job))
     }
 
     public update(now: number): void {

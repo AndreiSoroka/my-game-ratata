@@ -19,7 +19,7 @@ it('lets players whisper to Mira or open city affairs from her menu', () => {
         },
     })
     const party: PartySnapshot = {
-        activeJob: null,
+        activeJobs: [],
         guildContact: { npcId: clerk.id, nickname: clerk.nickname },
         invitations: [],
         jobs: [

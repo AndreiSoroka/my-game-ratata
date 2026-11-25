@@ -15,7 +15,7 @@ export type {
 
 import type { CityStateSnapshot } from './cityState'
 import type { CraftOrderClientMessage } from './craftOrders'
-import type { MarketClientMessage } from './economy'
+import type { MarketClientMessage, MarketItemId, MarketSide } from './economy'
 import type { FarmClientMessage, FarmPlotSnapshot } from './farming'
 import type { FarmSupplyClientMessage } from './farmSupply'
 import type { ItemId } from './index'
@@ -28,6 +28,11 @@ export type { TreeProfile } from './trees'
 export const BASE_STOCK_MERCHANT_IDS: readonly string[] = [
     'npc_friendly_girl_1',
     'npc_merchant_1',
+]
+export const HERBALIST_MERCHANT_ID = 'npc_herbalist_1'
+export const CITY_HERB_COLLECTOR_IDS: readonly string[] = [
+    'npc_friendly_girl_1',
+    HERBALIST_MERCHANT_ID,
 ]
 
 type AdventureRecipeItemId =
@@ -91,10 +96,12 @@ export interface AdventureDialogueChoice {
 
 export type MerchantServiceView = 'shop' | 'orders' | 'repair'
 export type NpcInteractionService =
-    MerchantServiceView | 'city_affairs' | 'worker_requests'
+    MerchantServiceView | 'sell' | 'city_affairs' | 'worker_requests'
 
 export interface AdventureDialogue {
     initialView?: MerchantServiceView
+    initialMarketSide?: MarketSide
+    marketSides?: MarketSide[]
     /** Stable across snapshot reads; changes when this dialogue is spoken again. */
     speechId?: number
     kind?: 'conversation' | 'sign' | 'quest_board'
@@ -144,6 +151,9 @@ export interface AdventureSnapshot {
     workshop?: import('./craftOrders').WorkshopSnapshot
     craftOrders?: Array<import('./craftOrders').CraftOrderSnapshot>
     market?: import('./economy').MarketSnapshot
+    marketInventory?: Partial<
+        Record<MarketItemId, { owned: number; sellable: number }>
+    >
     repairs?: import('./economy').RepairSnapshot
     worldObjects?: WorldObjectSnapshot[]
     questBoard?: QuestBoardSnapshot

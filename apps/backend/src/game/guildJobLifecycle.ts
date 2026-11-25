@@ -21,42 +21,58 @@ export class GuildJobLifecycle {
             return
         }
         job.closeDeathListener = onCharacterDeath(job.reward.issuer, () => {
-            const key = [...this.jobs].find(
-                ([, current]) => current.id === job.id
-            )?.[0]
-            if (key !== undefined) {
-                this.workers?.releaseGroup(key, now)
-                this.drop(key, 'Заказчик погиб. Договор отменён.')
+            const key = this.slots.keyFor(job.id)
+            const request = job.definition.workRequest
+            if (key !== undefined && request !== undefined) {
+                this.workers?.abandon(request.id, key, now)
+                this.drop(job, 'Заказчик погиб. Договор отменён.')
             }
         })
     }
 
-    public drop(key: string, notice: string): void {
-        const job = this.jobs.get(key)
-        if (job === undefined) {
-            return
-        }
-        if (!job.completed) {
-            job.cancelled = true
-        }
+    public drop(job: GuildJob, notice: string): void {
+        job.cancelled = true
         job.rewardNotice = notice
+        this.remove(job)
+    }
+
+    public remove(job: GuildJob): void {
         job.closeDeathListener?.()
         this.rewards?.funding.reservations.release(job.id)
         this.slots.release(job.id)
-        this.jobs.delete(key)
+        this.jobs.delete(job.id)
     }
 
     public reconcile(key: string): void {
-        const job = this.jobs.get(key)
-        if (job !== undefined && !refreshWorkerJob(this.workers, job, key)) {
-            this.drop(key, 'Обращение больше недоступно.')
+        for (const id of this.slots.idsFor(key)) {
+            const job = this.jobs.get(id)
+            if (
+                job !== undefined &&
+                !refreshWorkerJob(this.workers, job, key)
+            ) {
+                this.drop(job, 'Обращение больше недоступно.')
+            }
+        }
+    }
+
+    public release(key: string, now: number): void {
+        this.workers?.releaseGroup(key, now)
+        for (const id of this.slots.idsFor(key)) {
+            const job = this.jobs.get(id)
+            if (job !== undefined) {
+                this.drop(job, 'Группа больше не выполняет договор.')
+            }
         }
     }
 
     public stop(): void {
-        for (const key of this.jobs.keys()) {
-            this.workers?.releaseGroup(key, 0)
-            this.drop(key, 'Мир остановлен. Договор отменён.')
+        for (const job of this.jobs.values()) {
+            const key = this.slots.keyFor(job.id)
+            const request = job.definition.workRequest
+            if (key !== undefined && request !== undefined) {
+                this.workers?.abandon(request.id, key, 0)
+            }
+            this.drop(job, 'Мир остановлен. Договор отменён.')
         }
     }
 }

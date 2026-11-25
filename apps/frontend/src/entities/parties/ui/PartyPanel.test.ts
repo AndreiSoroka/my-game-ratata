@@ -37,7 +37,7 @@ describe('party roster', () => {
             ],
             invitations: [],
             jobs: [],
-            activeJob: null,
+            activeJobs: [],
             notice: null,
         }
         const wrapper = mount(PartyPanel, { props: { party, currentLocationId: 'map-2-2' } })

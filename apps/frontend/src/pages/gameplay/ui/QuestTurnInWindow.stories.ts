@@ -24,6 +24,29 @@ type Story = StoryObj<Args>
 
 export const Default: Story = {}
 export const Expired: Story = { args: { serverTime: prompt.expiresAt } }
+export const MissingItems: Story = {
+    args: {
+        prompt: {
+            ...prompt,
+            source: 'story',
+            title: 'Сердца для колокола памяти',
+            description: 'Мира примет три слизневых сердца из рюкзака.',
+            objectives: [
+                {
+                    kind: 'deliver',
+                    itemId: 'slime_heart',
+                    quantity: 3,
+                    recipientId: prompt.issuerId,
+                },
+            ],
+            objectiveLabels: [],
+            rewardGold: 40,
+            rewardItems: [],
+            canConfirm: false,
+            missingItems: [{ itemId: 'slime_heart', required: 3, available: 1 }],
+        },
+    },
+}
 export const Conversation: Story = {
     args: {
         conversation: {

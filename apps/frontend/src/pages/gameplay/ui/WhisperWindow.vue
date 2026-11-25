@@ -6,11 +6,12 @@ import { characterName, tGame } from '@/shared/lib/i18n'
 import PrivateConversation from './PrivateConversation.vue'
 import SocialWindow from './SocialWindow.vue'
 
-defineProps<{ conversation: WhisperSnapshot; playerId: string }>()
+defineProps<{ conversation: WhisperSnapshot; playerId: string; suspended?: boolean }>()
 const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
 </script>
 <template>
     <SocialWindow
+        :suspended="suspended"
         :title="
             tGame('game.chat.privateTitle', {
                 name: characterName(conversation.partnerId, conversation.partnerName),
@@ -21,6 +22,7 @@ const emit = defineEmits<{ close: []; command: [message: ClientMessage] }>()
         <PrivateConversation
             :conversation="conversation"
             :player-id="playerId"
+            :suspended="suspended"
             @command="emit('command', $event)"
         />
     </SocialWindow>

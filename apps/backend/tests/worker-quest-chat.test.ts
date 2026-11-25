@@ -61,23 +61,19 @@ it.each([
     {
         locale: 'ru',
         finished: 'я сделал задание',
-        clarify: 'для фермера которое',
         negative: 'нет, я не очистил',
         handIn: 'да, я очистил',
         how: 'я готов передать, как это сделать?',
         repeated: 'оформи сдачу трофея',
-        needsBone: 'Для доклада нужен свободный трофей «Кость»',
         verifying: 'Трофей уже принят',
     },
     {
         locale: 'en',
         finished: 'I finished the quest.',
-        clarify: 'The one for the farmer.',
         negative: "No, I didn't clear it.",
         handIn: 'Yes, I cleared it.',
         how: "I'm ready to hand it over, how do I do it?",
         repeated: 'How do I hand in the trophy?',
-        needsBone: 'To report, bring an unreserved bone',
         verifying: 'I already received the trophy',
     },
 ] as const)(
@@ -93,11 +89,16 @@ it.each([
         const talk = (text: string) =>
             turns.heard(f.player, f.clerk, text, f.now)
         expect(talk(example.finished)).toBe(true)
-        expect(
-            whispers.snapshot(f.player, f.now)?.messages.at(-1)?.text
-        ).toContain(example.needsBone)
-        expect(talk(example.clarify)).toBe(true)
-        expect(turns.snapshot(f.player, f.now)).toBeNull()
+        const blocked = required(turns.snapshot(f.player, f.now))
+        expect(blocked).toMatchObject({
+            instanceId: active?.instanceId,
+            action: 'report',
+            canConfirm: false,
+            missingItems: [{ itemId: 'bone', required: 1, available: 0 }],
+        })
+        expect(turns.confirm(f.player, blocked.id, false, f.now).accepted).toBe(
+            true
+        )
         expect(talk(example.negative)).toBe(false)
 
         const bone = createItemInstance('bone')
@@ -111,6 +112,7 @@ it.each([
         expect(prompt).toMatchObject({
             instanceId: active?.instanceId,
             action: 'report',
+            canConfirm: true,
             objectives: [{ kind: 'deliver', itemId: 'bone', quantity: 1 }],
         })
         expect(exchanges.snapshot(f.player.id)).toMatchObject({
@@ -164,11 +166,56 @@ it.each([
     }
 )
 
+it('previews a board report without claiming the request before a valid confirmation', () => {
+    const f = new WorkerSimulation('farmer')
+    f.publish()
+    const { parties, turns } = workerConversation(f)
+    const order = required(
+        turns.catalog
+            .available(f.player, f.now)
+            .find(({ entry }) => entry.id === f.current().id)
+    )
+    expect(
+        turns.heard(
+            f.player,
+            f.clerk,
+            `Хочу сдать «${order.entry.title}»`,
+            f.now
+        )
+    ).toBe(true)
+    const blocked = required(turns.snapshot(f.player, f.now))
+    expect(blocked).toMatchObject({
+        preAcceptance: true,
+        action: 'report',
+        canConfirm: false,
+        missingItems: [{ itemId: 'bone', required: 1, available: 0 }],
+    })
+    expect(turns.confirm(f.player, blocked.id, true, f.now).accepted).toBe(
+        false
+    )
+    expect(parties.boardActiveJobs(f.player.id)).toEqual([])
+    expect(f.current()).toMatchObject({
+        stage: 'waiting',
+        proofAccepted: false,
+    })
+
+    f.player.inventory.push(createItemInstance('bone'))
+    f.enemy.alive = false
+    const ready = required(turns.snapshot(f.player, f.now))
+    expect(ready.canConfirm).toBe(true)
+    expect(turns.confirm(f.player, ready.id, true, f.now).accepted).toBe(true)
+    expect(f.current()).toMatchObject({
+        stage: 'outbound',
+        proofAccepted: true,
+    })
+    expect(f.player.inventory).toHaveLength(0)
+    expect(f.adventure.walletFor(f.player.id).gold).toBe(0)
+})
+
 it('recognizes a completed same-pair trophy transfer and keeps the report waiting', () => {
     const f = new WorkerSimulation('farmer')
     f.publish()
-    const { exchanges, parties, quests, turns, whispers } =
-        workerConversation(f)
+    const { exchanges, parties, quests, turns } = workerConversation(f)
     acceptWorkerOffer(f, parties, quests)
     const bone = createItemInstance('bone')
     f.player.inventory.push(bone)
@@ -202,10 +249,11 @@ it('recognizes a completed same-pair trophy transfer and keeps the report waitin
         'оформи сдачу трофея',
     ]) {
         expect(turns.heard(f.player, f.clerk, phrase, f.now)).toBe(true)
-        expect(turns.snapshot(f.player, f.now)).toBeNull()
-        expect(
-            whispers.snapshot(f.player, f.now)?.messages.at(-1)?.text
-        ).toContain('В завершённом обмене ты передал мне трофей «Кость»')
+        expect(turns.snapshot(f.player, f.now)).toMatchObject({
+            action: 'report',
+            canConfirm: false,
+            missingItems: [{ itemId: 'bone', required: 1, available: 0 }],
+        })
     }
     expect(f.current()).toMatchObject({
         stage: 'waiting',
@@ -267,7 +315,7 @@ function acceptWorkerOffer(
             f.now
         ).accepted
     ).toBe(true)
-    return parties.boardActiveJob(f.player.id)
+    return parties.boardActiveJobs(f.player.id)[0]
 }
 
 function offerBone(

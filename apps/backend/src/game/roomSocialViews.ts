@@ -1,6 +1,7 @@
 import type { SocialSnapshot } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { usesHerbExchangePolicy } from './cityHerbExchange'
 import type { ExchangeService } from './exchange'
 import type { NpcQuestService } from './npcQuests'
 import { npcDialogueMode } from './npcRoster'
@@ -26,7 +27,8 @@ export function projectCharacterInteractions(
             actor.soul.canSpeak &&
             (actor.controllerKind === 'network_player'
                 ? actor.connected
-                : model && mode !== 'passive'),
+                : usesHerbExchangePolicy(actor, model) ||
+                  (model && mode !== 'passive')),
     }
 }
 

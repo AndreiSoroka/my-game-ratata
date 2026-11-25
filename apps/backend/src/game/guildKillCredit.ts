@@ -18,7 +18,7 @@ export class GuildKillCredit {
         events: GameEventPayload[],
         find: (id: string) => GameCharacter | undefined,
         group: (id: string) => { key: string; members: Set<string> },
-        jobs: ReadonlyMap<string, GuildJob>
+        jobs: (key: string) => readonly GuildJob[]
     ): void {
         for (const event of events) {
             if (event.kind === 'respawn' && event.actorId !== undefined) {
@@ -34,7 +34,7 @@ export class GuildKillCredit {
         event: GameEventPayload,
         find: (id: string) => GameCharacter | undefined,
         group: (id: string) => { key: string; members: Set<string> },
-        jobs: ReadonlyMap<string, GuildJob>
+        jobs: (key: string) => readonly GuildJob[]
     ): void {
         const killer = find(event.actorId ?? '')
         const target = find(event.targetId ?? '')
@@ -56,17 +56,27 @@ export class GuildKillCredit {
             return
         }
         const roster = group(creditId)
-        const job = jobs.get(roster.key)
-        if (!canAdvanceJob(job, target)) {
-            return
+        for (const job of jobs(roster.key)) {
+            advanceHunt(job, target, roster.members, find)
         }
-        const contributors = contributorsFor(job, roster.members, find, target)
-        if (contributors.length === 0) {
-            return
-        }
-        job.progress += 1
-        for (const [, participant] of contributors) {
-            participant.contribution += 1
-        }
+    }
+}
+
+function advanceHunt(
+    job: GuildJob,
+    target: GameCharacter,
+    members: Set<string>,
+    find: (id: string) => GameCharacter | undefined
+): void {
+    if (!canAdvanceJob(job, target)) {
+        return
+    }
+    const contributors = contributorsFor(job, members, find, target)
+    if (contributors.length === 0) {
+        return
+    }
+    job.progress += 1
+    for (const [, participant] of contributors) {
+        participant.contribution += 1
     }
 }

@@ -1,13 +1,16 @@
 import {
     type AdventureSnapshot,
     type ClientMessage,
+    HERBALIST_MERCHANT_ID,
     quoteMarketTrade,
 } from '@my-game-ratata/contracts'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { ref } from 'vue'
 
 import { characterFixture, worldFixture } from '@/game/testing/characterFixture'
 
+import { marketWindowContext } from '../model/marketWindowContext'
 import AdventureDialogue from './AdventureDialogue.vue'
 import SpeechBubbles from './SpeechBubbles.vue'
 
@@ -101,6 +104,45 @@ it('reopens the same service only on a fresh offer', async () => {
         expect(wrapper.find(shop).exists()).toBe(false)
         await wrapper.setProps({
             adventure: { ...adventure, dialogue: { ...offer, speechId: 2 } },
+        })
+        expect(wrapper.find(shop).exists()).toBe(true)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
+it('opens a fresh market offer on the selling side and returns to its private conversation', async () => {
+    const dialogue = { ...adventure.dialogue!, npcId: HERBALIST_MERCHANT_ID }
+    const offeredTrade: AdventureSnapshot = {
+        ...adventure,
+        dialogue: { ...dialogue, initialView: 'shop', initialMarketSide: 'sell', speechId: 8 },
+        market: { cityId: 'city', cityName: 'Новогород', revision: 1, rows: [] },
+    }
+    const context = { shopOpen: ref(false), whisperPartnerId: ref(HERBALIST_MERCHANT_ID as string) }
+    const wrapper = mount(AdventureDialogue, {
+        attachTo: document.body,
+        props: { adventure: { ...adventure, dialogue }, characters: [] },
+        global: { provide: { [marketWindowContext as symbol]: context } },
+    })
+    try {
+        const shop = '.social-window-stack--shop'
+        await wrapper.setProps({ adventure: offeredTrade })
+        await flushPromises()
+        const selected = wrapper.get(`${shop} [role="tab"][aria-selected="true"]`)
+        expect(selected.text()).toBe('Продать')
+        expect(document.activeElement).toBe(selected.element)
+        expect(context.shopOpen.value).toBe(true)
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }))
+        await flushPromises()
+        expect(wrapper.emitted('command')).toEqual([
+            [{ type: 'dialogue_choice', choiceId: 'close' }],
+        ])
+        expect(context.shopOpen.value).toBe(false)
+        expect(wrapper.find('.adventure-dialogue').exists()).toBe(false)
+        await wrapper.setProps({ adventure: { ...offeredTrade } })
+        expect(wrapper.find(shop).exists()).toBe(false)
+        await wrapper.setProps({
+            adventure: { ...offeredTrade, dialogue: { ...offeredTrade.dialogue!, speechId: 9 } },
         })
         expect(wrapper.find(shop).exists()).toBe(true)
     } finally {

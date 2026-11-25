@@ -93,12 +93,11 @@ export function createPartySnapshot(
     const party = view.parties.get(view.membership.get(playerId) ?? '')
     const members = party?.members ?? new Set([playerId])
     return structuredClone({
-        activeJob: view.guild.snapshot(party?.id ?? `solo:${playerId}`),
+        ...partyGuildSnapshot(view.guild, party, playerId),
         invitations: [...view.invitations.values()].filter(
             (invitation) =>
                 invitation.fromId === playerId || invitation.toId === playerId
         ),
-        jobs: view.guild.definitions(),
         guildContact:
             view.contact === undefined
                 ? null
@@ -155,5 +154,17 @@ export function cancelPartyInvitations(
         if (invitation.fromId === playerId || invitation.toId === playerId) {
             invitations.delete(id)
         }
+    }
+}
+
+function partyGuildSnapshot(
+    guild: GuildService,
+    party: PartyRecord | undefined,
+    playerId: string
+) {
+    const key = party?.id ?? `solo:${playerId}`
+    return {
+        activeJobs: guild.snapshots(key),
+        jobs: guild.definitions(party?.leaderId ?? playerId, key),
     }
 }

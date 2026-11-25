@@ -14,15 +14,37 @@ const props = withDefaults(defineProps<QuestItemListProps>(), {
 const heading = computed(() =>
     tGame(props.kind === 'required' ? 'game.quests.requiredItems' : 'game.quests.reward')
 )
+const rows = computed(() =>
+    props.items.map(({ itemId, quantity, available }) => {
+        const name = itemName(itemId)
+        const missing = available !== undefined && available < quantity
+        return {
+            itemId,
+            missing,
+            label: missing
+                ? tGame('game.quests.requiredItemShortage', {
+                      name,
+                      available,
+                      required: quantity,
+                      missing: quantity - available,
+                  })
+                : `${name} × ${quantity}`,
+        }
+    })
+)
 </script>
 
 <template>
     <section v-if="items.length" class="quest-item-list">
         <h3 v-if="showHeading">{{ heading }}</h3>
         <ul :aria-label="heading" role="list">
-            <li v-for="(item, index) in items" :key="index">
+            <li
+                v-for="(item, index) in rows"
+                :key="index"
+                :class="{ 'quest-item-list__item--missing': item.missing }"
+            >
                 <ItemSlot size="compact" :src="itemAssetCatalog[item.itemId].src" alt="" />
-                <span>{{ itemName(item.itemId) }} × {{ item.quantity }}</span>
+                <span>{{ item.label }}</span>
             </li>
         </ul>
         <p v-if="kind === 'reward'" class="quest-item-list__reward-note">
@@ -51,6 +73,10 @@ const heading = computed(() =>
     border: 1px solid var(--quest-item-list-border, var(--ui-light-panel-divider));
     background: var(--quest-item-list-surface, var(--ui-light-panel-parchment));
     overflow-wrap: anywhere;
+}
+.quest-item-list .quest-item-list__item--missing {
+    border-color: var(--ui-light-panel-warning);
+    color: var(--ui-light-panel-warning);
 }
 .quest-item-list__reward-note {
     color: var(--quest-panel-muted, var(--ui-light-panel-muted));

@@ -46,6 +46,7 @@ const meta = {
         },
         label: { control: 'text', if: { arg: 'content', eq: 'text' } },
         border: { control: 'select', options: borders },
+        nativeBorderWidth: { control: 'boolean' },
         appearance: { control: 'select', options: ['filled', 'ghost', 'panel'] },
         panel: { control: 'select', options: panels, if: { arg: 'appearance', eq: 'panel' } },
         panelAppearance: {

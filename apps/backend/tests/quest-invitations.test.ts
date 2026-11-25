@@ -79,16 +79,19 @@ it('stages a checked invitation with no modal, journal, contract or reward reser
     })
     expect(f.service.snapshot(f.player.id, 10)).toEqual({
         questOffer: null,
-        quest: null,
+        quests: [],
     })
     expect(f.service.snapshot(f.friend.id, 10)).toEqual({
         questOffer: null,
-        quest: null,
+        quests: [],
     })
     expect(f.service.invitationFor(f.issuer.id, f.friend.id, 10)).toBeNull()
     expect(f.service.journal.forRecipient(f.player.id)).toEqual([])
     expect(f.service.cityFund(f.issuer.locationId)).toBe(fund)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(false)
 })
 
 it('shows exactly one ordinary offer after a fresh answer, still awaiting Take', () => {
@@ -103,7 +106,7 @@ it('shows exactly one ordinary offer after a fresh answer, still awaiting Take',
         title: f.decision.draft.title,
         introduction: f.reply().introduction,
     })
-    expect(f.service.snapshot(f.player.id, 20).quest).toBeNull()
+    expect(f.service.snapshot(f.player.id, 20).quests).toEqual([])
     expect(f.service.cityFund(f.issuer.locationId)).toBe(300)
     expect(f.answer(true, id).accepted).toBe(false)
     expect(f.service.snapshot(f.player.id, 20).questOffer).toEqual(offer)

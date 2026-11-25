@@ -113,7 +113,7 @@ function guildContract(
         issuerName: issuerName(job, issuer, issuerId),
         ...questText(job),
         objectives:
-            request === undefined
+            request === undefined || request.proofAccepted
                 ? []
                 : [
                       {

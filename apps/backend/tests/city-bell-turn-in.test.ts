@@ -71,7 +71,7 @@ it('accepts exchanged hearts without a separate Bell contract while the hunt sta
     placeForConversation(f, actor(f, miraId))
     f.player.send({ type: 'guild_accept', questId: 'slime_hunt' })
     await f.advance()
-    expect(clientView(f).party?.activeJob).toBeNull()
+    expect(clientView(f).party?.activeJobs).toEqual([])
     f.talk('Хочу взять «Зачистку троп».')
     await f.advance()
     const hunt = required(clientView(f).social?.questOffer)
@@ -82,7 +82,7 @@ it('accepts exchanged hearts without a separate Bell contract while the hunt sta
         accept: true,
     })
     await f.advance()
-    expect(clientView(f).party?.activeJob).toMatchObject({
+    expect(clientView(f).party?.activeJobs[0]).toMatchObject({
         id: 'slime_hunt',
         progress: 0,
     })
@@ -139,7 +139,7 @@ it('accepts exchanged hearts without a separate Bell contract while the hunt sta
     f.player.send(confirm)
     rival.send({ ...confirm, confirmationId: second.id })
     await f.advance()
-    expect(clientView(f).party?.activeJob).toMatchObject({
+    expect(clientView(f).party?.activeJobs[0]).toMatchObject({
         id: 'slime_hunt',
         progress: 0,
     })
@@ -152,6 +152,83 @@ it('accepts exchanged hearts without a separate Bell contract while the hunt sta
     expect(receivedSnapshot(rival.sent).adventure?.gold).toBe(0)
     expect(rival.actor.inventory).toHaveLength(3)
 })
+
+it.each([false, true])(
+    'projects the Bell delivery from live bag contents (already accepted: %s)',
+    async (accepted) => {
+        const f = setup(miraId, 'city_coordinator')
+        placeForConversation(f, actor(f, miraId))
+        if (accepted) {
+            f.talk('Хочу взять «Сердца для колокола памяти».')
+            await f.advance()
+            const offer = required(clientView(f).social?.questOffer)
+            f.player.send({
+                type: 'quest_offer_answer',
+                offerId: offer.id,
+                revision: offer.revision,
+                accept: true,
+            })
+            await f.advance()
+        }
+
+        f.talk('Хочу сдать «Сердца для колокола памяти».')
+        await f.advance()
+        const view = required(clientView(f).social?.questTurnIn)
+        expect(view).toMatchObject({
+            source: 'story',
+            canConfirm: false,
+            missingItems: [
+                { itemId: 'slime_heart', required: 3, available: 0 },
+            ],
+        })
+        expect(view.preAcceptance === true).toBe(!accepted)
+
+        const player = f.player.actor
+        const adventure = f.room.adventureForWorkers()
+        giveHearts(player)
+        const held = required(
+            player.inventory.find(({ itemId }) => itemId === 'slime_heart')
+        )
+        const reservations = adventure.questFunding.reservations
+        expect(
+            reservations.reserve(
+                'held-heart',
+                {
+                    inventory: player.inventory,
+                    wallet: adventure.walletFor(player.id),
+                },
+                0,
+                [{ instanceId: held.instanceId, quantity: 1 }]
+            )
+        ).toBe(true)
+        await f.advance()
+        expect(clientView(f).social?.questTurnIn).toMatchObject({
+            id: view.id,
+            canConfirm: false,
+            missingItems: [
+                { itemId: 'slime_heart', required: 3, available: 2 },
+            ],
+        })
+
+        expect(reservations.release('held-heart')).toBe(true)
+        await f.advance()
+        const ready = required(clientView(f).social?.questTurnIn)
+        expect(ready).toMatchObject({ id: view.id, canConfirm: true })
+        expect(ready.missingItems).toBeUndefined()
+        expect(clientView(f).adventure?.gold).toBe(0)
+        f.player.send({
+            type: 'quest_turn_in_confirm',
+            confirmationId: ready.id,
+            accept: true,
+        })
+        await f.advance()
+        expect(clientView(f).adventure).toMatchObject({
+            gold: 40,
+            quest: { status: 'completed' },
+        })
+        expect(player.inventory).toHaveLength(0)
+    }
+)
 
 it('binds yes to a delivered question about one contract and expires it', async () => {
     const f = setup(miraId, 'city_coordinator')
@@ -204,7 +281,6 @@ it.each([
         huntReward: '30 золота',
         bellReward: '40 золота',
         progress: 'Прогресс: 0 / 3',
-        occupied: 'действующий договор',
     },
     {
         locale: 'en',
@@ -221,7 +297,6 @@ it.each([
         huntReward: '30 gold',
         bellReward: '40 gold',
         progress: 'Progress: 0 / 3',
-        occupied: 'active contract',
     },
 ] as const)(
     'shows available terms and actual contract progress in $locale',
@@ -247,7 +322,7 @@ it.each([
         await f.advance()
         const first = required(clientView(f).social?.questOffer)
         expect(first.guildQuestId).toBe('slime_hunt')
-        expect(clientView(f).party?.activeJob).toBeNull()
+        expect(clientView(f).party?.activeJobs).toEqual([])
         f.talk(example.text)
         await f.advance()
         expect(clientView(f).social?.questOffer?.id).toBe(first.id)
@@ -271,17 +346,15 @@ it.each([
             f.room.social
                 .conversation(miraId, f.player.actor.id, Date.now())
                 .availableOrders?.map(({ id }) => id)
-        ).toEqual([questId])
-        f.talk(example.details[0])
-        await f.advance()
-        const onlyAvailable = lastReply()
-        expect(onlyAvailable).toContain(example.bell)
-        expect(onlyAvailable.split('\n').at(-1)).toContain(example.bellReward)
-        expect(onlyAvailable).not.toContain(example.frontier)
-        f.talk(example.text)
+        ).toEqual(['skeleton_hunt', 'survey_frontier', questId])
+        f.talk(`Хочу взять «${example.bell}».`)
         await f.advance()
         const bell = required(clientView(f).social?.questOffer)
         expect(bell.authoredQuestId).toBe(questId)
+        expect(lastReply()).toContain(example.hunt)
+        expect(lastReply()).toContain(
+            example.locale === 'ru' ? 'трофеи' : 'trophies'
+        )
         f.player.send({
             type: 'quest_offer_answer',
             offerId: bell.id,
@@ -298,8 +371,10 @@ it.each([
         expect(active).not.toContain(example.frontier)
         f.talk(example.text)
         await f.advance()
-        expect(clientView(f).social?.questOffer).toBeNull()
-        expect(lastReply()).toContain(example.occupied)
+        expect(clientView(f).social?.questOffer?.guildQuestId).toBe(
+            'skeleton_hunt'
+        )
+        expect(clientView(f).party?.activeJobs[0]?.id).toBe('slime_hunt')
     }
 )
 
@@ -318,7 +393,7 @@ it('opens the right hand-in when the player answers a delivered model question',
         })
         await f.advance()
     }
-    expect(clientView(f).party?.activeJob?.id).toBe('slime_hunt')
+    expect(clientView(f).party?.activeJobs[0]?.id).toBe('slime_hunt')
     expect(clientView(f).adventure?.quest.status).toBe('active')
     giveHearts(f.player.actor)
     const question = 'Ты закончил «Сердца для колокола памяти»?'

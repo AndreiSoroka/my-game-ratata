@@ -31,18 +31,18 @@ function storyQuests(snapshot: WorldSnapshot): ActiveQuestEntry[] {
         : []
 }
 function guildQuests(snapshot: WorldSnapshot): ActiveQuestEntry[] {
-    const guild = snapshot.party?.activeJob
-    return guild &&
-        ['active', 'ready', 'reward_missing'].includes(guild.status) &&
-        guild.workRequest?.stage !== 'cancelled'
-        ? [{ key: `guild:${guild.instanceId}`, source: 'guild', quest: guild }]
-        : []
+    return (snapshot.party?.activeJobs ?? [])
+        .filter((quest) => isActive(quest.status) && quest.workRequest?.stage !== 'cancelled')
+        .map((quest) => ({ key: `guild:${quest.instanceId}`, source: 'guild', quest }))
 }
 function npcQuests(snapshot: WorldSnapshot): ActiveQuestEntry[] {
-    const npc = snapshot.social?.quest
-    return npc && ['active', 'ready', 'reward_missing'].includes(npc.status)
-        ? [{ key: `npc:${npc.instanceId}`, source: 'npc', quest: npc }]
-        : []
+    return (snapshot.social?.quests ?? [])
+        .filter((quest) => isActive(quest.status))
+        .map((quest) => ({ key: `npc:${quest.instanceId}`, source: 'npc', quest }))
+}
+
+function isActive(status: string): boolean {
+    return ['active', 'ready', 'reward_missing'].includes(status)
 }
 
 export function questStatusLabel(status: string): string {

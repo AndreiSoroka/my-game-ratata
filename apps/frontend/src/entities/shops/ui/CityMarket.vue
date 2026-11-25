@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import {
+    type AdventureSnapshot,
     MARKET_TAX_RATE_PERCENT,
     type MarketRow,
     type MarketSide,
     type MarketSnapshot,
 } from '@my-game-ratata/contracts'
-import { useId, useTemplateRef } from 'vue'
+import { computed, useId, useTemplateRef, watch } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
 import { navigationDirection } from '@/shared/lib/input'
@@ -15,7 +16,7 @@ import {
     ItemSlot,
     selectedDarkPanelButtonColors,
     UiButton,
-    UiInput,
+    UiNumberInput,
 } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
@@ -23,14 +24,36 @@ import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 import type { MarketTradeSelection } from '../model/marketTradeSelection'
 import { createMarketTradeStore } from '../model/marketTradeStore'
 
-const props = defineProps<{ market: MarketSnapshot; gold: number; blocked?: boolean }>()
+const props = defineProps<{
+    market: MarketSnapshot
+    gold: number
+    blocked?: boolean
+    initialSide?: MarketSide | undefined
+    sides?: readonly MarketSide[] | undefined
+    inventory?: AdventureSnapshot['marketInventory']
+}>()
 const emit = defineEmits<{ trade: [selection: MarketTradeSelection] }>()
 const theme = useDarkPanelTheme()
-const sides = ['buy', 'sell'] as const
-const { side, quantity, quotedRows, canTrade, selectTrade } = createMarketTradeStore(
+const defaultSides = ['buy', 'sell'] as const
+const availableSides = computed<readonly MarketSide[]>(() =>
+    props.sides?.length ? props.sides : defaultSides
+)
+const { side, quantity, quantityValid, quotedRows, canTrade, selectTrade } = createMarketTradeStore(
     () => props.market,
     () => props.gold,
-    () => props.blocked
+    () => props.blocked,
+    () => props.inventory
+)
+watch(
+    [() => props.initialSide, availableSides],
+    ([initialSide, sides], [previousInitial]) => {
+        if (initialSide && initialSide !== previousInitial && sides.includes(initialSide)) {
+            side.value = initialSide
+        } else if (!sides.includes(side.value)) {
+            side.value = sides[0] ?? 'buy'
+        }
+    },
+    { immediate: true }
 )
 const tabs = useTemplateRef<HTMLDivElement>('tabs')
 const instanceId = useId()
@@ -43,11 +66,14 @@ function tabId(direction: MarketSide): string {
 function tabKey(event: KeyboardEvent): void {
     const key = event.code || event.key
     const direction = navigationDirection(event)
-    if (key === 'Home') side.value = 'buy'
-    else if (key === 'End') side.value = 'sell'
-    else if (direction === 'left' || direction === 'right')
-        side.value = side.value === 'buy' ? 'sell' : 'buy'
-    else return
+    const sides = availableSides.value
+    let index = sides.indexOf(side.value)
+    if (key === 'Home') index = 0
+    else if (key === 'End') index = sides.length - 1
+    else if (direction === 'left' || direction === 'right') {
+        index = (index + (direction === 'right' ? 1 : -1) + sides.length) % sides.length
+    } else return
+    side.value = sides[index] ?? side.value
     event.preventDefault()
     event.stopPropagation()
     tabs.value?.querySelector<HTMLElement>(`[id="${tabId(side.value)}"]`)?.focus()
@@ -80,7 +106,7 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
             @keydown="tabKey"
         >
             <UiButton
-                v-for="direction in sides"
+                v-for="direction in availableSides"
                 :key="direction"
                 :id="tabId(direction)"
                 role="tab"
@@ -91,6 +117,7 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
                 :aria-controls="panelId"
                 :aria-selected="side === direction"
                 :tabindex="side === direction ? 0 : -1"
+                :selected="side === direction"
                 :highlighted="side === direction || undefined"
                 @click="side = direction"
             >
@@ -110,25 +137,26 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
                     })
                 }}
             </p>
-            <label class="market-quantity">
-                {{ tGame('game.trade.quantity') }}
-                <UiInput
-                    v-model.number="quantity"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="1"
-                    border="border-015"
-                    class="market-quantity__field"
-                />
-            </label>
+            <UiNumberInput
+                v-model="quantity"
+                :label="tGame('game.trade.quantity')"
+                :min="1"
+                :max="100"
+                border="border-015"
+                class="market-quantity"
+                @draft-validity="quantityValid = $event"
+            />
             <FantasyBorder
                 v-if="market.rows.length"
                 class="city-market__stock"
                 border="border-004"
                 color="var(--city-market-accent)"
             >
-                <div v-for="{ row, quote } in quotedRows" :key="row.itemId" class="market-row">
+                <div
+                    v-for="{ row, inventory: counts, quote } in quotedRows"
+                    :key="row.itemId"
+                    class="market-row"
+                >
                     <div class="market-row__item">
                         <ItemSlot size="compact" :src="itemAssetCatalog[row.itemId].src" />
                         <span>
@@ -138,6 +166,22 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
                                     row.capacity
                                 }}</small
                             >
+                            <template v-if="side === 'sell'">
+                                <small>{{ tGame('game.trade.inBag') }} {{ counts.owned }}</small>
+                                <small
+                                    :id="`${instanceId}-${row.itemId}-sellable`"
+                                    :class="{
+                                        'market-row__empty-stock':
+                                            quantityValid && counts.sellable < quantity,
+                                    }"
+                                >
+                                    {{
+                                        tGame('game.trade.availableForSale', {
+                                            count: counts.sellable,
+                                        })
+                                    }}
+                                </small>
+                            </template>
                         </span>
                     </div>
                     <div class="market-row__action">
@@ -146,11 +190,13 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
                             appearance="panel"
                             panel="panel-001"
                             :colors="darkPanelButtonColors"
-                            :disabled="!canTrade(quote?.total ?? null)"
+                            :disabled="!canTrade(row.itemId, quote?.total ?? null)"
                             :aria-describedby="
-                                side === 'buy' && quote
-                                    ? `${instanceId}-${row.itemId}-tax`
-                                    : undefined
+                                side === 'sell'
+                                    ? `${instanceId}-${row.itemId}-sellable`
+                                    : quote
+                                      ? `${instanceId}-${row.itemId}-tax`
+                                      : undefined
                             "
                             @click="trade(row, quote?.total ?? null)"
                         >
@@ -167,13 +213,14 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
                                     {{ tGame('game.trade.cityTaxAmount', { tax: quote.tax }) }}
                                 </small>
                             </template>
-                            <template v-else>
+                            <template v-else-if="quantityValid">
                                 {{
                                     tGame(
                                         side === 'buy' ? 'game.trade.noGoods' : 'game.trade.noBuyer'
                                     )
                                 }}
                             </template>
+                            <template v-else>{{ tGame('game.trade.quantityRequired') }}</template>
                         </UiButton>
                         <small
                             v-if="side === 'buy' && quote"

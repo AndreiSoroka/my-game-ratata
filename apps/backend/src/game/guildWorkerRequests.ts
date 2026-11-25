@@ -8,7 +8,7 @@ import type { GuildJob } from './guildRules'
 
 export interface WorkerGuildGateway {
     list: () => GuildQuestDefinition[]
-    active: (groupKey: string) => WorkRequestSnapshot | null
+    active: (groupKey: string, requestId: string) => WorkRequestSnapshot | null
     accept: (
         requestId: string,
         groupKey: string,
@@ -55,7 +55,7 @@ export function refreshWorkerJob(
     if (job.definition.workRequest === undefined || job.completed) {
         return true
     }
-    const request = gateway?.active(key)
+    const request = gateway?.active(key, job.definition.id)
     if (request?.id !== job.definition.id) {
         return false
     }

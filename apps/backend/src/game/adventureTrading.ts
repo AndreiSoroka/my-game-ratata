@@ -4,6 +4,7 @@ import {
     authoredMessage,
     authoredRussian,
     type GameEventPayload,
+    HERBALIST_MERCHANT_ID,
     ITEM_DEFINITIONS,
     itemDurability,
     itemRepairPrice,
@@ -27,6 +28,20 @@ export interface AdventureActionResult {
     accepted: boolean
     error: string | null
     events: GameEventPayload[]
+}
+
+const marketRestriction: Readonly<Record<string, string>> = {
+    [HERBALIST_MERCHANT_ID]: 'Травница покупает только лечебные травы.',
+}
+
+function marketItemRefusal(
+    npcId: string,
+    { itemId, side }: Extract<MarketClientMessage, { type: 'market_trade' }>
+): string | undefined {
+    if (!npcMarketItemAllowed(npcId, itemId, side)) {
+        return marketRestriction[npcId] ?? 'Кузнец продаёт только снаряжение.'
+    }
+    return undefined
 }
 export function refreshTradeDialogue(
     actor: GameCharacter,
@@ -218,8 +233,9 @@ export class AdventureTrading {
         if (role?.trade !== true) {
             return rejected('Этот собеседник не торгует.')
         }
-        if (!npcMarketItemAllowed(npc.id, message.itemId)) {
-            return rejected('Кузнец продаёт только снаряжение.')
+        const restriction = marketItemRefusal(npc.id, message)
+        if (restriction !== undefined) {
+            return rejected(restriction)
         }
         const outcome = this.economy.trade(actor, state, message, now)
         return {

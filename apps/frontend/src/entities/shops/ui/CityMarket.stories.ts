@@ -1,4 +1,4 @@
-import type { MarketSnapshot } from '@my-game-ratata/contracts'
+import type { AdventureSnapshot, MarketSide, MarketSnapshot } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
 
@@ -12,6 +12,9 @@ interface StoryArgs {
     market: MarketSnapshot
     gold: number
     blocked: boolean
+    initialSide?: MarketSide
+    sides?: readonly MarketSide[]
+    inventory?: AdventureSnapshot['marketInventory']
     onTrade: (selection: MarketTradeSelection) => void
 }
 
@@ -47,6 +50,9 @@ const meta = {
         market: { control: 'object' },
         gold: { control: { type: 'number', min: 0, step: 1 } },
         blocked: { control: 'boolean' },
+        initialSide: { control: 'radio', options: ['buy', 'sell'] },
+        sides: { control: 'object' },
+        inventory: { control: 'object' },
         onTrade: { control: false },
     },
     render(args) {
@@ -67,3 +73,12 @@ export const Blocked: Story = { args: { blocked: true } }
 export const CityStock: Story = { args: { market: cityMarketExample, gold: 40 } }
 
 export const HeatingShortage: Story = { args: { market: heatingMarketExample(0), gold: 40 } }
+
+export const SellOnly: Story = {
+    args: {
+        market: cityMarketExample,
+        initialSide: 'sell',
+        sides: ['sell'],
+        inventory: { wood: { owned: 4, sellable: 2 } },
+    },
+}

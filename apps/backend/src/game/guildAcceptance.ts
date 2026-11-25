@@ -95,8 +95,10 @@ export function acceptGuildJob(input: GuildAcceptance): GuildJob | string {
     }
     if (!input.slots.claim(key, id)) {
         rewards?.funding.reservations.release(id)
-        workers?.releaseGroup(key, now)
-        return 'У группы уже есть действующий договор.'
+        if (definition.workRequest !== undefined) {
+            workers?.abandon(definition.id, key, now)
+        }
+        return 'Этот договор уже принят.'
     }
     return input.reporter === undefined
         ? createJob(input, reward)
@@ -113,7 +115,7 @@ function acceptAndReport(
     if (error === null) {
         return createJob(input, reward)
     }
-    workers?.releaseGroup(key, now)
+    workers?.abandon(definition.id, key, now)
     rewards?.funding.reservations.release(id)
     slots.release(id)
     return error ?? 'Обращение недоступно.'

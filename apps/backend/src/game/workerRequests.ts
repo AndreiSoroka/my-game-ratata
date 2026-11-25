@@ -62,12 +62,11 @@ export class WorkerRequestService {
         return viewWorkerIncident(this.byWorker.get(actorId))
     }
 
-    public active(groupKey: string): WorkRequestSnapshot | null {
-        const request = [...this.requests.values()].find(
-            (candidate) =>
-                candidate.claim?.key === groupKey && openIncident(candidate)
-        )
-        return viewWorkerIncident(request)
+    public active(
+        groupKey: string,
+        requestId: string
+    ): WorkRequestSnapshot | null {
+        return viewWorkerIncident(this.claimed(requestId, groupKey))
     }
 
     public accept(
@@ -87,8 +86,8 @@ export class WorkerRequestService {
         ) {
             return 'Это обращение сейчас недоступно.'
         }
-        if (request.claim !== null || this.active(groupKey) !== null) {
-            return 'Обращение уже принято или у группы есть действующее обращение.'
+        if (request.claim !== null) {
+            return 'Обращение уже принято.'
         }
         request.claim = {
             key: groupKey,
@@ -189,9 +188,12 @@ export class WorkerRequestService {
         groupKey: string,
         now: number
     ): string | null {
-        this.reconcile(this.characters, now)
         const request = this.claimed(requestId, groupKey)
         if (request === undefined) {
+            return 'Нет такого принятого обращения.'
+        }
+        reconcileWorkerIncident(request, this.characters, now)
+        if (request.claim?.key !== groupKey) {
             return 'Нет такого принятого обращения.'
         }
         releaseWorkerClaim(request)

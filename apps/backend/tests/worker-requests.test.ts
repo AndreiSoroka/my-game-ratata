@@ -184,7 +184,7 @@ describe('worker claim lifecycle', () => {
         )
         expect(test.requests.list()).toHaveLength(1)
         expect(test.current().proofAccepted).toBe(true)
-        expect(test.requests.active('solo:hero')).toBeNull()
+        expect(test.requests.active('solo:hero', 'worker-request-1')).toBeNull()
     })
 
     it('pauses a temporarily dead worker and cancels only after that identity is removed', () => {
@@ -204,7 +204,7 @@ describe('worker claim lifecycle', () => {
         test.characters.delete(test.worker.id)
         test.requests.reconcile(test.characters, test.now)
         expect(test.current().stage).toBe('cancelled')
-        expect(test.requests.active('solo:hero')).toBeNull()
+        expect(test.requests.active('solo:hero', 'worker-request-1')).toBeNull()
         expect(test.requests.complete(test.current().id, 'solo:hero')).toBe(
             false
         )

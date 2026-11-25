@@ -7,9 +7,14 @@ import { characterName } from '@/shared/lib/i18n'
 
 import { usePrivateTyping } from '../model/usePrivateTyping'
 
-const props = defineProps<{ conversation: WhisperSnapshot; playerId: string }>()
+const props = defineProps<{
+    conversation: WhisperSnapshot
+    playerId: string
+    suspended?: boolean | undefined
+}>()
 const emit = defineEmits<{ command: [message: ClientMessage] }>()
 const draft = ref('')
+const available = computed(() => props.conversation.available && !props.suspended)
 const conversationKey = computed(() =>
     JSON.stringify([props.playerId, props.conversation.partnerId])
 )
@@ -27,7 +32,7 @@ const entries = computed(() => {
 })
 const typing = usePrivateTyping({
     partnerId: () => props.conversation.partnerId,
-    available: () => props.conversation.available,
+    available: () => available.value,
     command: (command) => emit('command', command),
 })
 
@@ -42,7 +47,7 @@ function updateDraft(value: string): void {
 }
 
 function send(text: string): void {
-    if (!props.conversation.available) return
+    if (!available.value) return
     typing.stop()
     emit('command', { type: 'whisper', targetId: props.conversation.partnerId, text })
     draft.value = ''
@@ -54,7 +59,7 @@ function send(text: string): void {
         :key="conversationKey"
         :entries="entries"
         :partner-name="partnerName"
-        :available="conversation.available"
+        :available="available"
         :draft="draft"
         @update:draft="updateDraft"
         @send="send"

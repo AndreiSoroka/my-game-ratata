@@ -2,6 +2,8 @@ import {
     type AdventureClientMessage,
     type AdventureSnapshot,
     authoredMessage,
+    HERBALIST_MERCHANT_ID,
+    type MarketSnapshot,
 } from '@my-game-ratata/contracts'
 
 import type { AdventureService } from './adventure'
@@ -16,8 +18,10 @@ import { type AdventureActionResult, repairSnapshot } from './adventureTrading'
 import type { GameCharacter } from './character'
 import type { CityEconomyService } from './cityEconomy'
 import type { CityWorldState } from './cityWorldState'
+import { countInventoryItem } from './inventory'
 import { materialSnapshot } from './materialInventory'
 import type { NavigationService } from './navigation'
+import { availableItemQuantity } from './rewardReservations'
 import { trophyDialogue, trophyProgress } from './trophyQuest'
 import type { WorldObjects } from './worldObjects'
 
@@ -45,12 +49,6 @@ export function adventureSnapshot(context: {
     } = context
     const player = actor?.id === playerId ? actor : undefined
     const progress = trophyProgress(state, player)
-    const market = economy.snapshot(locationId, now)
-    if (market !== undefined) {
-        market.rows = market.rows.filter((row) =>
-            npcMarketItemAllowed(state.dialogue?.npcId, row.itemId)
-        )
-    }
 
     const workshop =
         state.dialogue === null
@@ -65,7 +63,11 @@ export function adventureSnapshot(context: {
         ...(cityState === undefined ? {} : { cityState }),
         craftOrders: economy.customerOrders.snapshot(playerId),
         ...(workshop === undefined ? {} : { workshop }),
-        ...(market === undefined ? {} : { market }),
+        ...marketView(
+            economy.snapshot(locationId, now),
+            state.dialogue?.npcId,
+            state.dialogue?.canTrade === true ? player : undefined
+        ),
         ...(actor === undefined ? {} : { repairs: repairSnapshot(actor) }),
         dialogue: trophyDialogue(state.dialogue, progress),
         worldObjects: worldObjects.snapshot(locationId),
@@ -94,6 +96,41 @@ export function adventureSnapshot(context: {
         trophies: progress.trophies,
         wardRestored: state.wardRestored,
     })
+}
+
+function marketView(
+    snapshot: MarketSnapshot | undefined,
+    merchantId: string | undefined,
+    player: GameCharacter | undefined
+): Pick<AdventureSnapshot, 'market' | 'marketInventory'> {
+    if (snapshot === undefined) {
+        return {}
+    }
+    const rows = snapshot.rows.filter(({ itemId }) =>
+        npcMarketItemAllowed(merchantId, itemId)
+    )
+    const market = {
+        ...snapshot,
+        rows:
+            merchantId === HERBALIST_MERCHANT_ID
+                ? rows.map((row) => ({ ...row, buyPrice: null }))
+                : rows,
+    }
+    if (player === undefined) {
+        return { market }
+    }
+    return {
+        market,
+        marketInventory: Object.fromEntries(
+            rows.map(({ itemId }) => [
+                itemId,
+                {
+                    owned: countInventoryItem(player.inventory, itemId),
+                    sellable: availableItemQuantity(player.inventory, itemId),
+                },
+            ])
+        ),
+    }
 }
 
 export function resolvedAdventureAction(

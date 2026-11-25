@@ -71,6 +71,30 @@ export const npcStatusText = {
         'Для настоящего посева на проверке нужно семя пшеницы.',
         'The worker needs a wheat seed for the test planting.',
     ],
+    'authored.worker.request.seedSupplierUnavailable': [
+        'Городской поставщик семян сейчас недоступен.',
+        'The city seed supplier is currently unavailable.',
+    ],
+    'authored.worker.request.seedSupplierRoute': [
+        'К поставщику семян нет доступного пути.',
+        'There is no open route to the seed supplier.',
+    ],
+    'authored.worker.request.getSeed': [
+        'Работник идёт к городскому поставщику за семенем для проверки.',
+        'The worker is going to the city supplier for a test planting seed.',
+    ],
+    'authored.worker.request.seedReceived': [
+        'Семя получено. Работник возвращается на участок для посева.',
+        'The worker received a seed and is returning to the plot to sow it.',
+    ],
+    'authored.worker.request.seedRefused': [
+        'Городской поставщик не выдал семя для проверки.',
+        'The city supplier did not issue a test planting seed.',
+    ],
+    'authored.worker.request.seedBagFull': [
+        'В рюкзаке нет места для семени. Зерно не потрачено.',
+        'There is no room for a seed. No grain was spent.',
+    ],
     'authored.npc.quest.rewardReplacement': [
         'Обещанная награда пропала. Нужны новые условия и ваше согласие; ничего не будет создано взамен.',
         'The promised reward is gone. Agree on new terms with the quest giver. No replacement will be created.',

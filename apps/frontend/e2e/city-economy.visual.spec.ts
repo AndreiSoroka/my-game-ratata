@@ -48,6 +48,27 @@ test('CityMarket blocks purchases when heating fuel runs out', async ({ page }) 
     await expect(market).toHaveScreenshot('city-market-heating-shortage-390.png')
 })
 
+test('CityMarket shows the sellable stock separately from all items in the bag', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 460 })
+    await page.goto(uiStoryUrl('entities-shops-citymarket--sell-only'))
+    const market = page.getByRole('region', { name: 'Городской рынок' })
+    await expect(market.getByRole('tab')).toHaveCount(1)
+    const sell = market.getByRole('tab', { name: 'Продать' })
+    await sell.press('Home')
+    await expect(sell).toHaveAttribute('aria-selected', 'true')
+    const stock = market.getByRole('tabpanel', { name: 'Продать' })
+    await expect(stock.getByText('В сумке 4')).toBeVisible()
+    await expect(stock.getByText('Можно продать: 2')).toBeVisible()
+    await expect(stock.getByRole('button', { name: /^Продать 1 /u }).first()).toBeEnabled()
+    await market.getByRole('spinbutton').fill('3')
+    await expect(stock.getByRole('button', { name: /^Продать 3 /u }).first()).toBeDisabled()
+    await readyUiStory(page)
+    await expectUiFits(market, 320)
+    await expect(market).toHaveScreenshot('city-market-sell-only-320.png')
+})
+
 test('RepairWorkshop shows affordable repairs and disables them when blocked', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 460 })
     await page.goto(uiStoryUrl('entities-shops-repairworkshop--default'))

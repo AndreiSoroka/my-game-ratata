@@ -1,5 +1,6 @@
 import type {
     AdventureShopOffer,
+    AdventureSnapshot,
     AdventureTradeItemId,
     MarketSnapshot,
 } from '@my-game-ratata/contracts'
@@ -19,6 +20,7 @@ interface StoryArgs {
     gold: number
     blockedReason?: string
     market?: MarketSnapshot
+    marketInventory?: AdventureSnapshot['marketInventory']
     navigation: 'none' | 'empty' | 'text' | 'neighbor'
     onBuy: (itemId: AdventureTradeItemId) => void
     onTrade: (selection: MarketTradeSelection) => void
@@ -46,6 +48,7 @@ const meta = {
         gold: { control: { type: 'number', min: 0, step: 1 } },
         blockedReason: { control: 'text' },
         market: { control: 'object' },
+        marketInventory: { control: 'object' },
         navigation: {
             control: {
                 type: 'select',
@@ -93,6 +96,7 @@ export const Blocked: Story = { args: { blockedReason: 'Вы в чёрном с�
 
 export const Market: Story = {
     args: {
+        marketInventory: { grain: { owned: 5, sellable: 5 } },
         market: {
             cityId: 'novogorod',
             cityName: 'Новогород',

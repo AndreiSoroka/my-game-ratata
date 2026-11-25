@@ -1,6 +1,7 @@
 import type { ClientMessage } from '@my-game-ratata/contracts'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
+import { ref } from 'vue'
 
 import { characterFixture, worldFixture } from '@/game/testing/characterFixture'
 import {
@@ -10,6 +11,7 @@ import {
     whisperFixture,
 } from '@/game/testing/socialFixtures'
 
+import { marketWindowContext } from '../model/marketWindowContext'
 import PrivateConversation from './PrivateConversation.vue'
 import QuestOfferWindow from './QuestOfferWindow.vue'
 import SocialPanels from './SocialPanels.vue'
@@ -68,10 +70,46 @@ it('keeps incoming whisper unobtrusive and opens it only on the recipient action
     }
 })
 
+it('hides a private conversation during market trading and returns to its draft', async () => {
+    const player = characterFixture('self')
+    const context = { shopOpen: ref(false), whisperPartnerId: ref<string>() }
+    const wrapper = mount(SocialPanels, {
+        props: {
+            snapshot: { ...worldFixture([player]), social: { whisper: whisperFixture() } },
+            player,
+            characters: [player],
+            connected: true,
+        },
+        attachTo: document.body,
+        global: { provide: { [marketWindowContext as symbol]: context } },
+    })
+    try {
+        await wrapper.get('.social-hints button').trigger('click')
+        await flushPromises()
+        const field = wrapper.get('input')
+        await field.setValue('Черновик вопроса')
+        field.element.focus()
+        expect(context.whisperPartnerId.value).toBe('partner')
+        context.shopOpen.value = true
+        await flushPromises()
+        expect(wrapper.get('[role="dialog"]').isVisible()).toBe(false)
+        expect(field.attributes('disabled')).toBeDefined()
+        expect(wrapper.vm.hasOpenWindow).toBe(false)
+        context.shopOpen.value = false
+        await flushPromises()
+        expect(wrapper.get('[role="dialog"]').isVisible()).toBe(true)
+        expect(field.element.value).toBe('Черновик вопроса')
+        expect(document.activeElement).toBe(field.element)
+        expect(wrapper.vm.hasOpenWindow).toBe(true)
+    } finally {
+        wrapper.unmount()
+    }
+})
+
 it('shows approved quest terms and accepts the exact offer and revision explicitly', async () => {
     const offer = questOfferFixture()
     const wrapper = mount(QuestOfferWindow, {
-        props: { offer, characters: [], serverTime: 100_000, occupied: false },
+        props: { offer, characters: [], serverTime: 100_000 },
     })
     try {
         expect(wrapper.text()).toContain('Доставить 3 пшеницы на городской склад.')
@@ -91,19 +129,17 @@ it('shows approved quest terms and accepts the exact offer and revision explicit
                 },
             ],
         ])
-        await wrapper.setProps({ occupied: true })
-        expect(take.attributes('disabled')).toBeDefined()
-        await wrapper.setProps({ occupied: false, serverTime: offer.expiresAt })
+        await wrapper.setProps({ serverTime: offer.expiresAt })
         expect(take.attributes('disabled')).toBeDefined()
     } finally {
         wrapper.unmount()
     }
 })
 
-it('allows accepting the Bell order alongside a group contract', async () => {
+it('accepts the Bell order with its own terms', async () => {
     const offer = { ...questOfferFixture(), authoredQuestId: 'hearts-for-the-border-bell' }
     const view = mount(QuestOfferWindow, {
-        props: { offer, characters: [], serverTime: 1000, occupied: true },
+        props: { offer, characters: [], serverTime: 1000 },
     })
     try {
         const take = view.findAll('button').find((button) => button.text() === 'Взять')!

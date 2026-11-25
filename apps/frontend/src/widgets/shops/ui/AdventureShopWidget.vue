@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type {
     AdventureShopOffer,
+    AdventureSnapshot,
     AdventureTradeItemId,
+    MarketSide,
     MarketSnapshot,
 } from '@my-game-ratata/contracts'
 
@@ -15,6 +17,9 @@ defineProps<{
     gold: number
     blockedReason?: string | undefined
     market?: MarketSnapshot | undefined
+    marketSide?: MarketSide | undefined
+    marketSides?: readonly MarketSide[] | undefined
+    marketInventory?: AdventureSnapshot['marketInventory']
 }>()
 defineSlots<{ navigation?: () => unknown }>()
 const emit = defineEmits<{
@@ -40,6 +45,9 @@ const emit = defineEmits<{
                     :market="market"
                     :gold="gold"
                     :blocked="Boolean(blockedReason)"
+                    :initial-side="marketSide"
+                    :sides="marketSides"
+                    :inventory="marketInventory"
                     @trade="emit('trade', $event)"
                 />
             </template>

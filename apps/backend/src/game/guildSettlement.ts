@@ -87,16 +87,7 @@ function payout(
 }
 
 export function settleGuildJob(input: GuildSettlement): string | null {
-    const {
-        job,
-        workers,
-        key,
-        now,
-        characters,
-        members,
-        submitterId,
-        rewards,
-    } = input
+    const { job, workers, key, now, characters, members, submitterId } = input
     if (
         !refreshWorkerJob(workers, job, key) ||
         job.progress < job.definition.goal
@@ -125,8 +116,6 @@ export function settleGuildJob(input: GuildSettlement): string | null {
     job.rewardShares = result.shares
     resetSubmitterMartyr(characters, submitterId)
     job.completed = true
-    job.closeDeathListener?.()
-    rewards?.funding.reservations.release(job.id)
     if (job.definition.workRequest !== undefined) {
         job.definition = {
             ...job.definition,

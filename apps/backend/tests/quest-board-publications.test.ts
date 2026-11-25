@@ -138,9 +138,9 @@ it('allows only one claimant even if two players have open offers', () => {
     expect(f.service.publications.list(30)).toEqual([])
     expect(f.service.snapshot(f.friend.id, 30).questOffer).toBeNull()
     f.service.update(expiresAt)
-    expect(f.service.snapshot(f.player.id, expiresAt).quest?.instanceId).toBe(
-        id
-    )
+    expect(
+        f.service.snapshot(f.player.id, expiresAt).quests?.[0]?.instanceId
+    ).toBe(id)
     expect(f.service.cityFund(CENTER_LOCATION_ID)).toBe(before - 10)
     expect(
         f.service.handle(
@@ -187,7 +187,10 @@ it('redeems an unaccepted delivery atomically and retains its offer on inventory
     f.player.inventory.push(createItemInstance('bone'))
     expect(redeem().accepted).toBe(false)
     expect(countInventoryItem(f.player.inventory, 'bone')).toBe(1)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(false)
     f.player.inventory.push(createItemInstance('bone'))
     f.issuer.inventory.push(
         ...Array.from({ length: INVENTORY_CAPACITY }, () =>
@@ -198,13 +201,19 @@ it('redeems an unaccepted delivery atomically and retains its offer on inventory
     expect(countInventoryItem(f.player.inventory, 'bone')).toBe(2)
     expect(f.adventure.walletFor(f.player.id).gold).toBe(0)
     expect(onlyPosting(f.service, 30).id).toBe(id)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(false)
     f.issuer.inventory.splice(0, 2)
     f.putTableBetweenPlayerAndIssuer()
     expect(redeem().accepted).toBe(false)
     expect(countInventoryItem(f.player.inventory, 'bone')).toBe(2)
     expect(onlyPosting(f.service, 30).id).toBe(id)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(false)
     f.player.position = { ...f.issuer.position }
     expect(redeem().accepted).toBe(true)
     expect(countInventoryItem(f.player.inventory, 'bone')).toBe(0)
@@ -213,7 +222,10 @@ it('redeems an unaccepted delivery atomically and retains its offer on inventory
     expect(f.service.cityFund(CENTER_LOCATION_ID)).toBe(before - 70)
     expect(redeem().accepted).toBe(false)
     expect(f.adventure.walletFor(f.player.id).gold).toBe(70)
-    expect(f.parties.contractGroup(f.player.id).occupied).toBe(false)
+    expect(
+        f.parties.contractSlots.idsFor(f.parties.contractGroup(f.player.id).key)
+            .size > 0
+    ).toBe(false)
     expect(f.service.conversation(f.issuer.id, f.player.id)).toMatchObject([
         {
             instanceId: id,

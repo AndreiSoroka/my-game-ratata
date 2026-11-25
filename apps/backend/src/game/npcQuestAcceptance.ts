@@ -79,12 +79,9 @@ export function answerQuestOffer(
     }
     if (
         offer.view.authoredQuestId === undefined &&
-        (group.leaderId !== actor.id || group.occupied)
+        group.leaderId !== actor.id
     ) {
-        return questResult(
-            false,
-            'Лидер должен сначала завершить действующий договор.'
-        )
+        return questResult(false, 'Договор принимает лидер группы.')
     }
     return (
         acceptSpecialOffer(context, actor, issuer, offer, message, now) ??
@@ -155,9 +152,14 @@ function acceptWorkerOffer(
     message: Extract<NpcQuestClientMessage, { type: 'quest_offer_answer' }>,
     now: number
 ): NpcQuestResult {
-    const events = context.environment.parties.acceptNegotiatedWorker(
+    context.environment.parties.update(context.environment.characters(), now)
+    const result = context.environment.parties.acceptBoardGuild(
         actor,
         offer.view.workerRequestId ?? '',
+        issuer,
+        message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
+        now,
+        false,
         {
             rewardGold: offer.view.rewardGold,
             rewardItems: offer.view.rewardItems.map((item) => ({
@@ -166,22 +168,12 @@ function acceptWorkerOffer(
             })),
             issuerId: issuer.id,
             fundingCityId: offer.view.fundingCityId ?? issuer.locationId,
-        },
-        message.rewardMode ?? DEFAULT_QUEST_REWARD_MODE,
-        context.environment.characters(),
-        now
+        }
     )
-    const accepted =
-        context.environment.parties.snapshot(actor.id).activeJob?.id ===
-        offer.view.workerRequestId
-    if (accepted) {
+    if (result.accepted) {
         context.offers.delete(actor.id)
     }
-    return {
-        accepted,
-        error: accepted ? null : 'Обращение уже принято или недоступно.',
-        events,
-    }
+    return result
 }
 
 function rewardUnchanged(

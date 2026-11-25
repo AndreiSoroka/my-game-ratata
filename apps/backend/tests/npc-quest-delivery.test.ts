@@ -82,7 +82,9 @@ it('changes nothing when delivery plus reward cannot fit', () => {
     expect(f.adventure.snapshot(f.player.id)).not.toHaveProperty(
         'lastQuestRewardReceiptId'
     )
-    expect(f.service.snapshot(f.player.id, 30).quest?.status).toBe('ready')
+    expect(f.service.snapshot(f.player.id, 30).quests?.[0]?.status).toBe(
+        'ready'
+    )
 })
 
 it('allows discussing a delivery across a table but requires physical access to hand it in', () => {

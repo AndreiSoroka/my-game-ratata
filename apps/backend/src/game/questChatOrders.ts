@@ -1,21 +1,28 @@
-import type {
-    GameLocale,
-    NpcQuestSnapshot,
-    QuestBoardEntry,
-} from '@my-game-ratata/contracts'
-
 import type { BoardQuest, QuestBoardCatalog } from './questBoardCatalog'
 import type { QuestChatRequest } from './questChat'
-import type { QuestChatReplies, ReplyContact } from './questChatReplies'
+import {
+    boardDetails,
+    boardOrderStatus,
+    boardQuestChoice,
+    type QuestChoice,
+} from './questChatChoices'
+import {
+    type QuestChatReplies,
+    type QuestQuestion,
+    type ReplyContact,
+} from './questChatReplies'
 import {
     activeQuestList,
-    localizedQuestText,
     localizedQuestTitle,
-    namedQuest,
+    refersToQuestInContext,
     unnamedStatus,
 } from './questChatWords'
+import {
+    offerOverlap,
+    overlapHint,
+    type QuestOverlap,
+} from './questOfferOverlap'
 import type { QuestTurnInEnvironment } from './questTurnInRules'
-import { availableItemQuantity } from './rewardReservations'
 
 export class QuestChatOrders {
     public constructor(
@@ -26,15 +33,13 @@ export class QuestChatOrders {
 
     public heard(
         request: QuestChatRequest,
-        speech: 'details' | 'recommend' | 'take' | 'status'
+        speech: 'details' | 'recommend' | 'status'
     ): boolean {
         switch (speech) {
             case 'details':
                 return this.describeBoard(request)
             case 'recommend':
                 return this.recommend(request)
-            case 'take':
-                return this.take(request)
             case 'status':
                 return this.status(request)
         }
@@ -72,31 +77,6 @@ export class QuestChatOrders {
         return true
     }
 
-    public describeOrder(
-        contact: ReplyContact,
-        { entry, objectives }: BoardQuest,
-        active?: NpcQuestSnapshot
-    ): void {
-        const delivery = objectives[0]
-        const progress =
-            entry.source === 'story' && delivery?.kind === 'deliver'
-                ? ` (${String(Math.min(delivery.quantity, availableItemQuantity(contact.player.inventory, delivery.itemId)))}/${String(delivery.quantity)})`
-                : ''
-        const other =
-            active === undefined
-                ? ''
-                : ` «${localizedQuestTitle(active, 'ru')}» — ${active.objectiveLabels?.[0] ?? ''}.`
-        const otherEn =
-            active === undefined
-                ? ''
-                : ` “${localizedQuestTitle(active, 'en')}” is a separate contract.`
-        this.replies.say(
-            contact,
-            `«${localizedQuestTitle(entry, 'ru')}»${progress}. ${entry.source === 'story' ? 'Для сдачи нужны три сердца из рюкзака.' : entry.description}${other}`,
-            `“${localizedQuestTitle(entry, 'en')}”${progress}. ${entry.source === 'story' ? 'Bring the three hearts from your bag.' : entry.description}${otherEn}`
-        )
-    }
-
     private recommend(request: QuestChatRequest): boolean {
         const { player, issuer, now } = request
         const current =
@@ -105,32 +85,33 @@ export class QuestChatOrders {
             if (current.issuerId === issuer.id) {
                 this.introduce(request, current)
             } else {
-                this.replies.say(
-                    request,
-                    'У тебя уже открыты условия другого заказчика. Реши, берёшь ли то поручение.',
-                    'You already have an offer from another quest giver. Decide whether to take that one first.'
-                )
+                this.replies.otherIssuerOffer(request)
             }
             return true
         }
         const orders = this.catalog.offerable(player, now)
         const order =
-            orders.find(({ entry }) => entry.id === 'slime_hunt') ?? orders[0]
+            orders.find(
+                (entry) => this.overlap(request, entry) !== undefined
+            ) ??
+            orders.find(({ entry }) => entry.id === 'slime_hunt') ??
+            orders[0]
         if (
             order !== undefined &&
             this.catalog.offer(issuer, player, order, now).accepted
         ) {
-            this.introduce(request, order.entry)
+            this.replies.rememberTopic(request, boardQuestChoice(order))
+            this.introduce(request, order.entry, this.overlap(request, order))
             return true
         }
+        this.noOffer(request)
+        return true
+    }
+
+    private noOffer(request: ReplyContact): void {
+        const { player } = request
         const group = this.environment.parties.contractGroup(player.id)
-        if (group.occupied) {
-            this.replies.say(
-                request,
-                'У твоей группы уже есть действующий договор. Сейчас другого поручения для тебя нет.',
-                'Your party already has an active contract. I have no other quest to offer you right now.'
-            )
-        } else if (group.leaderId !== player.id) {
+        if (group.leaderId !== player.id) {
             this.replies.say(
                 request,
                 'Договоры гильдии может взять лидер твоей группы.',
@@ -143,59 +124,152 @@ export class QuestChatOrders {
                 'I have no available quest for you right now.'
             )
         }
-        return true
     }
 
     private introduce(
         request: ReplyContact,
-        quest: Parameters<typeof localizedQuestTitle>[0]
+        quest: Parameters<typeof localizedQuestTitle>[0],
+        overlap?: QuestOverlap
     ): void {
         this.replies.say(
             request,
-            `Могу предложить «${localizedQuestTitle(quest, 'ru')}». Вот условия.`,
-            `I can offer “${localizedQuestTitle(quest, 'en')}”. Here are the terms.`
+            `Могу предложить «${localizedQuestTitle(quest, 'ru')}». Вот условия.${overlapHint(overlap, 'ru')}`,
+            `I can offer “${localizedQuestTitle(quest, 'en')}”. Here are the terms.${overlapHint(overlap, 'en')}`
         )
     }
 
-    private take(request: QuestChatRequest): boolean {
-        const { player, issuer, orders, text, now } = request
-        const matches = orders.filter(({ entry }) => namedQuest(text, entry))
-        const match = matches.length === 1 ? matches[0] : undefined
-        if (match !== undefined) {
-            const offer = this.catalog.offer(issuer, player, match, now)
-            if (!offer.accepted) {
-                this.replies.say(
-                    request,
-                    offer.error ?? 'Заказ недоступен.',
-                    'The order is unavailable.'
-                )
+    public take(
+        request: QuestChatRequest,
+        question: QuestQuestion | undefined
+    ): boolean {
+        const { orders, text } = request
+        const choices = orders.map(boardQuestChoice)
+        const named = choices.filter((choice) =>
+            this.replies.choices.matchesChoice(choice, text)
+        )
+        if (named.length > 0) {
+            return this.select(request, named)
+        }
+        if (question?.kind === 'take') {
+            const remembered = question.choices.filter((choice) =>
+                this.replies.choices.matchesChoice(choice, text)
+            )
+            return remembered.length === 0 || this.select(request, remembered)
+        }
+        return this.takeFromContext(request, question)
+    }
+
+    private takeFromContext(
+        request: QuestChatRequest,
+        question: QuestQuestion | undefined
+    ): boolean {
+        const { player, issuer, text, now } = request
+        if (refersToQuestInContext(text)) {
+            const topic =
+                question?.kind === 'topic' ? question.choices[0] : undefined
+            if (topic?.source === 'board') {
+                this.takeChoice(request, topic)
+                return true
             }
-            return true
+            const offer = this.environment.quests.snapshot(
+                player.id,
+                now
+            ).questOffer
+            if (offer?.issuerId === issuer.id) {
+                this.introduce(request, offer)
+                return true
+            }
         }
         if (
-            matches.length > 1 ||
-            /(?:заказ|квест|поручен|договор|quest|order|«[^»]+»|["„“][^"”]+["“”])/iu.test(
+            !/(?:заказ|квест|поручен|задан|договор|quest|order|task)/iu.test(
                 text
             )
         ) {
-            this.replies.askWhich(
-                request,
-                (matches.length > 1
-                    ? matches
-                    : this.catalog.offerable(player, now)
-                ).map(({ entry }) => entry)
-            )
-            return true
+            return false
         }
-        return false
+        return this.select(
+            request,
+            this.catalog.offerable(player, now).map(boardQuestChoice)
+        )
+    }
+
+    private select(request: QuestChatRequest, choices: QuestChoice[]): boolean {
+        if (choices.length === 1 && choices[0] !== undefined) {
+            this.takeChoice(request, choices[0])
+        } else if (choices.length > 0) {
+            this.replies.askWhichQuest(request, choices, 'take')
+        } else {
+            this.noOffer(request)
+        }
+        return true
+    }
+
+    public takeChoice(request: QuestChatRequest, choice: QuestChoice): void {
+        const { player, issuer, orders, now } = request
+        const order = orders.find(
+            ({ entry }) =>
+                entry.id === choice.instanceId &&
+                entry.revision === choice.revision
+        )
+        this.replies.clearQuestion(request)
+        if (order === undefined) {
+            this.replies.say(
+                request,
+                'Это поручение изменилось или уже недоступно.',
+                'This quest has changed or is no longer available.'
+            )
+            return
+        }
+        const current = this.environment.quests.snapshot(
+            player.id,
+            now
+        ).questOffer
+        if (
+            current !== null &&
+            current !== undefined &&
+            current.issuerId !== issuer.id
+        ) {
+            this.replies.otherIssuerOffer(request)
+            return
+        }
+        if (!this.catalog.groupCanTake(player, order)) {
+            this.noOffer(request)
+            return
+        }
+        const offer = this.catalog.offer(issuer, player, order, now)
+        if (offer.accepted) {
+            this.replies.rememberTopic(request, choice)
+            const overlap = this.overlap(request, order)
+            if (overlap !== undefined) {
+                this.introduce(request, order.entry, overlap)
+            }
+        } else {
+            this.replies.say(
+                request,
+                offer.error ?? 'Заказ недоступен.',
+                'The order is unavailable.'
+            )
+        }
+    }
+
+    private overlap(
+        { player, now, jobs }: QuestChatRequest,
+        order: BoardQuest
+    ) {
+        return offerOverlap(order, [
+            ...jobs,
+            ...(this.environment.quests.snapshot(player.id, now).quests ?? []),
+        ])
     }
 
     private status(request: QuestChatRequest): boolean {
         const { issuer, player, jobs, orders, text, now } = request
         const named = jobs.filter((job) =>
-            this.replies.matchesJob(player, job, text)
+            this.replies.choices.matchesJob(player, job, text)
         )
-        const specified = orders.filter(({ entry }) => namedQuest(text, entry))
+        const specified = orders.filter((order) =>
+            this.replies.choices.matchesChoice(boardQuestChoice(order), text)
+        )
         if (named.length + specified.length > 1) {
             this.replies.askWhich(request, [
                 ...named,
@@ -204,7 +278,12 @@ export class QuestChatOrders {
             return true
         }
         if (specified[0] !== undefined) {
-            this.describeOrder(request, specified[0])
+            this.replies.rememberTopic(request, boardQuestChoice(specified[0]))
+            this.replies.say(
+                request,
+                boardOrderStatus(request.player, specified[0], 'ru'),
+                boardOrderStatus(request.player, specified[0], 'en')
+            )
             return true
         }
         const job =
@@ -225,29 +304,4 @@ export class QuestChatOrders {
         }
         return true
     }
-}
-
-function boardDetails(
-    entry: QuestBoardEntry,
-    quantity: number,
-    locale: GameLocale
-): string {
-    const title = localizedQuestTitle(entry, locale)
-    const description = localizedQuestText(
-        entry.description,
-        entry.descriptionMessage,
-        locale
-    )
-    const gold = String(entry.rewardGold)
-    const items = String(quantity)
-    const reward =
-        locale === 'ru'
-            ? `За выполнение — ${gold} золота${quantity > 0 ? ` и предметы × ${items}` : ''}.`
-            : `Reward — ${gold} gold${quantity > 0 ? ` and ${items} item${quantity === 1 ? '' : 's'}` : ''}.`
-    const length = 380 - title.length - reward.length
-    const detail =
-        description.length <= length
-            ? description
-            : `${description.slice(0, length - 1).trimEnd()}…`
-    return `${title}\n${detail}\n${reward}`
 }

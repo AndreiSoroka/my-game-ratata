@@ -1,10 +1,50 @@
+import { CITY_HERB_COLLECTOR_IDS, HERBALIST_MERCHANT_ID } from '@my-game-ratata/contracts'
 import { expect, type Page, test } from '@playwright/test'
 
-import { joinSocial, selectSocialTarget } from './social-helpers'
+import { joinSocial, selectSocialTarget, socialMenu } from './social-helpers'
 import { enterBuilding, walkTo } from './world-navigation'
 import { selectedWorldTarget } from './world-target-ui'
 
 const merchantId = 'npc_merchant_1'
+const miraId = CITY_HERB_COLLECTOR_IDS.find((id) => id !== HERBALIST_MERCHANT_ID)!
+
+test('opens the herbalist sale directly from the interaction menu', async ({ page }) => {
+    test.setTimeout(90_000)
+    await joinSocial(page, 'sell-from-menu')
+    await approachMerchant(page, HERBALIST_MERCHANT_ID, 'Дом травницы')
+    await socialMenu(page, HERBALIST_MERCHANT_ID, /^Продать:/u)
+    const market = page.getByRole('region', { name: 'Городской рынок' })
+    await expect(market.getByRole('tab')).toHaveCount(1)
+    const sell = market.getByRole('tab', { name: 'Продать' })
+    await expect(sell).toBeFocused()
+    await expect(sell).toHaveAttribute('aria-selected', 'true')
+    await expect(market.getByText('Лечебные травы', { exact: true })).toBeVisible()
+    await expect(market.getByText('Можно продать: 0')).toBeVisible()
+})
+
+test('opens the market on selling when Mira is asked privately and then returns to the whisper', async ({
+    page,
+}) => {
+    test.setTimeout(90_000)
+    await joinSocial(page, 'sell-from-dialogue')
+    await approachMerchant(page, miraId, 'Гильдия искателей')
+    await socialMenu(page, miraId, /^Шёпот:/u)
+    const whisper = page.getByRole('dialog', { name: 'Шёпот: Mira' })
+    const input = whisper.getByPlaceholder('Сообщение собеседнику')
+    await input.fill('Хочу продать лечебные травы')
+    await input.press('Enter')
+
+    const market = page.getByRole('region', { name: 'Городской рынок' })
+    const sell = market.getByRole('tab', { name: 'Продать' })
+    await expect(sell).toHaveAttribute('aria-selected', 'true')
+    await expect(sell).toBeFocused()
+    await expect(whisper).toBeHidden()
+    await expect(market.getByText('Лечебные травы', { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(market).toBeHidden()
+    await expect(whisper).toBeVisible()
+    await expect(input).toBeFocused()
+})
 
 for (const mobile of [false, true]) {
     test(`keeps private whisper and direct merchant services (${mobile ? 'mobile' : 'desktop'})`, async ({
@@ -166,15 +206,15 @@ test('uses F to talk across a low guild table', async ({ page, browser }) => {
     }
 })
 
-async function approachMerchant(page: Page): Promise<void> {
-    await enterBuilding(page, 'Лавка')
+async function approachMerchant(page: Page, npcId = merchantId, building = 'Лавка'): Promise<void> {
+    await enterBuilding(page, building)
     await page.waitForFunction(
         (id) => window.__ratataTest!.observe().targets.some((target) => target.id === id),
-        merchantId
+        npcId
     )
     const merchant = await page.evaluate(
         (id) => window.__ratataTest!.observe().targets.find((target) => target.id === id)!,
-        merchantId
+        npcId
     )
     await walkTo(page, merchant.position, 20)
 }

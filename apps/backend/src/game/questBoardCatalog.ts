@@ -9,7 +9,7 @@ import {
 import type { GameCharacter } from './character'
 import { novogorodStory as cityStory } from './cityStoryDefinitions'
 import type { NpcQuestResult } from './npcQuests'
-import { questResult, questTransferReachable } from './npcQuestTypes'
+import { questResult } from './npcQuestTypes'
 import { validateQuestDraft } from './npcQuestValidation'
 import {
     bellQuest,
@@ -19,7 +19,7 @@ import {
 } from './questBoardEntries'
 export { type BoardQuest, questBoardIssuerId } from './questBoardEntries'
 import { validateQuestExcursion } from './questExcursions'
-import { hasDeliveries, type QuestTurnInEnvironment } from './questTurnInRules'
+import type { QuestTurnInEnvironment } from './questTurnInRules'
 import { availableGold } from './rewardReservations'
 
 export class QuestBoardCatalog {
@@ -32,14 +32,12 @@ export class QuestBoardCatalog {
         }
 
         const { adventure, parties, quests } = this.environment
-        const activeJob = parties.boardActiveJob(player.id)
         const entries = parties
             .boardDefinitions(player.id)
             .filter(
                 (job) =>
-                    job.id !== activeJob?.id &&
-                    (job.workRequest === undefined ||
-                        job.workRequest.clerkId === issuer.id)
+                    job.workRequest === undefined ||
+                    job.workRequest.clerkId === issuer.id
             )
             .map(guildQuest)
         if (
@@ -76,14 +74,17 @@ export class QuestBoardCatalog {
     public entries(player: GameCharacter, now: number): QuestBoardEntry[] {
         const entries = this.available(player, now).map(({ entry }) => entry)
         const { adventure, parties } = this.environment
-        const active = parties.boardActiveJob(player.id)
-        if (active?.status === 'active' || active?.status === 'ready') {
-            entries.push({ ...guildQuest(active).entry, status: active.status })
+        for (const active of parties.boardActiveJobs(player.id)) {
+            if (active.status === 'active' || active.status === 'ready') {
+                entries.push({
+                    ...guildQuest(active).entry,
+                    id: active.instanceId,
+                    status: active.status,
+                })
+            }
         }
-        for (const job of this.environment.quests.conversation(
-            questBoardIssuerId,
-            player.id
-        )) {
+        for (const job of this.environment.quests.snapshot(player.id, now)
+            .quests ?? []) {
             if (
                 job.instanceId.startsWith('board-order-') &&
                 (job.status === 'active' || job.status === 'ready')
@@ -169,13 +170,7 @@ export class QuestBoardCatalog {
             current === undefined ||
             !this.canOffer(issuer, player, current, now)
         ) {
-            const group = this.environment.parties.contractGroup(player.id)
-            return questResult(
-                false,
-                group.occupied && job.entry.source !== 'story'
-                    ? 'Сначала завершите действующий договор.'
-                    : 'Этот договор сейчас недоступен.'
-            )
+            return questResult(false, 'Этот договор сейчас недоступен.')
         }
         job = current
         const quests = this.environment.quests.boardOffers
@@ -205,24 +200,24 @@ export class QuestBoardCatalog {
             return true
         }
         const group = this.environment.parties.contractGroup(player.id)
-        return !group.occupied && group.leaderId === player.id
+        return group.leaderId === player.id
     }
 
-    public directReady(player: GameCharacter, job: BoardQuest): boolean {
+    public directPreviewable(
+        player: GameCharacter,
+        job: BoardQuest,
+        now: number
+    ): boolean {
+        const issuer = this.environment.getCharacter(questBoardIssuerId)
         const request = job.guild?.workRequest
         return (
-            this.groupCanTake(player, job) &&
-            questTransferReachable(
-                player,
-                this.environment.getCharacter(questBoardIssuerId),
-                this.environment
-            ) &&
+            issuer?.alive === true &&
+            job.entry.source !== 'guild' &&
+            (request === undefined || request.stage === 'waiting') &&
             (request?.proofAccepted === true ||
                 (job.objectives.length > 0 &&
-                    job.objectives.every(
-                        (objective) => objective.kind === 'deliver'
-                    ) &&
-                    hasDeliveries(player, job.objectives)))
+                    job.objectives.every(({ kind }) => kind === 'deliver'))) &&
+            this.canOffer(issuer, player, job, now)
         )
     }
 

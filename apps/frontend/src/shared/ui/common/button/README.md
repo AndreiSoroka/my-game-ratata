@@ -15,6 +15,8 @@ Import `UiButton` and its types from `@/shared/ui/common`. The root is a native 
 
 `appearance` accepts `filled` (default), `ghost` and `panel`. All three support `variant` values `secondary` (default), `primary`, `success` and `danger`. `filled` and `ghost` take any of the 32 `FantasyBorderVariant` values in `border`. Padding uses public border metrics to keep labels clear of deeper straight rails, including `003` and `024`. Default `026` retains its compact geometry. Buttons have a minimum size of 48×48 and wrap long labels.
 
+Use `nativeBorderWidth` to keep the selected border's native width on a small or compact button.
+
 ```vue
 <UiButton appearance="panel">Продолжить</UiButton>
 <UiButton

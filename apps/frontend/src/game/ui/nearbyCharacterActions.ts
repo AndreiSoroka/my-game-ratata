@@ -50,6 +50,7 @@ export function hostilityActions(
         {
             id: `personal-hostility:${target.id}`,
             label: tGame(hostile ? 'game.world.declareEnemy' : 'game.world.clearHostility'),
+            danger: hostile,
             command: { type: 'set_personal_hostility', targetId: target.id, hostile },
         },
     ]

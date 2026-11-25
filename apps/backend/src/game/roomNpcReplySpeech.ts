@@ -72,10 +72,12 @@ export function createNpcReplyPublisher({
             return false
         }
         if (source === 'whisper' && line !== NPC_HUM) {
-            return whispers.send(npc, recipient, line, now, {
+            const sent = whispers.send(npc, recipient, line, now, {
                 language: language ?? room.localeFor(recipient.id),
                 keepOriginalForRecipient: true,
             })
+            room.social.merchantVisits.offered(npc, recipient, line, now, sent)
+            return sent
         }
         const event =
             source === 'panel'
@@ -96,11 +98,13 @@ export function createNpcReplyPublisher({
         const dialogue = adventure.walletFor(recipient.id).dialogue
         if (source === 'panel' && dialogue?.npcId === npc.id) {
             delete dialogue.initialView
+            delete dialogue.initialMarketSide
             delete dialogue.textMessage
             dialogue.text = line
             dialogue.speechId = event.speechId
         }
         room.publishEvents([event])
+        room.social.merchantVisits.offered(npc, recipient, line, now)
         return true
     }
 }

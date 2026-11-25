@@ -162,13 +162,13 @@ function boardOfferStillAvailable(
         return true
     }
     const group = environment.parties.contractGroup(recipient.id)
+    const definitionId = offer.boardGuildId ?? offer.view.workerRequestId
     return (
-        !group.occupied &&
         group.leaderId === recipient.id &&
-        (offer.boardGuildId === undefined ||
+        (definitionId === undefined ||
             environment.parties
                 .boardDefinitions(recipient.id)
-                .some((definition) => definition.id === offer.boardGuildId))
+                .some((definition) => definition.id === definitionId))
     )
 }
 

@@ -206,31 +206,33 @@ function characterTargets(
                     THEFT_RULES.absolutionRange
                 ),
                 actions: [
-                    ...(snapshot.social?.quest?.status === 'active'
-                        ? snapshot.social.quest.objectives.flatMap((objective, objectiveIndex) =>
-                              objective.kind === 'inspect' &&
-                              objective.targetId === character.id &&
-                              interactionDistance(player, character) <= 48 &&
-                              (snapshot.social!.quest!.progress[objectiveIndex] ?? 0) === 0
-                                  ? [
-                                        {
-                                            id: `quest-inquire:${snapshot.social!.quest!.instanceId}:${objectiveIndex}`,
-                                            label: tGame('game.world.askAboutQuest', {
-                                                quest: tLocalized(
-                                                    snapshot.social!.quest!.titleMessage,
-                                                    snapshot.social!.quest!.title
-                                                ),
-                                            }),
-                                            command: {
-                                                type: 'quest_inquire' as const,
-                                                instanceId: snapshot.social!.quest!.instanceId,
-                                                objectiveIndex,
-                                            },
-                                        },
-                                    ]
-                                  : []
-                          )
-                        : []),
+                    ...(snapshot.social?.quests ?? [])
+                        .filter((quest) => quest.status === 'active')
+                        .flatMap((quest) =>
+                            quest.objectives.flatMap((objective, objectiveIndex) =>
+                                objective.kind === 'inspect' &&
+                                objective.targetId === character.id &&
+                                interactionDistance(player, character) <= 48 &&
+                                (quest.progress[objectiveIndex] ?? 0) === 0
+                                    ? [
+                                          {
+                                              id: `quest-inquire:${quest.instanceId}:${objectiveIndex}`,
+                                              label: tGame('game.world.askAboutQuest', {
+                                                  quest: tLocalized(
+                                                      quest.titleMessage,
+                                                      quest.title
+                                                  ),
+                                              }),
+                                              command: {
+                                                  type: 'quest_inquire' as const,
+                                                  instanceId: quest.instanceId,
+                                                  objectiveIndex,
+                                              },
+                                          },
+                                      ]
+                                    : []
+                            )
+                        ),
                     ...justiceActions(snapshot, player, one),
                     ...characterActions(character, player),
                     ...civicServiceActions(character, player),

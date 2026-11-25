@@ -71,7 +71,7 @@ const buttonStyle = computed(() => {
                 as="span"
                 class="ui-button__border"
                 :border="border"
-                :border-width="size === 'default' ? undefined : 5"
+                :border-width="size === 'default' || nativeBorderWidth ? undefined : 5"
                 color="var(--ui-button-current-border)"
                 aria-hidden="true"
             />

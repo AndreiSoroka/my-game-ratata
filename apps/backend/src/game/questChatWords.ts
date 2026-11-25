@@ -75,14 +75,14 @@ export type QuestSpeech =
 export function questSpeech(text: string): QuestSpeech | undefined {
     const words = withoutMira(text)
     if (
-        /(?:^| )(?:не (?:хочу|буду|готов|выполнил|закончил|сделал|расчистил|очистил|передал|сда)|not (?:ready|finished)|don t want|didn t (?:finish|complete|clear|hand))/u.test(
+        /(?:^| )(?:не (?:хочу|буду|готов|выполнил|закончил|сделал|расчистил|очистил|передал|сда|возьм|бер|прим|приня|принес|брат|дава)|not (?:ready|finished|taking|accepting)|don t (?:want|take|accept)|didn t (?:finish|complete|clear|hand))/u.test(
             words
         )
     ) {
         return undefined
     }
     if (
-        /^(?:да|yes|ага|yep|да (?:я )?(?:готов|закончил|выполнил)[а-я]*|yes (?:i did|finished|done))$/u.test(
+        /^(?:да|давай|yes|ага|yep|(?:я )?готов[аы]?|да (?:я )?(?:готов|закончил|выполнил)[а-я]*|yes (?:i did|finished|done))$/u.test(
             words
         )
     ) {
@@ -107,7 +107,7 @@ function questProgressSpeech(
     text: string,
     words: string
 ): QuestSpeech | undefined {
-    if (/(?:^| )(?:взять|принять|возьму|take|accept)(?: |$)/u.test(words)) {
+    if (asksToTake(words)) {
         return 'take'
     }
     if (
@@ -130,7 +130,10 @@ function questProgressSpeech(
         /(?:^| )(?:сдать|сдаю|сдавать|отчитаться|turn in|hand in|submit)(?: |$)/u.test(
             words
         ) ||
-        /^(?:готово|done|(?:я )?(?:его )?сделал[а-я]*)$/u.test(words) ||
+        /^(?:готово|done|(?:я )?готов[аы]? сдать|(?:я )?(?:его )?сделал[а-я]*)$/u.test(
+            words
+        ) ||
+        reportsDelivery(text) ||
         /(?:^| )(?:выполнил[а-я]*|закончил[а-я]*|сделал[а-я]*|finished|completed)(?: |$)/u.test(
             words
         ) ||
@@ -139,6 +142,18 @@ function questProgressSpeech(
         return 'submit'
     }
     return undefined
+}
+
+function asksToTake(words: string): boolean {
+    return (
+        /(?:^| )(?:взять|принять|возьму|take|accept)(?: |$)/u.test(words) ||
+        /^(?:да )?дай(?:те)?(?: [\p{L}]+){0,4} (?:квест|поручение)(?: |$)/u.test(
+            words
+        ) ||
+        /^(?:please )?give me (?:this|that|the|a) (?:quest|order|task)(?: |$)/u.test(
+            words
+        )
+    )
 }
 
 export function questCompletionQuestion(text: string): boolean {
@@ -150,16 +165,28 @@ export function questCompletionQuestion(text: string): boolean {
     )
 }
 
-export function unnamedHandIn(text: string): boolean {
-    return /^(?:(?:я )?(?:готов[а]? |хочу |можно |могу )?(?:сдать|сдаю|отчитаться)(?: (?:мой |этот )?(?:квест|заказ|договор|поручение|задание))?|(?:квест|заказ|поручение|договор|задание) готов[оа]?|готово|(?:я )?(?:его )?(?:сделал|выполнил|закончил)[а-я]*(?: (?:свой |свое |это )?(?:квест|заказ|поручение|договор|задание))?|quest complete|done|i (?:finished|completed) (?:the |my |this )?(?:quest|order|contract|task|job)|(?:(?:i want to|can i|i m ready to) )?(?:turn in|hand in|submit)(?: (?:the |my |this )?(?:quest|order|contract|task))?)$/u.test(
-        withoutMira(text)
-    )
-}
-
 export function unnamedStatus(text: string): boolean {
     const words = withoutMira(text)
     return /^(?:(?:статус|прогресс)(?: (?:моего )?(?:квеста|заказа|поручения|договора))?|как (?:там )?(?:мо[йияе] )?(?:квест|заказ|поручение|договор)|quest status)$/u.test(
         words
+    )
+}
+
+export function refersToQuestInContext(text: string): boolean {
+    return /(?:^| )(?:еще раз|снова|(?:этот|это|то|ту) (?:квест|заказ|задание|поручение|договор)|(?:this|that|the same) (?:quest|order|task|contract)|(?:turn in|hand in) it)(?: |$)/u.test(
+        withoutMira(text)
+    )
+}
+
+export function asksToHandIn(text: string): boolean {
+    return /(?:^| )(?:сдать|сдаю|отчитаться|turn in|hand in|submit)(?: |$)/u.test(
+        withoutMira(text)
+    )
+}
+
+export function reportsDelivery(text: string): boolean {
+    return /^(?:(?:я )?принес(?:ла|ли)?(?: (?:три |3 )?(?:сердца|сердец))?|i brought (?:it|(?:three |3 )?slime hearts))$/u.test(
+        withoutMira(text)
     )
 }
 
@@ -175,6 +202,9 @@ function withoutMira(text: string): string {
 
 function simpleOfferRequest(words: string): boolean {
     return (
+        /^(?:(?:давай (?:мне )?поручение гильдии|дай (?:мне )?что нибудь)(?: дай что нибудь)?|(?:please )?give me (?:something to do|a guild quest))$/u.test(
+            words
+        ) ||
         /^(?:дай(?:те)?|предложи(?:те)?|есть|можно) (?:мне )?(?:что нибудь простое|простое (?:задание|поручение|дело)|простой (?:квест|заказ)|(?:задание|поручение|квест) попроще)(?: пожалуйста)?$/u.test(
             words
         ) ||
@@ -206,10 +236,10 @@ function trophyReport(words: string, question: boolean): boolean {
         return false
     }
     return (
-        /^(?:да )?(?:я )?(?:расчистил|очистил)[а-я]*(?: участок| поле)?$/u.test(
+        /^(?:да )?(?:(?:я|мы) )?(?:расчистил|очистил)[а-я]*(?: участок| поле| поля)?$/u.test(
             words
         ) ||
-        /^(?:я )?(?:(?:хочу|готов[а]?) (?:тебе |вам )?передать|п(?:ере|еер)дал[а]?) (?:кость|трофей)(?: (?:для|по) (?:квеста|задания|поручения|заказа) .+)?$/u.test(
+        /^(?:я )?(?:(?:хочу|готов[а]?) (?:тебе |вам )?передать|п(?:ере|еер)дал[а]?|принес(?:ла|ли)?) (?:кость|трофей)(?: (?:для|по) (?:квеста|задания|поручения|заказа) .+)?$/u.test(
             words
         ) ||
         /^(?:я )?готов[а]? передать как (?:это сделать|передать)$/u.test(
@@ -240,17 +270,41 @@ export function questClarification(text: string, job: QuestChatTitle): boolean {
             localizedQuestTitle(job, 'ru'),
             localizedQuestTitle(job, 'en'),
         ].some((title) => normalize(title) === words) ||
-            /^(?:для|про|то|заказ|квест|задание|поручение|for|the one|the farmer(?: s)?|the miner(?: s)?|the lumberjack(?: s)?) /u.test(
+            /^(?:для|про|то|заказ|квест|задание|поручение|помочь|for|the one|the farmer(?: s)?|the miner(?: s)?|the lumberjack(?: s)?) /u.test(
                 words
             ))
     )
 }
 
+const workerNameForms: Readonly<Record<string, readonly string[]>> = {
+    npc_farmer_1: ['Агафья', 'Агафьи', 'Агафье', 'Агафью', 'Агафьей', 'Agafya'],
+    npc_lumberjack_1: [
+        'Данила',
+        'Данилы',
+        'Даниле',
+        'Данилу',
+        'Данилой',
+        'Danila',
+    ],
+    npc_miner_1: ['Гордей', 'Гордея', 'Гордею', 'Гордеем', 'Гордее', 'Gordey'],
+}
+
+export function isWorkerName(text: string, worker: GameCharacter): boolean {
+    const words = withoutMira(text)
+    return (
+        workerNameForms[worker.id]?.some(
+            (name) => normalize(name) === words
+        ) === true
+    )
+}
+
 export function refersToWorker(text: string, worker: GameCharacter): boolean {
     const words = normalize(text).replace(/(^| )фемер(?= |$)/gu, '$1фермер')
-    const references = [worker.nickname, NPC_ENGLISH_NAMES[worker.id]].filter(
-        (name): name is string => Boolean(name)
-    )
+    const references = [
+        worker.nickname,
+        NPC_ENGLISH_NAMES[worker.id],
+        ...(workerNameForms[worker.id] ?? []),
+    ].filter((name): name is string => Boolean(name))
     return (
         references.some((name) =>
             ` ${words} `.includes(` ${normalize(name)} `)

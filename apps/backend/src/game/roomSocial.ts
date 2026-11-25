@@ -18,6 +18,7 @@ import { npcDialogueMode } from './npcRoster'
 import type { PartyService } from './parties'
 import type { GameRoom } from './room'
 import { RoomCommunication } from './roomCommunication'
+import { RoomMerchantVisits } from './roomMerchantVisits'
 import { RoomNpcContacts } from './roomNpcContacts'
 import { RoomQuestDialogues } from './roomQuestDialogues'
 import { createRoomExchange, isExchange } from './roomSocialExchange'
@@ -26,10 +27,8 @@ import {
     createRoomSocialSnapshot,
     projectCharacterInteractions,
 } from './roomSocialViews'
-import { createSocialWake } from './roomSocialWake'
 import { RoomSociety } from './roomSociety'
 import { createWhisperObserver } from './roomWhisperObserver'
-import { TradeNotifications } from './tradeNotifications'
 import { WhisperService } from './whispers'
 import { workerActivity } from './workerActivity'
 
@@ -47,8 +46,7 @@ export class RoomSocial {
     private readonly questDialogues: RoomQuestDialogues
     private readonly communication: RoomCommunication
     public readonly npcSpeech: RoomNpcContacts
-    private readonly wake: ReturnType<typeof createSocialWake>
-    private readonly tradeViews = new TradeNotifications()
+    public readonly merchantVisits: RoomMerchantVisits
     private readonly exchange: ReturnType<typeof createRoomExchange>
 
     public constructor(
@@ -59,9 +57,8 @@ export class RoomSocial {
         actors: () => Iterable<GameCharacter>
     ) {
         this.society = new RoomSociety(room, actors)
-        this.wake = createSocialWake(room, ai)
         this.communication = new RoomCommunication(room, ai)
-        this.exchange = createRoomExchange(room, adventure, ai, this.wake)
+        this.exchange = createRoomExchange(room, adventure, ai)
         this.exchanges = this.exchange.service
         this.exchangeAcceptanceProblem = this.exchange.acceptanceProblem
         this.recordExchangeInquiry = this.exchange.recordInquiry
@@ -73,11 +70,17 @@ export class RoomSocial {
                     this.npcSpeech.receive(actor, event, targetId),
                 () => this.questDialogues.turnIns,
                 (actor, listener) =>
-                    adventure.cities.observeSpeech(actor.id, listener.id)
+                    adventure.cities.observeSpeech(actor.id, listener.id),
+                (...args) => this.merchantVisits.heard(...args)
             ),
             translate: (...args) =>
                 room.speechTranslations.privateSpeech(...args),
         })
+        this.merchantVisits = new RoomMerchantVisits(
+            room,
+            adventure,
+            this.whispers
+        )
         this.npcSpeech = new RoomNpcContacts(
             room,
             adventure,
@@ -120,6 +123,7 @@ export class RoomSocial {
         message: ClientMessage,
         now: number
     ): boolean {
+        this.merchantVisits.observeCommand(actor.id, message.type)
         if (this.npcSpeech.handle(actor, message, now)) {
             return true
         }
@@ -146,7 +150,18 @@ export class RoomSocial {
                 now,
                 (text) => this.notice(actor, text),
                 (speech, targets) =>
-                    this.questDialogues.heardPublic(actor, speech, targets)
+                    this.merchantVisits.heardPublic(
+                        actor,
+                        speech.text,
+                        now,
+                        targets,
+                        () =>
+                            this.questDialogues.heardPublic(
+                                actor,
+                                speech,
+                                targets
+                            )
+                    )
             )
         ) {
             return true
@@ -201,7 +216,8 @@ export class RoomSocial {
                 actor,
                 decision.targetId,
                 decision.instanceId,
-                now
+                now,
+                context
             )
         }
         if (isExchange(decision)) {
@@ -219,14 +235,10 @@ export class RoomSocial {
 
     public workerActivity(id: string, now: number) {
         const actor = this.room.getCharacter(id)
+        const { workerRequests } = this.room
         return actor === undefined
             ? undefined
-            : workerActivity(
-                  actor,
-                  this.adventure,
-                  this.room.workerRequests,
-                  now
-              )
+            : workerActivity(actor, this.adventure, workerRequests, now)
     }
 
     public interactions(actor: GameCharacter) {
@@ -256,29 +268,19 @@ export class RoomSocial {
     }
 
     public update(now: number, actors: Iterable<GameCharacter>): void {
-        this.exchanges.pause(now)
+        this.exchange.update(actors, now)
+        this.merchantVisits.reconcile(now)
         this.quests.update(now)
         this.questDialogues.update(now)
-        for (const actor of actors) {
-            if (this.ai()?.configured(actor.id) !== true) {
-                continue
-            }
-            const exchange = this.exchanges.snapshot(actor.id)
-            if (
-                exchange !== null &&
-                this.tradeViews.changed(actor.id, exchange)
-            ) {
-                this.exchange.notifyChange(actor, exchange, now)
-            }
-        }
     }
 
     public observe(events: GameEventPayload[]): void {
         for (const event of events) {
             if (event.kind === 'death' || event.kind === 'permadeath') {
-                this.npcSpeech.turns.close(
+                const id =
                     event.kind === 'death' ? event.targetId : event.actorId
-                )
+                this.npcSpeech.turns.close(id)
+                this.merchantVisits.cancelFor(id)
             }
         }
         this.quests.observe(events)
@@ -292,6 +294,7 @@ export class RoomSocial {
     }
     public stop(): void {
         this.society.stopVisit()
+        this.merchantVisits.stop()
         this.exchanges.stop()
         this.quests.stop()
         this.questDialogues.stop()

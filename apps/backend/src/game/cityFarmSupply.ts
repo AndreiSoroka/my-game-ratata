@@ -13,7 +13,7 @@ import type { GameCharacter } from './character'
 import type { CityEconomyService } from './cityEconomy'
 import { assignedFarmCity, CITY_FARM_SUPPLIERS } from './cityFarmSupplyData'
 import { cityTradeRefusal } from './crimeRules'
-import { FarmWorkBudgets } from './farmWorkBudgets'
+import { FarmWorkBudgets, type FarmWorkCycle } from './farmWorkBudgets'
 import {
     countInventoryItem,
     craftInventoryItems,
@@ -26,6 +26,10 @@ import { setNotice } from './notices'
 /** Municipal conversion/subsidy is separate from the finite retail seed stock. */
 export class CityFarmSupply {
     private readonly budgets: FarmWorkBudgets
+    private readonly trialAdvances = new WeakMap<
+        FarmSupplyClientMessage,
+        GameCharacter
+    >()
     private readonly receipts = new Map<
         string,
         Map<string, { signature: string; result: AdventureActionResult }>
@@ -72,6 +76,20 @@ export class CityFarmSupply {
         this.receipts.delete(id)
     }
 
+    /** The server-owned worker incident grants this exact, synchronous command. */
+    public withTrialAdvance(
+        actor: GameCharacter,
+        message: FarmSupplyClientMessage,
+        execute: () => AdventureActionResult
+    ): AdventureActionResult {
+        this.trialAdvances.set(message, actor)
+        try {
+            return execute()
+        } finally {
+            this.trialAdvances.delete(message)
+        }
+    }
+
     public handle(
         actor: GameCharacter,
         state: PlayerAdventure,
@@ -80,20 +98,31 @@ export class CityFarmSupply {
         navigation: NavigationService | undefined,
         now: number
     ): AdventureActionResult {
+        const trial = this.trialAdvances.get(message) === actor
         const signature = JSON.stringify(message)
+        const receiptKey = `${trial ? 'trial' : 'work'}:${message.requestId}`
         let receipts = this.receipts.get(actor.id)
         if (receipts === undefined) {
             receipts = new Map()
             this.receipts.set(actor.id, receipts)
         }
-        const previous = receipts.get(message.requestId)
+        const previous = receipts.get(receiptKey)
         if (previous !== undefined) {
             return previous.signature === signature
                 ? { ...previous.result, events: [] }
                 : rejected('Этот номер запроса уже использован.')
         }
-        const result = this.perform(actor, message, characters, navigation, now)
-        receipts.set(message.requestId, { signature, result })
+        const result = this.perform(
+            actor,
+            message,
+            characters,
+            navigation,
+            now,
+            trial
+        )
+        if (!trial || result.accepted) {
+            receipts.set(receiptKey, { signature, result })
+        }
         setNotice(
             state,
             result.error ?? 'Город выдал одно семя пшеницы для посева.'
@@ -106,15 +135,17 @@ export class CityFarmSupply {
         message: FarmSupplyClientMessage,
         characters: GameCharacter[],
         navigation: NavigationService | undefined,
-        now: number
+        now: number,
+        trial: boolean
     ): AdventureActionResult {
-        this.reconcile(actor)
+        if (!trial) {
+            this.reconcile(actor)
+        }
         const cityId = assignedFarmCity(actor)
-        const cycle = this.budgets.get(actor.id)
+        const cycle = trial ? undefined : this.budgets.get(actor.id)
         if (
             cityId === undefined ||
-            cycle === undefined ||
-            cycle.remaining <= 0
+            (!trial && (cycle === undefined || cycle.remaining <= 0))
         ) {
             return rejected(
                 'Семена выдаются только на действующую городскую работу фермера.'
@@ -131,13 +162,20 @@ export class CityFarmSupply {
         if (refusal !== undefined) {
             return rejected(refusal)
         }
+        return this.issueSeed(actor, cycle)
+    }
+
+    private issueSeed(
+        actor: GameCharacter,
+        cycle: FarmWorkCycle | undefined
+    ): AdventureActionResult {
         if (
-            cycle.outstanding ||
+            cycle?.outstanding === true ||
             countInventoryItem(actor.inventory, 'wheat_seed') > 0
         ) {
             return rejected('Сначала используй имеющиеся семена для посева.')
         }
-        if (cycle.advances === 0) {
+        if (cycle?.advances === 0) {
             return rejected(
                 'Семена на этот рабочий цикл уже выданы. Вернись после отдыха.'
             )
@@ -153,8 +191,10 @@ export class CityFarmSupply {
             )
         }
         resetMartyrStreak(actor)
-        cycle.outstanding = true
-        cycle.advances -= 1
+        if (cycle !== undefined) {
+            cycle.outstanding = true
+            cycle.advances -= 1
+        }
         return {
             accepted: true,
             error: null,

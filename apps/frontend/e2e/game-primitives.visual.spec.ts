@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
+
 async function ready(page: import('@playwright/test').Page): Promise<void> {
     await page.evaluate(async () => {
         await document.fonts.ready
@@ -53,6 +55,56 @@ test('native field focus and editable numeric value', async ({ page }) => {
     await expect(page.locator('.game-primitives-stage')).toHaveScreenshot(
         'primitives-field-focus.png'
     )
+})
+
+test('UiNumberInput reveals its shared arrows without changing its width', async ({ page }) => {
+    await page.goto(uiStoryUrl('shared-common-uinumberinput--default'))
+    const control = page.locator('.ui-number-input')
+    const arrows = control.locator('.ui-number-input__steps')
+    const quantity = control.getByRole('spinbutton', { name: 'Количество' })
+    await expect(arrows).toHaveCSS('opacity', '0')
+    const idleWidth = await control.boundingBox()
+    await control.hover()
+    await expect(arrows).toHaveCSS('opacity', '1')
+    expect((await control.boundingBox())?.width).toBe(idleWidth?.width)
+    await quantity.press('ArrowUp')
+    await expect(quantity).toHaveValue('6')
+    await page.mouse.move(0, 0)
+    await expect(arrows).toHaveCSS('opacity', '1')
+    const increase = control.getByRole('button', { name: 'Увеличить: Количество' })
+    const decrease = control.getByRole('button', { name: 'Уменьшить: Количество' })
+    await increase.click()
+    await expect(quantity).toHaveValue('7')
+    await quantity.fill('10')
+    await expect(increase).toBeDisabled()
+    await quantity.fill('1')
+    await expect(decrease).toBeDisabled()
+    await readyUiStory(page)
+    await expect(control).toHaveScreenshot('number-input-focus.png')
+})
+
+test.describe('UiNumberInput on touch', () => {
+    test.use({ hasTouch: true, viewport: { width: 320, height: 460 } })
+
+    test('reveals the arrows after a tap and respects decimal steps', async ({ page }) => {
+        await page.goto(uiStoryUrl('shared-common-uinumberinput--decimal-steps'))
+        const control = page.locator('.ui-number-input')
+        const arrows = control.locator('.ui-number-input__steps')
+        const quantity = control.getByRole('spinbutton', { name: 'Количество' })
+        await expect(arrows).toHaveCSS('opacity', '0')
+        await quantity.tap()
+        await expect(arrows).toHaveCSS('opacity', '1')
+        await expectUiFits(control, 320)
+        await control.getByRole('button', { name: 'Уменьшить: Количество' }).tap()
+        await expect(quantity).toHaveValue('0.4')
+        await quantity.fill('')
+        await quantity.blur()
+        await expect(quantity).toHaveValue('0.4')
+        await expect(arrows).toHaveCSS('opacity', '0')
+        await quantity.tap()
+        await readyUiStory(page)
+        await expect(control).toHaveScreenshot('number-input-decimal-touch-320.png')
+    })
 })
 
 test('shared selected states include checked and current controls', async ({ page }) => {

@@ -49,7 +49,7 @@ const party: PartySnapshot = {
     ],
     invitations: [],
     jobs: [],
-    activeJob: null,
+    activeJobs: [],
     notice: null,
 }
 export const Party: Story = {

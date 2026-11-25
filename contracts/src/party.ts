@@ -65,7 +65,7 @@ export interface GuildQuestSnapshot extends GuildQuestDefinition {
 
 export interface PartySnapshot {
     guildContact?: { npcId: string; nickname: string } | null
-    activeJob: GuildQuestSnapshot | null
+    activeJobs: GuildQuestSnapshot[]
     invitations: PartyInvitationSnapshot[]
     jobs: GuildQuestDefinition[]
     leaderId: string | null

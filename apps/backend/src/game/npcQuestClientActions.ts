@@ -59,8 +59,10 @@ export function handleNpcQuestClient(
     }
     if (
         job === undefined ||
-        (context.environment.parties.contractSlots.get(group.key) !==
-            message.instanceId &&
+        (!context.environment.parties.contractSlots.owns(
+            group.key,
+            message.instanceId
+        ) &&
             !terminalReceiptOwner(job, actor.id))
     ) {
         return result(false, 'Этот договор вам недоступен.')

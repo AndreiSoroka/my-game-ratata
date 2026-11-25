@@ -121,12 +121,13 @@ describe('guild abandonment authority', () => {
         setup.join(leader, member)
         setup.command(leader, { type: 'guild_accept', questId: 'slime_hunt' })
         const instanceId =
-            setup.party.snapshot(leader.id).activeJob?.instanceId ?? 'missing'
+            setup.party.snapshot(leader.id).activeJobs[0]?.instanceId ??
+            'missing'
         leader.position.x += 500
         setup.contact.alive = false
         setup.command(leader, { type: 'guild_abandon', instanceId })
-        expect(setup.party.snapshot(leader.id).activeJob).toBeNull()
-        expect(setup.party.snapshot(member.id).activeJob).toBeNull()
+        expect(setup.party.snapshot(leader.id).activeJobs).toEqual([])
+        expect(setup.party.snapshot(member.id).activeJobs).toEqual([])
         expect(setup.gold.snapshot(leader.id).gold).toBe(0)
     })
 
@@ -141,19 +142,50 @@ describe('guild abandonment authority', () => {
         setup.join(leader, member)
         setup.command(leader, { type: 'guild_accept', questId: 'slime_hunt' })
         const instanceId =
-            setup.party.snapshot(leader.id).activeJob?.instanceId ?? 'missing'
+            setup.party.snapshot(leader.id).activeJobs[0]?.instanceId ??
+            'missing'
         leader.position.x += 500
         setup.command(leader, { type: 'guild_abandon', instanceId: 'obsolete' })
         setup.command(member, { type: 'guild_abandon', instanceId })
         setup.command(stranger, { type: 'guild_abandon', instanceId })
         leader.applyDamage(leader.hp, 10_000)
         setup.command(leader, { type: 'guild_abandon', instanceId })
-        expect(setup.party.snapshot(member.id).activeJob).toMatchObject({
+        expect(setup.party.snapshot(member.id).activeJobs[0]).toMatchObject({
             instanceId,
             status: 'active',
         })
         expect(setup.gold.snapshot(leader.id).gold).toBe(0)
     })
+})
+
+it('moves every active instance to a new party and keeps them for its remaining leader', () => {
+    const setup = scenario(2)
+    const leader = setup.first()
+    const member = setup.players[1]
+    if (member === undefined) {
+        throw new Error('Missing party member')
+    }
+    for (const questId of ['slime_hunt', 'skeleton_hunt', 'slime_hunt']) {
+        setup.command(leader, { type: 'guild_accept', questId })
+    }
+    const ids = setup.party
+        .snapshot(leader.id)
+        .activeJobs.map(({ instanceId }) => instanceId)
+    expect(ids).toHaveLength(2)
+    setup.join(leader, member)
+    expect(
+        setup.party
+            .snapshot(member.id)
+            .activeJobs.map(({ instanceId }) => instanceId)
+    ).toEqual(ids)
+    setup.command(leader, { type: 'party_leave' })
+    expect(setup.party.snapshot(leader.id).activeJobs).toEqual([])
+    expect(setup.party.snapshot(member.id).leaderId).toBe(member.id)
+    expect(
+        setup.party
+            .snapshot(member.id)
+            .activeJobs.map(({ instanceId }) => instanceId)
+    ).toEqual(ids)
 })
 
 describe('guild reward choices', () => {
@@ -180,7 +212,7 @@ describe('guild reward choices', () => {
         }
         setup.command(leader, { type: 'guild_turn_in', instanceId: 'obsolete' })
         expect(setup.gold.snapshot(leader.id).gold).toBe(0)
-        expect(setup.party.snapshot(leader.id).activeJob?.rewardMode).toBe(
+        expect(setup.party.snapshot(leader.id).activeJobs[0]?.rewardMode).toBe(
             'submitter'
         )
         setup.turnIn(leader)
@@ -204,7 +236,9 @@ describe('guild reward choices', () => {
         expect(setup.gold.snapshot(member.id).gold).toBe(15)
         setup.command(member, { type: 'party_leave' })
         setup.command(member, { type: 'guild_accept', questId: 'slime_hunt' })
-        expect(setup.party.snapshot(member.id).activeJob?.status).toBe('active')
+        expect(setup.party.snapshot(member.id).activeJobs[0]?.status).toBe(
+            'active'
+        )
     })
 })
 
@@ -229,7 +263,7 @@ describe('shared guild contracts', () => {
         for (let index = 0; index < 3; index += 1) {
             setup.kill(leader, 'slime', `slime-${String(index)}`, true)
         }
-        const job = setup.party.snapshot(leader.id).activeJob
+        const job = setup.party.snapshot(leader.id).activeJobs[0]
         expect(job).toMatchObject({ progress: 3, status: 'ready' })
         expect(
             job?.participants.find((entry) => entry.id === member.id)
@@ -250,8 +284,9 @@ describe('shared guild contracts', () => {
         expect(setup.gold.snapshot(remote.id).gold).toBe(7)
         expect(setup.gold.snapshot(downed.id).gold).toBe(7)
         setup.command(leader, { questId: 'slime_hunt', type: 'guild_accept' })
-        expect(setup.party.snapshot(leader.id).activeJob?.status).toBe(
-            'completed'
+        expect(setup.party.snapshot(leader.id).activeJobs).toEqual([])
+        expect(setup.party.questHistory('', leader.id)).toContainEqual(
+            expect.objectContaining({ id: 'slime_hunt', status: 'completed' })
         )
     })
 
@@ -278,9 +313,9 @@ describe('shared guild contracts', () => {
         expect(setup.gold.snapshot(late.id).gold).toBe(20)
         expect(
             setup.party
-                .snapshot(leader.id)
-                .activeJob?.participants.find((entry) => entry.id === late.id)
-                ?.eligible
+                .questHistory('', leader.id)
+                .find((job) => job.id === 'skeleton_hunt')
+                ?.participants.find((entry) => entry.id === late.id)?.eligible
         ).toBe(true)
     })
 
@@ -306,7 +341,7 @@ describe('shared guild contracts', () => {
         setup.kill(companion, 'slime', 'earned')
         leader.position.x += 500
         setup.kill(companion, 'slime', 'remote')
-        expect(setup.party.snapshot(leader.id).activeJob?.progress).toBe(1)
+        expect(setup.party.snapshot(leader.id).activeJobs[0]?.progress).toBe(1)
     })
 })
 
@@ -326,11 +361,11 @@ describe('guild exploration and contacts', () => {
             type: 'guild_accept',
         })
         setup.party.update(setup.characters, 10_100)
-        expect(setup.party.snapshot(leader.id).activeJob?.progress).toBe(0)
+        expect(setup.party.snapshot(leader.id).activeJobs[0]?.progress).toBe(0)
         explorer.locationId = 'map-1-1'
         setup.party.update(setup.characters, 10_200)
         setup.party.update(setup.characters, 10_250)
-        expect(setup.party.snapshot(leader.id).activeJob?.progress).toBe(1)
+        expect(setup.party.snapshot(leader.id).activeJobs[0]?.progress).toBe(1)
         leader.locationId = 'map-1-0'
         setup.party.update(setup.characters, 10_300)
         explorer.locationId = 'map-2-0'
@@ -351,14 +386,16 @@ describe('guild exploration and contacts', () => {
         }
         setup.join(leader, member)
         setup.command(member, { questId: 'slime_hunt', type: 'guild_accept' })
-        expect(setup.party.snapshot(leader.id).activeJob).toBeNull()
+        expect(setup.party.snapshot(leader.id).activeJobs).toEqual([])
         leader.position.x += 65
         setup.command(leader, { questId: 'slime_hunt', type: 'guild_accept' })
-        expect(setup.party.snapshot(leader.id).activeJob).toBeNull()
+        expect(setup.party.snapshot(leader.id).activeJobs).toEqual([])
         leader.position.x -= 65
         setup.command(leader, { type: 'party_leave' })
         setup.command(leader, { questId: 'slime_hunt', type: 'guild_accept' })
-        expect(setup.party.snapshot(leader.id).activeJob?.id).toBe('slime_hunt')
+        expect(setup.party.snapshot(leader.id).activeJobs[0]?.id).toBe(
+            'slime_hunt'
+        )
     })
 })
 
@@ -440,7 +477,8 @@ function scenario(count = 3) {
             command(actor, {
                 type: 'guild_turn_in',
                 instanceId:
-                    party.snapshot(actor.id).activeJob?.instanceId ?? 'missing',
+                    party.snapshot(actor.id).activeJobs[0]?.instanceId ??
+                    'missing',
             }),
         join,
         kill,

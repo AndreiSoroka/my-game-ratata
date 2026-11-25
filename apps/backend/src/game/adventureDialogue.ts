@@ -1,4 +1,5 @@
 import {
+    type AdventureDialogue,
     authoredMessage,
     type AuthoredTextKey,
     type GameEventPayload,
@@ -75,9 +76,7 @@ export function interactAdventureNpc(
                   trophyProgress(state, actor),
                   text === undefined ? undefined : { text }
               )
-    if (service === 'shop' || service === 'orders' || service === 'repair') {
-        state.dialogue.initialView = service
-    }
+    selectMerchantView(state.dialogue, service)
     refreshTradeDialogue(actor, state.dialogue, state.cityTradeBlockedReason)
     if (actor.controllerKind === 'network_player' && service !== undefined) {
         npc.setMoveInput({ x: 0, y: 0 })
@@ -88,6 +87,20 @@ export function interactAdventureNpc(
         })
     }
     return { accepted: true, error: null, events: [] }
+}
+
+function selectMerchantView(
+    dialogue: AdventureDialogue,
+    service: NpcInteractionService | undefined
+): void {
+    if (service === 'shop' || service === 'sell') {
+        dialogue.initialView = 'shop'
+        if (service === 'sell' || dialogue.marketSides?.[0] === 'sell') {
+            dialogue.initialMarketSide = 'sell'
+        }
+    } else if (service === 'orders' || service === 'repair') {
+        dialogue.initialView = service
+    }
 }
 
 export function chooseAdventureReply(
@@ -175,6 +188,7 @@ function serviceAvailable(
 ): boolean {
     switch (service) {
         case 'shop':
+        case 'sell':
             return adventureNpcRoles[npcId]?.trade === true
         case 'orders':
             return workshopFor(npcId) !== undefined

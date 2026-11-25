@@ -10,7 +10,6 @@ import { ContractSlots } from './contractSlots'
 import {
     type GuildRewardEnvironment,
     GuildService,
-    type NegotiatedWorkerReward,
     type WorkerGuildGateway,
 } from './guild'
 import type { NavigationService } from './navigation'
@@ -70,45 +69,22 @@ export class PartyService {
     public readonly stop = () => this.guild.stop()
 
     public readonly questHistory = (issuerId: string, recipientId: string) =>
-        this.guild.conversation(issuerId, recipientId)
-
-    public readonly boardDefinitions = (actorId: string) =>
-        this.guild.definitions(this.contractGroup(actorId).leaderId)
-
-    public readonly boardActiveJob = (actorId: string) =>
-        this.guild.snapshot(this.groupFor(actorId).key)
-
-    /** Trusted server entry point; reward terms are never accepted from a client. */
-    public acceptNegotiatedWorker(
-        actor: GameCharacter,
-        requestId: string,
-        terms: NegotiatedWorkerReward,
-        rewardMode: import('@my-game-ratata/contracts').QuestRewardMode,
-        characters: Iterable<GameCharacter>,
-        now: number
-    ): GameEventPayload[] {
-        this.update(characters, now)
-        if (!available(actor)) {
-            return this.tell(
-                actor.id,
-                'Живой искатель приключений должен быть в игре.'
-            )
-        }
-        return this.guildAction(
-            actor,
-            { type: 'guild_accept', questId: requestId, rewardMode },
-            now,
-            terms
+        this.guild.conversation(
+            issuerId,
+            recipientId,
+            this.groupFor(recipientId).key
         )
+
+    public readonly boardDefinitions = (actorId: string) => {
+        const { key, leaderId } = this.contractGroup(actorId)
+        return this.guild.definitions(leaderId, key)
     }
 
+    public readonly boardActiveJobs = (actorId: string) =>
+        this.guild.snapshots(this.groupFor(actorId).key)
+
     public contractGroup(actorId: string) {
-        return partyContractGroup(
-            actorId,
-            this.parties,
-            this.membership,
-            this.guild
-        )
+        return partyContractGroup(actorId, this.parties, this.membership)
     }
 
     public contractRoster(instanceId: string) {

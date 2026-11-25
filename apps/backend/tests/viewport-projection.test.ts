@@ -347,7 +347,7 @@ it('preserves private panels and earned disclosure while the camera changes', ()
                 online: true,
             },
         ],
-        activeJob: null,
+        activeJobs: [],
         invitations: [],
         jobs: [],
         notice: null,

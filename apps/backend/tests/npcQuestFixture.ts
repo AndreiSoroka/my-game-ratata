@@ -83,8 +83,10 @@ export function npcQuestFixture() {
                 20
             ).accepted
         ).toBe(true)
-        const job = service.snapshot(player.id, 20).quest
-        if (job === null || job === undefined) {
+        const job = service
+            .snapshot(player.id, 20)
+            .quests?.find(({ id }) => id === offer.id)
+        if (job === undefined) {
             throw new Error('Missing job')
         }
         return job.instanceId

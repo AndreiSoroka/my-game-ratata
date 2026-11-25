@@ -262,7 +262,7 @@ export class ExchangeService {
         return ok()
     }
 
-    private isBusy(actorId: string): boolean {
+    public isBusy(actorId: string): boolean {
         const session = this.sessions.get(this.current.get(actorId) ?? '')
         return session?.status === 'active' || session?.status === 'invited'
     }
