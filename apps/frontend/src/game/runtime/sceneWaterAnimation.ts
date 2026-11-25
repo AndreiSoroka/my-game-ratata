@@ -7,13 +7,8 @@ import {
     ImageSourceAttributeConstants,
 } from 'excalibur'
 
-import {
-    type AnimatedWater,
-    waterAtlasHeight,
-    waterAtlasWidth,
-    type WaterQuarter,
-    waterQuarterSize,
-} from './mapWaterAnimation'
+import { type AnimatedWater, waterAtlasHeight, waterAtlasWidth } from './mapWaterAnimation'
+import type { TerrainRegion } from './terrainAutotile'
 import { loadImage } from './tiledMapAssets'
 
 const frameMs = 200
@@ -41,7 +36,7 @@ export class SceneWaterAnimation {
             stop?.()
         }
         void this.loadFrames(water).then((frames) => {
-            if (!retired && frames) stop = this.animate(actor, water.quarters, frames)
+            if (!retired && frames) stop = this.animate(actor, water.regions, frames)
         })
     }
 
@@ -66,7 +61,7 @@ export class SceneWaterAnimation {
 
     private animate(
         actor: Actor,
-        quarters: readonly WaterQuarter[],
+        regions: readonly TerrainRegion[],
         frames: readonly HTMLCanvasElement[]
     ): () => void {
         let elapsedMs: number | undefined
@@ -81,7 +76,7 @@ export class SceneWaterAnimation {
             // Frame zero is already in the static map graphic.
             const frame = frames[Math.floor((elapsedMs ?? 0) / frameMs) - 1]
             if (frame && !this.reducedMotion?.matches) {
-                drawWaterFrame(context, frame, quarters, this.engine.currentScene.camera)
+                drawWaterFrame(context, frame, regions, this.engine.currentScene.camera)
             }
         }
         return () => {
@@ -140,7 +135,7 @@ function keepChangedWaterPixels(frame: Uint8ClampedArray, baseline: Uint8Clamped
 function drawWaterFrame(
     context: ExcaliburGraphicsContext,
     frame: HTMLCanvasElement,
-    quarters: readonly WaterQuarter[],
+    regions: readonly TerrainRegion[],
     camera: Camera
 ): void {
     // The map actor draws at the world origin. Account for the camera's snapped draw position.
@@ -151,18 +146,8 @@ function drawWaterFrame(
     const right = viewport.right + dx
     const top = viewport.top + dy
     const bottom = viewport.bottom + dy
-    for (const { sourceX, sourceY, x, y, width, height } of quarters) {
+    for (const { sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height } of regions) {
         if (x >= right || x + width <= left || y >= bottom || y + height <= top) continue
-        context.drawImage(
-            frame,
-            sourceX,
-            sourceY,
-            waterQuarterSize,
-            waterQuarterSize,
-            x,
-            y,
-            width,
-            height
-        )
+        context.drawImage(frame, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height)
     }
 }

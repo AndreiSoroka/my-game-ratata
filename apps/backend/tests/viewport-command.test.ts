@@ -1,10 +1,14 @@
-import { type SetViewportClientMessage } from '@my-game-ratata/contracts'
+import {
+    CENTER_LOCATION_ID,
+    type SetViewportClientMessage,
+} from '@my-game-ratata/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { parseClientMessage } from '../src/game/messages'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
 import { setSocketViewport, socketViewport } from '../src/game/roomViewport'
+import { WorldMaps } from '../src/game/worldMaps'
 import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 const hint: SetViewportClientMessage = {
@@ -35,6 +39,7 @@ describe('viewport boundary parsing', () => {
 
     it.each([
         { ...hint, locationId: 'unknown-location' },
+        { ...hint, locationId: 'dungeon-small' },
         { ...hint, locationId: 42 },
         { ...hint, bounds: undefined },
         { ...hint, bounds: [] },
@@ -119,6 +124,33 @@ describe('socket viewport ownership', () => {
         ).toEqual(bobHint)
         expect(alice.sent).toHaveLength(messagesBeforeTravelRace)
         expect(alice.actor.position).toEqual(positionBeforeTravelRace)
+    })
+
+    it('recognizes a generated dungeon but only stores hints for the current location', () => {
+        vi.stubGlobal('Bun', { env: {} })
+        const maps = new WorldMaps({ seed: 'dungeon-9' })
+        const room = new GameRoom(maps.navigation(CENTER_LOCATION_ID), {
+            worldMaps: maps,
+        })
+        rooms.push(room)
+        const { actor, socket, send, sent } = joinScenarioRoom(
+            room,
+            'Dungeon viewport'
+        )
+        send(hint)
+        const beforeDungeonHint = sent.length
+
+        send({ ...hint, locationId: 'dungeon-small' })
+        expect(sent).toHaveLength(beforeDungeonHint)
+        expect(socketViewport(socket, actor.id, actor.locationId)).toEqual(hint)
+
+        send({ ...hint, locationId: 'dungeon-medium-2' })
+        expect(sent.at(-1)).toEqual({
+            type: 'error',
+            code: 'invalid_message',
+            message: 'Invalid viewport hint',
+        })
+        expect(socketViewport(socket, actor.id, actor.locationId)).toEqual(hint)
     })
 
     it('drops an old location hint and does not resurrect it on a return trip', () => {

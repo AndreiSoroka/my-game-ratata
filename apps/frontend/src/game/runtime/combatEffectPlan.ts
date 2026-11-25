@@ -120,14 +120,14 @@ function attackCues(
     )
         return [attackCue(event, actor, base)]
     if (event.phase === 'completed' && event.projectile) return [attackCue(event, actor, base)]
-    if (event.phase !== 'started') return []
+    if (event.phase !== 'started' || event.abilityId === 'spark') return []
     return [
         {
-            kind: event.abilityId === 'spark' ? 'sparkCharge' : 'aim',
+            kind: 'aim',
             fromId: actor.id,
             targetId: actor.id,
             deity: base.deity,
-            color: event.abilityId === 'spark' ? SPARK_COLOR : base.color,
+            color: base.color,
             duration: event.durationMs ?? ABILITY_DEFINITIONS[event.abilityId].windupMs,
             aimActionId: event.actionId,
             count: 0,

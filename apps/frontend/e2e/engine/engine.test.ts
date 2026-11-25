@@ -86,6 +86,18 @@ test('animates the shoreline of shipped ponds and lakes in WebGL2', async ({ pag
     )
     expect(result.pond.northBank).toEqual(animatedNorthBankColors)
     expect(result.lake.northBank).toEqual([flatWater, northBankShadow])
+    expect(result.narrow).toEqual({
+        northBank: [
+            [117, 83, 56],
+            [117, 83, 56],
+        ],
+        water: animatedNorthBankColors,
+        southBank: [
+            [80, 155, 102],
+            [80, 155, 102],
+        ],
+        transition: [flatWater, northBankShadow],
+    })
     for (const basin of [result.pond, result.lake]) {
         expect(basin.shore).toEqual(animatedShoreColors)
         expect(basin.insideCorner).toEqual(animatedShoreColors)

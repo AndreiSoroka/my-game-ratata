@@ -16,9 +16,27 @@ vi.mock('./tiledMapAssets', () => ({ loadImage }))
 const water: AnimatedWater = {
     baseAtlas: atlas('water1'),
     frameUrls: ['water2', 'water3', 'water4', 'water5', 'water6'],
-    quarters: [
-        { sourceX: 32, sourceY: 8, x: 0, y: 0, width: 8, height: 8 },
-        { sourceX: 24, sourceY: 16, x: 128, y: 32, width: 8, height: 8 },
+    regions: [
+        {
+            sourceX: 32,
+            sourceY: 8,
+            sourceWidth: 8,
+            sourceHeight: 8,
+            x: 0,
+            y: 0,
+            width: 8,
+            height: 8,
+        },
+        {
+            sourceX: 24,
+            sourceY: 16,
+            sourceWidth: 2,
+            sourceHeight: 16,
+            x: 128,
+            y: 32,
+            width: 2,
+            height: 13,
+        },
     ],
 }
 
@@ -133,12 +151,12 @@ it('waits for the atlases and uses the current camera for the non-static frames'
         prepared.get('water6')?.canvas,
         24,
         16,
-        8,
-        8,
+        2,
+        16,
         128,
         32,
-        8,
-        8
+        2,
+        13
     )
     map.update(200)
     map.draw(context)

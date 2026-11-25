@@ -163,7 +163,7 @@ export class CombatEffects {
     }
     private stopEndedEffect(event: GameEventPayload): void {
         if (event.phase === 'started') return
-        if (!['attack', 'cast', 'death'].includes(event.kind)) return
+        if (!['attack', 'cast'].includes(event.kind)) return
         this.effects = this.effects.filter((effect) => {
             const ended = endedCombatEffect(event, effect.cue)
             if (ended) this.remove(effect)
@@ -195,7 +195,7 @@ export class CombatEffects {
             const scale = (cue.radius ?? PRAYER_RULES.radius) / PRAYER_RULES.radius
             actor.scale = vec(scale, scale)
         }
-        const windup = ['aim', 'sparkCharge'].includes(cue.kind)
+        const windup = cue.kind === 'aim'
         const duration = this.reduced && !cue.channel && !windup ? 220 : cue.duration
         const effect = {
             actor,

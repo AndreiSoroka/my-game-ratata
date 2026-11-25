@@ -9,13 +9,15 @@ const maximumDimension = 65_536
 const maximumCoordinate = 1_000_000
 
 export function parseViewportCommand(
-    record: Record<string, unknown>
+    record: Record<string, unknown>,
+    hasLocation: (id: string) => boolean = (id) =>
+        getWorldLocationDefinition(id) !== undefined
 ): ParseResult {
     const locationId = record['locationId']
     const bounds = parseBounds(record['bounds'])
     if (
         typeof locationId !== 'string' ||
-        getWorldLocationDefinition(locationId) === undefined ||
+        !hasLocation(locationId) ||
         bounds === undefined
     ) {
         return { error: 'Invalid viewport hint' }

@@ -3,43 +3,7 @@ import { Actor, Color, vec } from 'excalibur'
 import { SceneMapView } from '../../src/game/runtime/sceneMapActor'
 import { loadRenderedTiledMap, type RenderedTiledMap } from '../../src/game/runtime/tiledMap'
 import { capture, mountEngine, pixel, startEngine, type TestEngine } from './engineSupport'
-
-interface Point {
-    x: number
-    y: number
-}
-
-interface Basin {
-    map: string
-    camera: Point
-    shore: Point
-    northBank: Point
-    insideCorner: Point
-    insideCornerShadow: Point
-    center: Point
-    land: Point
-}
-
-const pond: Basin = {
-    map: 'map-1-1.json',
-    camera: { x: 1140, y: 151 },
-    shore: { x: 1126, y: 168 },
-    northBank: { x: 1163, y: 142 },
-    insideCorner: { x: 1141, y: 144 },
-    insideCornerShadow: { x: 1144, y: 157 },
-    center: { x: 1160, y: 152 },
-    land: { x: 1118, y: 152 },
-}
-const lake: Basin = {
-    map: 'map-0-1.json',
-    camera: { x: 1043, y: 119 },
-    shore: { x: 1030, y: 136 },
-    northBank: { x: 1053, y: 111 },
-    insideCorner: { x: 1045, y: 112 },
-    insideCornerShadow: { x: 1048, y: 125 },
-    center: { x: 1064, y: 120 },
-    land: { x: 1021, y: 120 },
-}
+import { type Basin, lake, type Point, pond } from './waterRenderingFixtures'
 
 const frameMs = 200
 const cycleMs = 6 * frameMs
@@ -47,14 +11,16 @@ const cycleMs = 6 * frameMs
 export async function verifyWaterRendering() {
     const { run, view } = createProbe()
     try {
-        const [pondMap, lakeMap, city] = await Promise.all([
+        const [pondMap, lakeMap, narrowMap, city] = await Promise.all([
             loadMap(pond.map),
             loadMap(lake.map),
+            loadMap('map-0-0.json'),
             loadMap('map-2-2.json'),
         ])
         await startEngine(run)
         const small = await checkBasin(run, view, pondMap, pond)
         const large = await checkBasin(run, view, lakeMap, lake)
+        const narrow = await checkNarrowShore(run, view, narrowMap)
         const fractional = await compareFractionalFrame(run, view, lakeMap)
         const oldActor = mapActor(run)
         if (!oldActor) throw new Error('The animated lake actor is missing')
@@ -66,6 +32,7 @@ export async function verifyWaterRendering() {
             ...run.contextStatus(),
             pond: small,
             lake: large,
+            narrow,
             fractional,
             dry: {
                 oldActorRemoved: !run.engine.currentScene.actors.includes(oldActor),
@@ -75,6 +42,20 @@ export async function verifyWaterRendering() {
         }
     } finally {
         await run.owner.cancel()
+    }
+}
+
+async function checkNarrowShore(run: TestEngine, view: SceneMapView, map: RenderedTiledMap) {
+    aimCamera(run, { x: 350, y: 710 })
+    await setAnimatedMap(run, view, map)
+    const first = await capture(run, 1)
+    const next = await capture(run, frameMs)
+    const frames = [first, next]
+    return {
+        northBank: worldPixel(run, frames, { x: 330, y: 696 }),
+        water: worldPixel(run, frames, { x: 330, y: 699 }),
+        southBank: worldPixel(run, frames, { x: 330, y: 702 }),
+        transition: worldPixel(run, frames, { x: 337, y: 699 }),
     }
 }
 
@@ -186,8 +167,17 @@ async function bakeSecondFrame(map: RenderedTiledMap): Promise<HTMLCanvasElement
     if (!ctx) throw new Error('Canvas 2D is required for the baked reference')
     ctx.imageSmoothingEnabled = false
     ctx.drawImage(map.bitmap, 0, 0)
-    for (const q of animation.quarters) {
-        ctx.drawImage(atlas, q.sourceX, q.sourceY, 8, 8, q.x, q.y, q.width, q.height)
+    for (const {
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        x,
+        y,
+        width,
+        height,
+    } of animation.regions) {
+        ctx.drawImage(atlas, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height)
     }
     return bitmap
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { readWaterAnimation } from './mapWaterAnimation'
+import { terrainRegions } from './terrainAutotile'
 import type { LoadedTileset } from './tiledMapAssets'
 
 const waterAtlasUrl = 'https://example.test/region/assets/MysticWoods/tilesets/'
@@ -46,13 +47,66 @@ describe('animated Mystic Woods shoreline', () => {
             [2, 3, 4, 5, 6].map((frame) => `${waterAtlasUrl}water${frame}.png`)
         )
         expect(
-            animation?.quarters.filter(({ x, y }) => x >= 24 && x < 48 && y >= 20 && y < 40)
+            animation?.regions.filter(({ x, y }) => x >= 24 && x < 48 && y >= 20 && y < 40)
         ).toEqual([
-            { sourceX: 80, sourceY: 16, x: 24, y: 20, width: 12, height: 10 },
-            { sourceX: 88, sourceY: 16, x: 36, y: 20, width: 12, height: 10 },
-            { sourceX: 80, sourceY: 24, x: 24, y: 30, width: 12, height: 10 },
-            { sourceX: 88, sourceY: 24, x: 36, y: 30, width: 12, height: 10 },
+            {
+                sourceX: 80,
+                sourceY: 16,
+                sourceWidth: 8,
+                sourceHeight: 8,
+                x: 24,
+                y: 20,
+                width: 12,
+                height: 10,
+            },
+            {
+                sourceX: 88,
+                sourceY: 16,
+                sourceWidth: 8,
+                sourceHeight: 8,
+                x: 36,
+                y: 20,
+                width: 12,
+                height: 10,
+            },
+            {
+                sourceX: 80,
+                sourceY: 24,
+                sourceWidth: 8,
+                sourceHeight: 8,
+                x: 24,
+                y: 30,
+                width: 12,
+                height: 10,
+            },
+            {
+                sourceX: 88,
+                sourceY: 24,
+                sourceWidth: 8,
+                sourceHeight: 8,
+                x: 36,
+                y: 30,
+                width: 12,
+                height: 10,
+            },
         ])
+    })
+
+    it('animates the exact regions baked into a narrow shore and its transition', () => {
+        const data = [water, water, water, 0, water, water]
+        const map = {
+            ...singleTile,
+            width: 3,
+            height: 2,
+            layers: [{ ...singleTile.layers[0]!, data }],
+        }
+        const animation = readWaterAnimation(map, [waterTileset], waterTileset)
+        const bakedShore = [0, 1].flatMap((index) =>
+            (terrainRegions(data, 3, 2, index, 16, 16) ?? []).map(
+                ({ tile: _tile, ...region }) => region
+            )
+        )
+        expect(animation?.regions.filter(({ x, y }) => x < 32 && y < 16)).toEqual(bakedShore)
     })
 
     it('keeps an overlaid water cell in the static map', () => {
@@ -66,7 +120,7 @@ describe('animated Mystic Woods shoreline', () => {
         { ...overlay, name: 'Building covers' },
     ])('allows a shore under a layer rendered elsewhere or not painted: %j', (layer) => {
         const map = { ...singleTile, layers: [...singleTile.layers, layer] }
-        expect(readWaterAnimation(map, [waterTileset], waterTileset)?.quarters).toHaveLength(4)
+        expect(readWaterAnimation(map, [waterTileset], waterTileset)?.regions).toHaveLength(4)
     })
 
     it.each([{ data: [46] }, { visible: false }, { opacity: 0.5 }])(

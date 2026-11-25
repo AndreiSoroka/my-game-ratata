@@ -44,7 +44,10 @@ export function readSocketMessage(raw: unknown): string | undefined {
     return undefined
 }
 
-export function parseClientMessage(raw: string): ParseResult {
+export function parseClientMessage(
+    raw: string,
+    hasLocation?: (id: string) => boolean
+): ParseResult {
     let input: unknown
 
     try {
@@ -58,7 +61,7 @@ export function parseClientMessage(raw: string): ParseResult {
     if (record === undefined) {
         return { error: 'Message must be an object' }
     }
-    const location = parseLocationBoundary(record)
+    const location = parseLocationBoundary(record, hasLocation)
     if (location !== undefined) {
         return location
     }
@@ -97,13 +100,14 @@ export function parseClientMessage(raw: string): ParseResult {
 }
 
 function parseLocationBoundary(
-    record: Record<string, unknown>
+    record: Record<string, unknown>,
+    hasLocation?: (id: string) => boolean
 ): ParseResult | undefined {
     switch (record['type']) {
         case 'use_portal':
             return parsePortalBoundary(record)
         case 'set_viewport':
-            return parseViewportCommand(record)
+            return parseViewportCommand(record, hasLocation)
         case 'snapshot_resync':
             return { message: { type: 'snapshot_resync' } }
         case 'motion_ping':
@@ -329,13 +333,6 @@ function asRecord(input: unknown): Record<string, unknown> | undefined {
     }
 
     return input as Record<string, unknown>
-}
-
-export function parseSocketMessage(raw: unknown): ParseResult {
-    const text = readSocketMessage(raw)
-    return text === undefined
-        ? { error: 'Message must be text or binary JSON' }
-        : parseClientMessage(text)
 }
 
 function parseAttack(record: Record<string, unknown>): ParseResult {

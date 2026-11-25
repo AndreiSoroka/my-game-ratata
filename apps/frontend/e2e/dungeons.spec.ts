@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict'
+
 import {
     CENTER_LOCATION_ID,
     type Vector2,
@@ -41,18 +43,40 @@ test('walks through a tower and back with the same character', async ({ page }) 
     }
 
     const tower = await currentPassage(page)
-    const dungeonId = tower.properties.find(({ name }) => name === 'destinationLocationId')!.value
+    const dungeonId = tower.properties.find(({ name }) => name === 'destinationLocationId')?.value
+    assert(typeof dungeonId === 'string', 'Tower has no dungeon destination')
     await cross(page, tower)
-    await expect.poll(() => playerLocation(page)).toBe(dungeonId)
+    await expectViewportFor(page, dungeonId)
     expect(await page.evaluate(() => window.__ratataTest!.observe().exits)).toEqual([])
     const stairs = await currentPassage(page)
     await cross(page, stairs)
-    await expect.poll(() => playerLocation(page)).toBe(nearest.id)
+    await expectViewportFor(page, nearest.id)
     expect(await page.evaluate(() => window.__ratataTest!.getState().player!.id)).toBe(playerId)
 })
 
 function playerLocation(page: Page) {
     return page.evaluate(() => window.__ratataTest!.getState().location?.id)
+}
+
+async function expectViewportFor(page: Page, locationId: string): Promise<void> {
+    await expect
+        .poll(
+            () =>
+                page.evaluate((id) => {
+                    const { connected, mapReady, snapshot } = window.__ratataTest!.getState()
+                    return (
+                        connected &&
+                        mapReady &&
+                        snapshot?.location?.id === id &&
+                        snapshot.viewBounds !== undefined
+                    )
+                }, locationId),
+            { timeout: 15_000, message: `Receive a camera-filtered snapshot for ${locationId}` }
+        )
+        .toBe(true)
+    await expect(page.getByRole('alert').filter({ hasText: 'Invalid viewport hint' })).toHaveCount(
+        0
+    )
 }
 
 async function currentPassage(page: Page): Promise<Passage> {

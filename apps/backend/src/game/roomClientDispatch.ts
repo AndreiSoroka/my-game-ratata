@@ -6,7 +6,7 @@ import type {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { parseSocketMessage } from './messages'
+import { parseClientMessage, readSocketMessage } from './messages'
 import { replyToMotionPing } from './motionProbe'
 import { plantingPreview } from './plantingPreview'
 import {
@@ -29,22 +29,6 @@ import {
     requestManualStop,
 } from './stopCorrection'
 
-function dispatchRawRoomMessage(
-    ws: RoomSocket,
-    raw: unknown,
-    dispatch: (
-        message: ClientMessage,
-        invalidStopCorrectionId: number | undefined
-    ) => void
-): void {
-    const result = parseSocketMessage(raw)
-    if (result.message === undefined) {
-        sendError(ws, 'invalid_message', result.error ?? 'Invalid message')
-        return
-    }
-    dispatch(result.message, result.invalidStopCorrectionId)
-}
-
 interface DispatchContext extends ClientContext {
     join(
         ws: RoomSocket,
@@ -60,30 +44,41 @@ export function createRoomMessageHandler(
     context: () => DispatchContext,
     onDispatched: () => void
 ) {
-    return (ws: RoomSocket, raw: unknown): void =>
-        dispatchRawRoomMessage(ws, raw, (message, invalidStopCorrectionId) => {
-            const current = context()
-            const now = current.room.gameplayNow()
-            if (message.type === 'motion_ping') {
-                if (current.characters.has(current.connections.get(ws) ?? '')) {
-                    replyToMotionPing(
-                        ws,
-                        message.id,
-                        now,
-                        current.room.realNow()
-                    )
-                }
-                return
-            }
-            dispatchRoomClientMessage(
-                current,
+    return (ws: RoomSocket, raw: unknown): void => {
+        const text = readSocketMessage(raw)
+        if (text === undefined) {
+            sendError(
                 ws,
-                message,
-                invalidStopCorrectionId,
-                now
+                'invalid_message',
+                'Message must be text or binary JSON'
             )
-            onDispatched()
-        })
+            return
+        }
+        const current = context()
+        const { message, error, invalidStopCorrectionId } = parseClientMessage(
+            text,
+            current.room.hasLocation
+        )
+        if (message === undefined) {
+            sendError(ws, 'invalid_message', error ?? 'Invalid message')
+            return
+        }
+        const now = current.room.gameplayNow()
+        if (message.type === 'motion_ping') {
+            if (current.characters.has(current.connections.get(ws) ?? '')) {
+                replyToMotionPing(ws, message.id, now, current.room.realNow())
+            }
+            return
+        }
+        dispatchRoomClientMessage(
+            current,
+            ws,
+            message,
+            invalidStopCorrectionId,
+            now
+        )
+        onDispatched()
+    }
 }
 
 function dispatchRoomClientMessage(

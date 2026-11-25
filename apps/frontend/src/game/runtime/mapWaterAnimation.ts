@@ -1,22 +1,18 @@
 import {
     interiorTerrainTile,
     terrainAtlasStart,
-    type TerrainQuarter,
-    terrainQuarters,
+    type TerrainRegion,
+    terrainRegions,
 } from './terrainAutotile'
 import { findTileset, type LoadedTileset } from './tiledMapAssets'
-
-export { terrainQuarterSize as waterQuarterSize } from './terrainAutotile'
 
 export const waterAtlasWidth = 96
 export const waterAtlasHeight = 64
 
-export type WaterQuarter = TerrainQuarter
-
 export interface AnimatedWater {
     baseAtlas: HTMLImageElement
     frameUrls: readonly string[]
-    quarters: readonly WaterQuarter[]
+    regions: readonly TerrainRegion[]
 }
 
 interface WaterAnimationLayer {
@@ -48,12 +44,12 @@ export function readWaterAnimation(
     const cells = map.layers[terrainIndex]?.data
     if (!cells) return undefined
     const overlays = map.layers.slice(terrainIndex + 1).filter(isStaticOverlay)
-    const quarters = shoreQuarters(map, cells, overlays, tilesets, water)
-    if (quarters.length === 0) return undefined
+    const regions = shoreRegions(map, cells, overlays, tilesets, water)
+    if (regions.length === 0) return undefined
     return {
         baseAtlas: water.image,
         frameUrls: [2, 3, 4, 5, 6].map((frame) => new URL(`water${frame}.png`, atlas).href),
-        quarters,
+        regions,
     }
 }
 
@@ -93,14 +89,14 @@ function isStaticOverlay(layer: WaterAnimationLayer): boolean {
     )
 }
 
-function shoreQuarters(
+function shoreRegions(
     { width, height, tilewidth, tileheight }: WaterAnimationMap,
     cells: readonly number[],
     overlays: readonly WaterAnimationLayer[],
     tilesets: readonly LoadedTileset[],
     water: LoadedTileset
-): WaterQuarter[] {
-    const quarters: WaterQuarter[] = []
+): TerrainRegion[] {
+    const regions: TerrainRegion[] = []
     const count = Math.min(cells.length, width * height)
     for (let index = 0; index < count; index++) {
         const gid = cells[index] ?? 0
@@ -111,7 +107,7 @@ function shoreQuarters(
         )
             continue
 
-        for (const { tile, ...quarter } of terrainQuarters(
+        for (const { tile, ...region } of terrainRegions(
             cells,
             width,
             height,
@@ -119,8 +115,8 @@ function shoreQuarters(
             tilewidth,
             tileheight
         ) ?? []) {
-            if (tile !== interiorTerrainTile) quarters.push(quarter)
+            if (tile !== interiorTerrainTile) regions.push(region)
         }
     }
-    return quarters
+    return regions
 }

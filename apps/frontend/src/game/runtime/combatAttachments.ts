@@ -13,7 +13,6 @@ interface AttachedEffect {
 }
 
 export function endedCombatEffect(event: GameEventPayload, cue: EffectCue | undefined): boolean {
-    if (event.kind === 'death') return cue?.kind === 'sparkCharge' && cue.fromId === event.targetId
     return Boolean(
         event.kind === 'cast'
             ? cue?.channel && cue.fromId === event.actorId
