@@ -3,19 +3,22 @@ import { fn } from 'storybook/test'
 import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
-import { darkPanelButtonColors, UiButton } from '@/shared/ui/common'
+import { darkPanelButtonColors, GameBar, UiButton } from '@/shared/ui/common'
 
+import ExchangeConsentIcon from './ExchangeConsentIcon.vue'
 import ExchangeWindowFrame from './ExchangeWindowFrame.vue'
 
 const close = fn()
-const empty = () => h('div')
+const empty = (color: string) => () => h('div', { style: { minHeight: '20px', background: color } })
 const summary = {
     text: () => h('div', 'Вы подтвердили условия. Мира ещё не подтвердила.'),
-    empty,
+    empty: empty('#8b4865'),
+    example: () => h(ExchangeConsentIcon, { name: 'Мира', accepted: true }),
 }
 const content = {
     text: () => h('div', 'Вы предлагаете 3 яблока. Мира предлагает 7 золотых.'),
-    empty,
+    empty: empty('#374c82'),
+    example: () => h(GameBar, { value: 50, label: 'Готовность обмена' }),
 }
 const actions = {
     button: () =>
@@ -24,7 +27,8 @@ const actions = {
             { appearance: 'panel', colors: darkPanelButtonColors, onClick: close },
             () => 'Закрыть'
         ),
-    empty,
+    empty: empty('#625091'),
+    text: () => 'Обе стороны должны подтвердить обмен.',
 }
 
 interface StoryArgs {
@@ -39,9 +43,9 @@ const meta = {
     args: { title: 'Обмен · Мира', summary: 'text', default: 'text', actions: 'button' },
     argTypes: {
         title: { control: 'text' },
-        summary: { control: 'select', options: ['text', 'empty'] },
-        default: { control: 'select', options: ['text', 'empty'] },
-        actions: { control: 'select', options: ['button', 'empty'] },
+        summary: { control: 'select', options: ['text', 'empty', 'example'] },
+        default: { control: 'select', options: ['text', 'empty', 'example'] },
+        actions: { control: 'select', options: ['button', 'empty', 'text'] },
     },
     render({ title, summary: summaryKey, default: contentKey, actions: actionsKey }) {
         const host = renderVueStory(

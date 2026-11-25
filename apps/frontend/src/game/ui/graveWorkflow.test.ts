@@ -1,11 +1,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
+import ActionHotbar from '../../pages/gameplay/ui/ActionHotbar.vue'
+import GameplayOverlay from '../../pages/gameplay/ui/GameplayOverlay.vue'
+import NearbyInteraction from '../../pages/gameplay/ui/NearbyInteraction.vue'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
-import ActionHotbar from './ActionHotbar.vue'
-import GameplayOverlay from './GameplayOverlay.vue'
-import NearbyInteraction from './NearbyInteraction.vue'
 
 function fixture(cleric = false) {
     const player = characterFixture('self', {

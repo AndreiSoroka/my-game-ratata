@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test'
 import {
     type MapVisibility,
     readMapVisibility,
-    updateResourceVisibility,
+    updateObstacleVisibility,
 } from '../src/game/runtime/mapVisibility'
 
 export type MotionMapSource = Parameters<typeof readMapVisibility>[0]
@@ -35,10 +35,11 @@ export async function pauseInbound(page: Page) {
 export async function approachMotionCorridor(page: Page, authored: MotionMapSource) {
     const state = await page.evaluate(() => window.__ratataTest!.getState())
     const grid = readMapVisibility(authored)
-    updateResourceVisibility(
+    updateObstacleVisibility(
         grid,
         state.snapshot?.adventure?.resourceNodes ?? [],
-        state.snapshot?.viewBounds
+        state.snapshot?.viewBounds,
+        state.snapshot?.adventure?.worldObjects
     )
     const corridor = findCorridor(grid, state.player!.position)
     const result = await page.evaluate(

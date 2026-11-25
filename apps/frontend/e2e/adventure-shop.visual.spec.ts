@@ -36,7 +36,7 @@ for (const width of [1280, 320]) {
         const sell = tabs.getByRole('tab', { name: 'Продать', exact: true })
         const purchase = market
             .getByRole('tabpanel', { name: 'Купить', exact: true })
-            .getByRole('button', { name: 'Купить 1 · 3 ◈', exact: true })
+            .getByRole('button', { name: 'Купить · 3 ◈', exact: true })
         await expect(purchase).toBeEnabled()
         await expect(purchase).toHaveAccessibleDescription('Из них 1 ◈ — налог')
         await expect(market.getByText('Из них 1 ◈ — налог')).toBeVisible()
@@ -46,7 +46,7 @@ for (const width of [1280, 320]) {
         await expect(shop).toHaveScreenshot(`adventure-shop-market-${width}.png`)
 
         await market.getByRole('spinbutton').fill('2')
-        const bulkPurchase = market.getByRole('button', { name: 'Купить 2 · 7 ◈', exact: true })
+        const bulkPurchase = market.getByRole('button', { name: 'Купить · 7 ◈', exact: true })
         await expect(bulkPurchase).toBeEnabled()
         await expect(bulkPurchase).toHaveAccessibleDescription('Из них 2 ◈ — налог')
         await expect(market.getByText('Из них 2 ◈ — налог')).toBeVisible()

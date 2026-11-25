@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ExchangeConsentIcon } from '@/entities/exchanges'
-
-import GameFrame from '../ui/primitives/GameFrame.vue'
+import { UiFrame } from '@/shared/ui/common'
 </script>
 
 <template>
     <section class="consent-gallery game-frame-host" aria-label="Подтверждение обмена">
-        <GameFrame variant="panel" />
+        <UiFrame variant="panel" />
         <div><ExchangeConsentIcon name="Вы" :accepted="false" /><span>Не подтверждено</span></div>
         <div><ExchangeConsentIcon name="Капля" :accepted="true" /><span>Подтверждено</span></div>
     </section>

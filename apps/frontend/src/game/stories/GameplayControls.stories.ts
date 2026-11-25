@@ -1,13 +1,14 @@
-import '../ui/rpgControls.css'
+import '../../pages/gameplay/ui/rpgControls.css'
 
 import type { PartySnapshot } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 
+import { PartyPanel } from '@/entities/parties'
+import InventoryOverlay from '@/pages/gameplay/ui/InventoryOverlay.vue'
+
+import ActionHotbar from '../../pages/gameplay/ui/ActionHotbar.vue'
+import SpeechBubbles from '../../pages/gameplay/ui/SpeechBubbles.vue'
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
-import ActionHotbar from '../ui/ActionHotbar.vue'
-import InventoryOverlay from '../ui/InventoryOverlay.vue'
-import PartyPanel from '../ui/PartyPanel.vue'
-import SpeechBubbles from '../ui/SpeechBubbles.vue'
 import { renderVueStory } from './renderVueStory'
 
 const meta = { title: 'Game/Gameplay controls' } satisfies Meta

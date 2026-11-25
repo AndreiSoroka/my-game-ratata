@@ -5,7 +5,7 @@ import { expectUiFits, readyUiStory, uiStoryUrl } from './ui-story-ready'
 const historyStory = 'entities-chats-chathistorypanel'
 const composerStory = 'entities-chats-chatcomposer'
 const widgetStory = 'widgets-chats-chatwidget'
-const whisperStory = 'widgets-chats-whisperwidget'
+const whisperStory = 'entities-chats-privatechatview'
 const toolbarName = 'Каналы чата'
 const historyName = 'История чата'
 const listName = 'Услышанные реплики'
@@ -243,7 +243,9 @@ async function openWhisper(page: Page, width: number, state: string) {
 }
 
 for (const width of [1280, 320]) {
-    test(`WhisperWidget composes private history and an editor at ${width}px`, async ({ page }) => {
+    test(`PrivateChatView composes private history and an editor at ${width}px`, async ({
+        page,
+    }) => {
         const { widget, history, draft, send } = await openWhisper(page, width, 'default')
         await expect(widget.getByText('Шёпот: Мира', { exact: true })).toBeVisible()
         await expect(widget.getByRole('navigation')).toHaveCount(0)
@@ -265,7 +267,7 @@ for (const width of [1280, 320]) {
     })
 }
 
-test('WhisperWidget shows empty history at 320px', async ({ page }) => {
+test('PrivateChatView shows empty history at 320px', async ({ page }) => {
     const { widget, history, draft, send } = await openWhisper(page, 320, 'empty')
     await expect(history).toContainText('Пока нет сообщений.')
     await expect(draft).toBeEditable()
@@ -276,7 +278,7 @@ test('WhisperWidget shows empty history at 320px', async ({ page }) => {
     await expect(history.getByText('Увидимся у ворот.', { exact: true })).toBeVisible()
 })
 
-test('WhisperWidget scrolls a long translated history at 320px', async ({ page }) => {
+test('PrivateChatView scrolls a long translated history at 320px', async ({ page }) => {
     const { widget, history } = await openWhisper(page, 320, 'translated')
     expect(await history.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
         true
@@ -290,7 +292,7 @@ test('WhisperWidget scrolls a long translated history at 320px', async ({ page }
     await expect(widget).toHaveScreenshot('whisper-widget-translated-320.png')
 })
 
-test('WhisperWidget disables input for an unavailable partner at 320px', async ({ page }) => {
+test('PrivateChatView disables input for an unavailable partner at 320px', async ({ page }) => {
     const { widget, history, draft, send } = await openWhisper(page, 320, 'unavailable')
     await expect(widget.getByText('Собеседник недоступен', { exact: true })).toBeVisible()
     await expect(history.getByRole('listitem')).toHaveCount(2)

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import { bindingUnavailable } from '../../pages/gameplay/model/hotbarActions'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
 import { gravePrayerPreview } from './graveInteractions'
-import { bindingUnavailable } from './hotbarActions'
 import { farmAction } from './nearbyMaterialActions'
 import { theftActions } from './theftActions'
 

@@ -4,7 +4,9 @@ for (const width of [1280, 390, 320]) {
     for (const state of ['user-inventory', 'equipment']) {
         test(`production inventory ${state} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=game-inventoryoverlay--${state}&viewMode=story`)
+            await page.goto(
+                `/iframe.html?id=pages-gameplay-inventoryoverlay--${state}&viewMode=story`
+            )
             const dialog = page.getByRole('dialog', {
                 name: 'Инвентарь и снаряжение',
                 exact: true,

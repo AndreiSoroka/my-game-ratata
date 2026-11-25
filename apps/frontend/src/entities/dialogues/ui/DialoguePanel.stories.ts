@@ -3,20 +3,23 @@ import { fn } from 'storybook/test'
 import { h } from 'vue'
 
 import { renderVueStory } from '@/shared/lib/storybook'
+import { UiButton } from '@/shared/ui/common'
 
 import type { DialogueChoice } from '../model/dialogue'
 import DialoguePanel from './DialoguePanel.vue'
 import DialogueTargetSwitcher from './DialogueTargetSwitcher.vue'
 
-const empty = () => h('div')
+const empty = (color: string) => () => h('div', { style: { minHeight: '20px', background: color } })
 const identityExamples = {
     none: undefined,
-    empty,
+    empty: empty('#8b4865'),
+    text: () => 'Эхо',
     name: () => h('span', { style: { paddingInline: '4px' } }, 'Эхо · говорит'),
 }
 const navigationExamples = {
     none: undefined,
-    empty,
+    empty: empty('#374c82'),
+    text: () => 'Рядом Марина и Северин.',
     characters: () =>
         h(DialogueTargetSwitcher, {
             neighbors: {
@@ -27,7 +30,8 @@ const navigationExamples = {
 }
 const bodyExamples = {
     none: undefined,
-    empty,
+    empty: empty('#625091'),
+    example: () => h(UiButton, { appearance: 'panel' }, () => 'Назад к разговору'),
     details: () => h('p', 'Ремонт снаряжения доступен у кузнеца.'),
 }
 const choices: readonly DialogueChoice[] = [
@@ -74,7 +78,7 @@ const meta = {
                 type: 'select',
                 labels: { none: 'Без слота', empty: 'Пустой div', name: 'Сведения' },
             },
-            options: ['none', 'empty', 'name'],
+            options: ['none', 'empty', 'text', 'name'],
         },
         navigation: {
             name: 'Слот соседей',
@@ -82,7 +86,7 @@ const meta = {
                 type: 'select',
                 labels: { none: 'Без слота', empty: 'Пустой div', characters: 'Стрелки с именами' },
             },
-            options: ['none', 'empty', 'characters'],
+            options: ['none', 'empty', 'text', 'characters'],
         },
         default: {
             name: 'Слот содержимого',
@@ -90,7 +94,7 @@ const meta = {
                 type: 'select',
                 labels: { none: 'Без слота', empty: 'Пустой div', details: 'Текст' },
             },
-            options: ['none', 'empty', 'details'],
+            options: ['none', 'empty', 'details', 'example'],
         },
     },
     render({ identity, navigation, default: body, ...props }) {

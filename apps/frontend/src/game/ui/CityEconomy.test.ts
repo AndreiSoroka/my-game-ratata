@@ -29,7 +29,7 @@ describe('city economy panels', () => {
         const wrapper = mount(CityMarket, { props: { market, gold: 9 } })
         const button = wrapper.get('.market-row button')
         expect(wrapper.text()).toContain('Городской налог 20% округляется вверх. Платит торговец.')
-        expect(button.text()).toBe('Купить 1 · 9 ◈')
+        expect(button.text()).toBe('Купить · 9 ◈')
         const tax = wrapper.get('.market-row__tax--included')
         expect(tax.text()).toBe('Из них 2 ◈ — налог')
         expect(button.attributes('aria-describedby')).toBe(tax.attributes('id'))
@@ -46,6 +46,13 @@ describe('city economy panels', () => {
         expect(button.text()).toContain('Продать 2 · 10 ◈')
         expect(button.get('.market-row__tax').text()).toBe('Налог · 3 ◈')
         await button.trigger('click')
+        await wrapper.setProps({
+            market: { ...market, rows: [{ ...market.rows[0]!, stock: 2 }] },
+            gold: 18,
+        })
+        await wrapper.get('[role="tab"][aria-selected="false"]').trigger('click')
+        expect(button.text()).toBe('Купить · 18 ◈')
+        await button.trigger('click')
         expect(wrapper.emitted('trade')).toEqual([
             [{ side: 'buy', itemId: 'wood', quantity: 1, expectedTotal: 9 }],
             [
@@ -56,6 +63,7 @@ describe('city economy panels', () => {
                     expectedTotal: 10,
                 },
             ],
+            [{ side: 'buy', itemId: 'wood', quantity: 2, expectedTotal: 18 }],
         ])
         wrapper.unmount()
     })

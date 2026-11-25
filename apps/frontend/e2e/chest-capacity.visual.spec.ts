@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 for (const width of [1280, 390, 320]) {
     test(`full chest shows available transfers at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=game-chestcontainer--full-chest&viewMode=story')
+        await page.goto('/iframe.html?id=pages-gameplay-chestcontainer--full-chest&viewMode=story')
         const dialog = page.getByRole('dialog', { name: 'Рюкзак и сундук' })
         await expect(dialog.getByRole('button', { name: 'Закрыть контейнер' })).toBeInViewport()
         await expect(dialog.getByRole('heading', { name: 'Сундук 25 / 25' })).toBeVisible()

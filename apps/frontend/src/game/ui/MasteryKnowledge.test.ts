@@ -2,10 +2,11 @@ import { type DeityId, prayerAbilityForDeity } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import { ArcanaStudy } from '@/entities/progression'
+import { FaithKnowledge } from '@/entities/progression'
+
 import { developmentCharacterFixture } from '../testing/developmentFixture'
 import { masteriesFixture } from '../testing/masteryFixture'
-import ArcanaStudy from './ArcanaStudy.vue'
-import FaithKnowledge from './FaithKnowledge.vue'
 
 it('explains the learner Magic-three gate and sends teaching only for an eligible learner', async () => {
     const teacher = { ...developmentCharacterFixture('arcanist'), id: 'teacher' }
@@ -18,7 +19,7 @@ it('explains the learner Magic-three gate and sends teaching only for an eligibl
     expect(button().attributes('disabled')).toBeDefined()
     expect(view.text()).toContain('Ученику требуется Магия 3.')
     await button().trigger('click')
-    expect(view.emitted('command')).toBeUndefined()
+    expect(view.emitted('teach')).toBeUndefined()
     const eligible = {
         ...student,
         progression: { ...student.progression!, masteries: masteriesFixture({ magic: 3 }) },
@@ -26,7 +27,7 @@ it('explains the learner Magic-three gate and sends teaching only for an eligibl
     await view.setProps({ characters: [eligible] })
     expect(button().attributes('disabled')).toBeUndefined()
     await button().trigger('click')
-    expect(view.emitted('command')).toEqual([[{ type: 'teach_magic', targetId: 'student' }]])
+    expect(view.emitted('teach')).toEqual([['student']])
     view.unmount()
 })
 

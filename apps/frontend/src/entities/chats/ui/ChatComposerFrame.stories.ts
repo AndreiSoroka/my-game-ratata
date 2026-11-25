@@ -9,12 +9,12 @@ import ChatComposerFrame from './ChatComposerFrame.vue'
 interface StoryArgs {
     framed: boolean
     borderWidth?: number
-    default: 'empty' | 'composer'
+    default: 'empty' | 'text' | 'composer'
 }
 
 const meta = {
     title: 'Entities/chats/ChatComposerFrame',
-    args: { framed: true, default: 'composer' },
+    args: { framed: true, default: 'text' },
     argTypes: {
         framed: { control: 'boolean' },
         borderWidth: { control: { type: 'number', min: 1 } },
@@ -22,9 +22,9 @@ const meta = {
             name: 'Содержимое слота',
             control: {
                 type: 'select',
-                labels: { empty: 'Пустой div', composer: 'Поле ввода чата' },
+                labels: { empty: 'Пустой div с фоном', text: 'Текст', composer: 'Поле ввода чата' },
             },
-            options: ['empty', 'composer'],
+            options: ['empty', 'text', 'composer'],
         },
     },
     render({ borderWidth, default: content, framed }) {
@@ -39,14 +39,18 @@ const meta = {
                             {
                                 default: () =>
                                     content === 'empty'
-                                        ? h('div')
-                                        : h(ChatComposer, {
-                                              draft: draft.value,
-                                              maxLength: 400,
-                                              autofocus: true,
-                                              'onUpdate:draft': (value: string) =>
-                                                  (draft.value = value),
-                                          }),
+                                        ? h('div', {
+                                              style: { minHeight: '36px', background: '#8b4865' },
+                                          })
+                                        : content === 'text'
+                                          ? 'Новая реплика'
+                                          : h(ChatComposer, {
+                                                draft: draft.value,
+                                                maxLength: 400,
+                                                autofocus: true,
+                                                'onUpdate:draft': (value: string) =>
+                                                    (draft.value = value),
+                                            }),
                             }
                         )
                 },
@@ -64,4 +68,6 @@ type Story = StoryObj<StoryArgs>
 
 export const Default: Story = {}
 
-export const Unframed: Story = { args: { framed: false } }
+export const WithComposer: Story = { args: { default: 'composer' } }
+
+export const Unframed: Story = { args: { default: 'composer', framed: false } }

@@ -2,8 +2,8 @@ import { previewPrayerFromSnapshots } from '@my-game-ratata/contracts'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import ActionHotbar from '../../pages/gameplay/ui/ActionHotbar.vue'
 import { characterFixture } from '../testing/characterFixture'
-import ActionHotbar from './ActionHotbar.vue'
 
 function priest() {
     return characterFixture('self', {

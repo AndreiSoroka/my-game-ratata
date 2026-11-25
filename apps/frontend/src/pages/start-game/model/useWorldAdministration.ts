@@ -1,5 +1,5 @@
 import type { WorldEmptyMode } from '@my-game-ratata/contracts'
-import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
+import { computed, inject, type InjectionKey, onMounted, onScopeDispose, ref, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 
@@ -17,9 +17,21 @@ import {
 export type AdminAccessState = 'checking' | 'code' | 'unavailable' | 'authorized'
 type Failure = 'invalidCode' | 'loadFailed' | 'saveFailed' | 'sessionExpired'
 
+const worldAdministrationApi = {
+    authorizeAdminCode,
+    authorizeLocalAdmin,
+    canUseRemoteAdmin,
+    getWorldEmptyMode,
+    localAdminOrigin,
+    saveWorldEmptyMode,
+}
+export const worldAdministrationApiKey: InjectionKey<typeof worldAdministrationApi> =
+    Symbol('worldAdministrationApi')
+
 export function useWorldAdministration(backendReachable: () => boolean) {
-    const localOrigin = localAdminOrigin()
-    const remoteAvailable = canUseRemoteAdmin()
+    const api = inject(worldAdministrationApiKey, worldAdministrationApi)
+    const localOrigin = api.localAdminOrigin()
+    const remoteAvailable = api.canUseRemoteAdmin()
     const remoteAccess = (): AdminAccessState => (remoteAvailable ? 'code' : 'unavailable')
     const access = ref<AdminAccessState>(localOrigin ? 'checking' : remoteAccess())
     const open = ref(false)
@@ -44,7 +56,7 @@ export function useWorldAdministration(backendReachable: () => boolean) {
         if (!localOrigin) return
         access.value = 'checking'
         try {
-            accept(await authorizeLocalAdmin(localOrigin, signal))
+            accept(await api.authorizeLocalAdmin(localOrigin, signal))
         } catch {
             if (!signal.aborted) access.value = remoteAccess()
         }
@@ -52,7 +64,7 @@ export function useWorldAdministration(backendReachable: () => boolean) {
 
     async function enterCode(code: string): Promise<void> {
         if (access.value !== 'code') return
-        await submit(async () => accept(await authorizeAdminCode(code, signal)), 'invalidCode')
+        await submit(async () => accept(await api.authorizeAdminCode(code, signal)), 'invalidCode')
     }
 
     function accept(accepted: WorldAdminSession): void {
@@ -67,7 +79,7 @@ export function useWorldAdministration(backendReachable: () => boolean) {
         mode.value = undefined
         open.value = true
         await submit(async () => {
-            mode.value = await getWorldEmptyMode(current, signal)
+            mode.value = await api.getWorldEmptyMode(current, signal)
         }, 'loadFailed')
     }
 
@@ -75,7 +87,7 @@ export function useWorldAdministration(backendReachable: () => boolean) {
         const current = session
         if (!current || !open.value || mode.value === undefined) return
         await submit(async () => {
-            mode.value = await saveWorldEmptyMode(current, signal, nextMode)
+            mode.value = await api.saveWorldEmptyMode(current, signal, nextMode)
             open.value = false
         }, 'saveFailed')
     }

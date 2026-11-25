@@ -1,0 +1,130 @@
+.adventure-knowledge {
+    inline-size: min(580px, 100%);
+}
+.knowledge-intro {
+    color: var(--ui-dark-panel-text);
+    font-size: 12px;
+}
+.knowledge-target {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    margin: 16px 0 6px;
+    font:
+        12px/1.5 system-ui,
+        sans-serif;
+}
+.knowledge-target .ui-select {
+    min-width: 0;
+}
+.knowledge-skill {
+    border-top: 1px solid var(--ui-dark-panel-divider);
+    margin-top: 16px;
+    padding-top: 10px;
+}
+.knowledge-skill__heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+.knowledge-skill__heading h2 {
+    margin: 0 0 8px;
+    font-size: 17px;
+}
+.knowledge-skill__heading span {
+    font-size: 11px;
+    white-space: nowrap;
+}
+.knowledge-skill p {
+    font-size: 12px;
+    margin: 8px 0;
+}
+.knowledge-practice {
+    font:
+        11px/1.4 system-ui,
+        sans-serif;
+    color: var(--ui-dark-panel-text);
+}
+.knowledge-practice__label {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+}
+.knowledge-practice__label > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+.knowledge-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+}
+.knowledge-action button {
+    flex-shrink: 0;
+}
+.knowledge-action small {
+    color: var(--ui-dark-panel-text);
+    font:
+        11px/1.5 system-ui,
+        sans-serif;
+}
+@media (max-width: 740px) {
+    .knowledge-target {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+    .knowledge-action {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+}
+
+.faith-patron {
+    color: var(--ui-dark-panel-title);
+}
+.faith-omen {
+    color: var(--ui-dark-panel-text);
+    font-style: italic !important;
+}
+.faith-secrets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    color: var(--ui-dark-panel-title);
+    font:
+        11px/1.5 system-ui,
+        sans-serif;
+}
+.faith-patrons {
+    margin-top: 14px;
+    font:
+        12px/1.6 system-ui,
+        sans-serif;
+}
+.faith-patrons summary {
+    cursor: pointer;
+    color: var(--ui-dark-panel-title);
+}
+.faith-patrons div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 9px 0;
+}
+.faith-patrons button {
+    padding: 6px 8px;
+    font-size: 11px;
+}
+.faith-patrons small {
+    display: block;
+    color: var(--ui-dark-panel-text);
+}
+
+.arcana-study,
+.faith-knowledge {
+    color: var(--ui-dark-panel-text);
+}

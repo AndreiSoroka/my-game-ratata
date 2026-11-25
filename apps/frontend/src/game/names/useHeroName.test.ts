@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick, ref } from 'vue'
 
-import JoinGamePanel from '../ui/JoinGamePanel.vue'
+import JoinGamePanel from '../../pages/start-game/ui/JoinGamePanel.vue'
 import { useHeroName } from './useHeroName'
 
 const originalLanguage = document.documentElement.lang

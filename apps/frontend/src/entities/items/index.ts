@@ -1,1 +1,6 @@
+export { itemStackLabel } from './model/itemLabels'
+export { default as ChestPane } from './ui/ChestPane.vue'
+export { default as InventoryEquipment } from './ui/InventoryEquipment.vue'
+export { default as InventoryItemDetails } from './ui/InventoryItemDetails.vue'
 export { default as ItemCondition } from './ui/ItemCondition.vue'
+export { default as ItemIcon } from './ui/ItemIcon.vue'

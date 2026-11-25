@@ -8,11 +8,13 @@ import PlayerEffectsView from './PlayerEffectsView.vue'
 import type { PlayerEffectsData } from './playerEffectsViewProps'
 import SoulBadgeIcons from './SoulBadgeIcons.vue'
 
-type StoryArgs = PlayerEffectsData & { identity: 'none' | 'empty' | 'soul-badge' }
+type StoryArgs = PlayerEffectsData & { identity: 'none' | 'empty' | 'text' | 'soul-badge' }
 
 const identitySlots = {
     none: undefined,
-    empty: ({ class: className }: { class: string }) => h('div', { class: className }),
+    empty: ({ class: className }: { class: string }) =>
+        h('div', { class: className, style: { minHeight: '16px', background: '#8b4865' } }),
+    text: ({ class: className }: { class: string }) => h('span', { class: className }, 'Искра'),
     'soul-badge': ({ class: className }: { class: string }) =>
         h(SoulBadgeIcons, { class: className, soulKind: 'spark', isCanSpeak: true }),
 }

@@ -16,7 +16,8 @@ import {
 
 const trailingExamples = {
     none: undefined,
-    empty: () => h('div'),
+    empty: () => h('div', { style: { height: '36px', width: '36px', background: '#625091' } }),
+    text: () => 'Меню',
     button: () =>
         h(
             UiButton,
@@ -59,7 +60,12 @@ const meta = {
         trailing: {
             control: {
                 type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', button: 'Кнопка меню' },
+                labels: {
+                    none: 'Без слота',
+                    empty: 'Пустой div с фоном',
+                    text: 'Текст',
+                    button: 'Кнопка меню',
+                },
             },
             options: Object.keys(trailingExamples),
         },

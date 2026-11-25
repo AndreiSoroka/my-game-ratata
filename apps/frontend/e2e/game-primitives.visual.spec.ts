@@ -69,3 +69,26 @@ test('shared selected states include checked and current controls', async ({ pag
         'primitives-selected-semantics.png'
     )
 })
+
+test('UiFrame exposes decorative skins independently of its native host', async ({ page }) => {
+    await page.goto('/?path=/story/shared-common-uiframe--default')
+    const preview = page.frameLocator('#storybook-preview-iframe')
+    const frame = preview.locator('.game-frame-host > .game-frame')
+    await expect(frame).toHaveAttribute('aria-hidden', 'true')
+    await expect(frame).toHaveClass(/game-frame--panel/)
+    await expect(frame.locator('[data-fantasy-border]')).toHaveAttribute(
+        'data-fantasy-border',
+        'border-015'
+    )
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+    await page.locator('#control-variant').selectOption('window')
+    await expect(frame.locator('[data-fantasy-border]')).toHaveAttribute(
+        'data-fantasy-border',
+        'border-014'
+    )
+    await page.locator('#control-variant').selectOption('speech')
+    await expect(frame).toHaveClass(/game-frame--speech/)
+    await expect(frame.locator('[data-fantasy-border]')).toHaveCount(0)
+    await page.locator('#control-skin').selectOption('parchment')
+    await expect(frame).toHaveClass(/game-frame--parchment/)
+})

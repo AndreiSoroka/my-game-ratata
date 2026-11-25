@@ -17,7 +17,9 @@ for (const width of [320, 390, 1280]) {
             page,
         }, info) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=game-characterwindow--${hero.story}&viewMode=story`)
+            await page.goto(
+                `/iframe.html?id=pages-gameplay-characterwindow--${hero.story}&viewMode=story`
+            )
             const menu = page.getByRole('dialog', { name: 'Персонаж', exact: true })
             const graph = menu.getByRole('group', { name: 'Созвездия развития' })
             await expect(graph).toBeVisible()
@@ -56,7 +58,9 @@ test('visible Magic stars move at different speeds during repeated horizontal dr
     page,
 }) => {
     await page.setViewportSize({ width: 1400, height: 980 })
-    await page.goto('/iframe.html?id=game-characterwindow--arcanist-development&viewMode=story')
+    await page.goto(
+        '/iframe.html?id=pages-gameplay-characterwindow--arcanist-development&viewMode=story'
+    )
     const graph = page.getByRole('group', { name: 'Созвездия развития' })
     await graph.getByRole('button', { name: 'Магия', exact: true }).locator('.hit').click()
     const magicIds = fullConstellationCatalog

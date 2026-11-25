@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
 async function openGraveStory(page: Page, state: string): Promise<void> {
-    await page.goto(`/iframe.html?id=game-gravedetails--${state}&viewMode=story`)
+    await page.goto(`/iframe.html?id=entities-graves-gravedetails--${state}&viewMode=story`)
     await expect(page.getByLabel('Состояние могилы')).toBeVisible()
 }
 
@@ -14,11 +14,11 @@ test.describe('Storybook production grave states', () => {
         await expect(details).toContainText('100/100 HP')
         await expect(details).toContainText('Источник скелетов · камень')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
-            'value',
+            'aria-valuenow',
             '99.75'
         )
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
-            'max',
+            'aria-valuemax',
             '100'
         )
         await expect(details.locator('dt')).toHaveText([
@@ -46,7 +46,7 @@ test.describe('Storybook production grave states', () => {
         await expect(details).toContainText('Восстановится через 20:00')
         await expect(details).toContainText('5 MP · 3 с без движения. Esc — прервать.')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
-            'value',
+            'aria-valuenow',
             '0'
         )
     })
@@ -69,7 +69,7 @@ test.describe('Storybook production grave states', () => {
         const details = page.getByLabel('Состояние могилы')
         await expect(details).toContainText('0/100 HP')
         await expect(page.getByRole('progressbar', { name: 'Прочность могилы' })).toHaveAttribute(
-            'value',
+            'aria-valuenow',
             '0.05'
         )
         await expect(details.locator('dl')).toHaveCount(0)

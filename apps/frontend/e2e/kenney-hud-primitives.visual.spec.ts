@@ -8,7 +8,7 @@ async function ready(page: import('@playwright/test').Page): Promise<void> {
 }
 
 for (const width of [1280, 390, 320]) {
-    for (const section of ['parchment', 'ribbons', 'resources']) {
+    for (const section of ['parchment', 'identity', 'resources']) {
         test(`shared Kenney ${section} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
             await page.goto(
@@ -42,19 +42,15 @@ test('shared resource bars reveal only authorized numbers and keep empty fills e
         'aria-valuenow',
         '35'
     )
-    await expect(bars.locator('.game-resource-bar__text')).toHaveText(['18/30'])
+    await expect(bars.locator('.game-bar__label')).toHaveText(['18/30'])
     await expect(page.getByRole('progressbar', { name: 'Известные значения' })).toHaveAttribute(
         'aria-valuetext',
         '18/30'
     )
     await expect(
-        page
-            .getByRole('progressbar', { name: 'Пустая энергия' })
-            .locator('.game-resource-bar__fill')
-    ).toHaveCSS('width', '0px')
+        page.getByRole('progressbar', { name: 'Пустая энергия' }).locator('.game-bar__fill')
+    ).toBeHidden()
     await expect(
-        page
-            .getByRole('progressbar', { name: 'Нет ёмкости маны' })
-            .locator('.game-resource-bar__fill')
-    ).toHaveCSS('width', '0px')
+        page.getByRole('progressbar', { name: 'Нет ёмкости маны' }).locator('.game-bar__fill')
+    ).toBeHidden()
 })

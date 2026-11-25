@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-ratata/contracts'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 import { navigationDirection } from '@/shared/lib/input'
@@ -25,6 +25,7 @@ const emit = defineEmits<{ select: [id: string]; activate: [id: string] }>()
 const theme = useDarkPanelTheme()
 const {
     svg,
+    focusedId,
     zoom,
     dragOffset,
     dimensions,
@@ -53,7 +54,6 @@ const nodeById = computed(() => new Map(props.constellation.nodes.map((node) => 
 const colors = computed(
     () => new Map(props.constellation.paths.map((path) => [path.id, path.color]))
 )
-const focusedId = ref('')
 const nodeVisibility = computed(() => constellationVisibility(zoom.value))
 const markerVisible = (node: ConstellationNodeSnapshot) => nodeVisibility.value(node) > 0
 const backgroundSeed = computed(() =>

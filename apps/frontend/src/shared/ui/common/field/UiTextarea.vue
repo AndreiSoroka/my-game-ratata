@@ -20,7 +20,12 @@ defineExpose({
 </script>
 
 <template>
-    <FantasyBorder class="ui-field ui-textarea" :border="border" color="var(--ui-field-border)">
+    <FantasyBorder
+        as="span"
+        class="ui-field ui-textarea"
+        :border="border"
+        color="var(--ui-field-border)"
+    >
         <textarea
             ref="element"
             v-bind="invalid ? { ...$attrs, 'aria-invalid': true } : $attrs"

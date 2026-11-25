@@ -5,13 +5,28 @@ export interface UiFieldProps {
     invalid?: boolean
 }
 
-export type UiInputType = 'text' | 'search' | 'email' | 'password' | 'tel' | 'url'
+export type UiInputType =
+    | 'text'
+    | 'search'
+    | 'email'
+    | 'password'
+    | 'tel'
+    | 'url'
+    | 'number'
+    | 'checkbox'
+    | 'radio'
+    | 'range'
 
 export interface UiInputProps extends UiFieldProps {
     type?: UiInputType
     borderWidth?: number
     focusRing?: boolean
     framed?: boolean
+}
+
+export interface UiSelectProps extends UiFieldProps {
+    borderWidth?: number
+    focusRing?: boolean
 }
 
 interface UiFieldHandle<Element extends HTMLInputElement | HTMLTextAreaElement> {

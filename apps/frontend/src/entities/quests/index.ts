@@ -1,5 +1,7 @@
+export { questObjectiveText } from './model/questTermsText'
 export { default as GuildQuestCard } from './ui/GuildQuestCard.vue'
 export { default as QuestItemList } from './ui/QuestItemList.vue'
 export { default as QuestOfferPanel } from './ui/QuestOfferPanel.vue'
 export { default as QuestRewardSummary } from './ui/QuestRewardSummary.vue'
+export { default as QuestTerms } from './ui/QuestTerms.vue'
 export { default as QuestTurnInPanel } from './ui/QuestTurnInPanel.vue'

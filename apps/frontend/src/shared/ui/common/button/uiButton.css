@@ -1,4 +1,5 @@
 .ui-button {
+    --ui-button-min-height: 48px;
     --ui-button-current-border: var(--ui-button-normal-border);
     --ui-button-border-opacity: 1;
     --ui-button-current-top: var(--ui-button-normal-top);
@@ -16,7 +17,7 @@
     justify-content: center;
     box-sizing: border-box;
     min-width: 48px;
-    min-height: 48px;
+    min-height: var(--ui-button-min-height);
     max-width: 100%;
     border: 0;
     border-radius: 0;
@@ -34,6 +35,28 @@
 
 .ui-button--filled {
     --ui-button-shadow-blur: 3px;
+}
+
+.ui-button--small,
+.ui-button--compact {
+    min-width: 0;
+}
+
+.ui-button--small {
+    --ui-button-min-height: 30px;
+    padding: 6px 12px;
+    font-size: 14px;
+}
+
+.ui-button--compact {
+    --ui-button-min-height: 24px;
+    padding: 3px 8px;
+    font-size: 12px;
+}
+
+.ui-button--icon {
+    width: var(--ui-button-min-height);
+    padding: 0;
 }
 
 .ui-button--ghost {
@@ -85,9 +108,22 @@
     opacity: var(--ui-button-border-opacity);
 }
 
+.ui-button--small > .ui-button__border,
+.ui-button--compact > .ui-button__border {
+    inset: 2px;
+}
+
 .ui-button__content {
     min-width: 0;
     overflow-wrap: anywhere;
+}
+
+.ui-button[data-selected='true'] {
+    --ui-button-current-border: var(--ui-button-highlighted-border);
+    --ui-button-current-top: var(--ui-button-highlighted-top);
+    --ui-button-current-bottom: var(--ui-button-highlighted-bottom);
+    --ui-button-raised-shadow: inset 0 0 0 2px var(--ui-button-current-border);
+    color: var(--ui-button-highlighted-text);
 }
 
 .ui-button:not(:disabled):not([aria-disabled='true']):where(

@@ -11,8 +11,8 @@ import QuestItemList from './QuestItemList.vue'
 type QuestStage = 'offer' | 'turnIn'
 
 export interface QuestDecisionStoryArgs extends Required<QuestDecisionProps> {
-    default: 'details' | 'long' | 'empty' | 'delivery'
-    status?: 'none' | 'empty' | 'occupied'
+    default: 'details' | 'long' | 'empty' | 'text' | 'delivery'
+    status?: 'none' | 'empty' | 'text' | 'occupied'
     chooseRewardMode?: boolean
     rewardMode?: QuestRewardMode
     onConfirm: () => void
@@ -32,11 +32,12 @@ export const questDecisionControls: Meta<QuestDecisionStoryArgs>['argTypes'] = {
             labels: {
                 details: 'Условия поручения',
                 long: 'Подробные условия',
-                empty: 'Пустой div',
+                empty: 'Пустой div с фоном',
+                text: 'Текст',
                 delivery: 'Готовая доставка',
             },
         },
-        options: ['details', 'long', 'empty'],
+        options: ['details', 'long', 'empty', 'text', 'delivery'],
     },
     onConfirm: { control: false, table: { disable: true } },
     onCancel: { control: false, table: { disable: true } },
@@ -78,7 +79,9 @@ const offerObjectives = [
 ]
 
 function questDetails(stage: QuestStage, content: QuestDecisionStoryArgs['default']) {
-    if (content === 'empty') return h('div')
+    if (content === 'empty')
+        return h('div', { style: { minHeight: '26px', background: '#8b4865' } })
+    if (content === 'text') return descriptions[stage]
     if (content === 'delivery')
         return h('div', [
             h('h3', 'Сердца для колокола памяти'),
@@ -119,7 +122,9 @@ export function renderQuestDecisionStory(
         status: () =>
             status === 'occupied'
                 ? h('p', { role: 'status' }, 'Сначала завершите или отмените текущий договор.')
-                : h('div'),
+                : status === 'text'
+                  ? 'Поручение ещё доступно.'
+                  : h('div', { style: { minHeight: '20px', background: '#374c82' } }),
     }
     const host = renderVueStory(
         () => h(component, props, status && status !== 'none' ? slots : { default: slots.default }),

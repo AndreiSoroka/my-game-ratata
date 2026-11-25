@@ -15,13 +15,13 @@ import {
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { graveName } from '@/entities/graves'
+import { itemStackLabel } from '@/entities/items'
+import { abilityUsage } from '@/entities/progression'
 import { characterName, itemName, locationName, tGame, tLocalized } from '@/shared/lib/i18n'
 
-import { abilityUsage } from './abilityUsage'
 import { relation } from './combatTargeting'
-import { graveName } from './graveInteractions'
 import { targetInteractionDistance } from './interactionTargets'
-import { itemStackLabel } from './itemLabels'
 
 export type WorldSelectionTargetKind =
     'character' | 'world' | 'resource' | 'farm' | 'chest' | 'item' | 'grave' | 'portal'

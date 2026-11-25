@@ -83,14 +83,14 @@ test('FantasyBorder Default Controls switch slot content and its native element'
     await page.getByRole('tab', { name: /^Controls/ }).click()
 
     const slot = page.locator('#control-slotContent')
-    await slot.selectOption({ label: 'Empty element' })
+    await slot.selectOption({ label: 'Пустой блок с фоном' })
     await expect(border.locator(':scope > div')).toBeEmpty()
 
     await page.locator('#control-as').selectOption('span')
     await expect(border).toHaveJSProperty('tagName', 'SPAN')
     await expect(border.locator(':scope > span')).toBeEmpty()
 
-    await slot.selectOption({ label: 'Sample text' })
+    await slot.selectOption({ label: 'Текст' })
     await expect(border).toHaveText('Рамка с содержимым')
 })
 

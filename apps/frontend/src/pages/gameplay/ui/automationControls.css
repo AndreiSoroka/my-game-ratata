@@ -1,0 +1,35 @@
+.automation-form,
+.automation-list {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+.automation-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+.automation-form label {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+.automation-form p {
+    margin: 0;
+}
+.automation-muted {
+    color: var(--ui-dark-panel-muted, var(--ui-dark-panel-text));
+    font-size: 12px;
+}
+.automation-card {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid transparent;
+}
+.automation-card h3 {
+    margin: 0;
+}

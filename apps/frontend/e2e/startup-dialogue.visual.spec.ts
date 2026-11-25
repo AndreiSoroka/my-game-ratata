@@ -42,7 +42,7 @@ test('shows a browser-ready error, code entry, mumble and merchant service stori
     await expect(page.getByText('М-м-м-м-м…')).toBeVisible()
     await page.screenshot({ path: info.outputPath('scripted-mumble.png') })
 
-    await page.goto('/iframe.html?id=game-adventuredialogue--service&viewMode=story')
+    await page.goto('/iframe.html?id=pages-gameplay-adventuredialogue--service&viewMode=story')
     await expect(page.getByRole('heading', { name: 'Товары' })).toBeVisible()
     const foodOffer = page.getByRole('button', { name: /^Еда/ })
     await expect(foodOffer).toBeEnabled()

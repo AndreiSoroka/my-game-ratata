@@ -6,10 +6,10 @@ import type {
 } from '@my-game-ratata/contracts'
 import { FARM_SOW_ENERGY, FARM_SOW_SEEDS } from '@my-game-ratata/contracts'
 
+import { itemStackLabel } from '@/entities/items'
 import { tGame } from '@/shared/lib/i18n'
 
 import { interactionDistance, nearestByKind } from './interactionTargets'
-import { itemStackLabel } from './itemLabels'
 import type { InteractionAction } from './nearbyInteractionActions'
 
 export function resourceActions(

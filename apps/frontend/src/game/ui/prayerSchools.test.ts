@@ -7,11 +7,11 @@ import {
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import ActionHotbar from '../../pages/gameplay/ui/ActionHotbar.vue'
 import { trainingPrayerHighlight } from '../runtime/trainingGuides'
 import { characterFixture } from '../testing/characterFixture'
 import { developmentCharacterFixture } from '../testing/developmentFixture'
 import { graveFixture } from '../testing/graveFixture'
-import ActionHotbar from './ActionHotbar.vue'
 import { gravePrayerPreview } from './graveInteractions'
 import { prayerLearningActions } from './nearbyCharacterActions'
 import { preferredPrayer } from './prayerSelection'

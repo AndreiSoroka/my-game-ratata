@@ -1,9 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import { GraveDetails } from '@/entities/graves'
+
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
-import GraveDetails from './GraveDetails.vue'
 import { graveActions, gravePrayerPreview } from './graveInteractions'
 import { nearbyInteractionTarget } from './nearbyInteractionActions'
 

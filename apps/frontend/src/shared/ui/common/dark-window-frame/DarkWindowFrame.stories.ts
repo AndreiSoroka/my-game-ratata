@@ -2,68 +2,30 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 
 import { darkPanelButtonColors, UiButton } from '../button'
 import DarkWindowFrame from './DarkWindowFrame.vue'
 
 const close = fn().mockName('close')
-const empty = () => h('div')
-const summaries = {
-    none: undefined,
-    empty,
-    usedSlots: () => 'Занято 2 из 10 слотов',
-}
-const bodies = {
-    empty,
-    items: () => h('ul', [h('li', 'Фляга × 1'), h('li', 'Походный плащ × 1')]),
-}
-const actions = {
-    none: undefined,
-    empty,
-    button: () =>
-        h(
-            UiButton,
-            { appearance: 'panel', colors: darkPanelButtonColors, onClick: close },
-            () => 'Закрыть'
-        ),
-}
 
 interface StoryArgs {
     title: string
     closeLabel?: string
-    summary: keyof typeof summaries
-    default: keyof typeof bodies
-    actions: keyof typeof actions
+    summary: StorySlot
+    default: StorySlot
+    actions: StorySlot
 }
 
 const meta = {
     title: 'Shared/Common/DarkWindowFrame',
-    args: { title: 'Рюкзак', summary: 'usedSlots', default: 'items', actions: 'button' },
+    args: { title: 'Рюкзак', summary: 'text', default: 'text', actions: 'none' },
     argTypes: {
         title: { control: 'text' },
         closeLabel: { control: 'text' },
-        summary: {
-            name: 'Слот сводки',
-            control: {
-                type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', usedSlots: 'Занятые слоты' },
-            },
-            options: ['none', 'empty', 'usedSlots'],
-        },
-        default: {
-            name: 'Слот содержимого',
-            control: { type: 'select', labels: { empty: 'Пустой div', items: 'Предметы' } },
-            options: ['empty', 'items'],
-        },
-        actions: {
-            name: 'Слот действий',
-            control: {
-                type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', button: 'Кнопка закрытия' },
-            },
-            options: ['none', 'empty', 'button'],
-        },
+        summary: storySlotControl('Слот сводки'),
+        default: storySlotControl('Слот содержимого'),
+        actions: storySlotControl('Слот действий'),
     },
     render({ title, closeLabel, summary, default: body, actions: footer }) {
         const host = renderVueStory(
@@ -71,7 +33,25 @@ const meta = {
                 h(
                     DarkWindowFrame,
                     { title, closeLabel, onClose: close },
-                    { summary: summaries[summary], default: bodies[body], actions: actions[footer] }
+                    {
+                        summary: storySlot(summary, 'Занято 2 из 10 слотов', () =>
+                            h('strong', '2 / 10')
+                        ),
+                        default: storySlot(body, 'Фляга и походный плащ', () =>
+                            h('ul', [h('li', 'Фляга × 1'), h('li', 'Походный плащ × 1')])
+                        ),
+                        actions: storySlot(footer, 'Действия', () =>
+                            h(
+                                UiButton,
+                                {
+                                    appearance: 'panel',
+                                    colors: darkPanelButtonColors,
+                                    onClick: close,
+                                },
+                                () => 'Закрыть'
+                            )
+                        ),
+                    }
                 ),
             {},
             { padding: '16px' }

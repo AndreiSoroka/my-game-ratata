@@ -64,6 +64,34 @@
     cursor: not-allowed;
 }
 
+.ui-select .ui-field__control {
+    color-scheme: dark;
+}
+
+.ui-select .ui-field__control option {
+    background: var(--ui-field-surface);
+    color: var(--ui-dark-panel-text);
+}
+
+.ui-input--choice {
+    display: inline-flex;
+}
+
+.ui-input__choice-control {
+    display: inline-block;
+    flex: none;
+    inline-size: auto;
+}
+
+.ui-input__choice-control:not(.ui-input--choice *):not([data-focus-ring='false']):focus-visible {
+    outline: 1px solid var(--ui-dark-panel-title);
+    outline-offset: 2px;
+}
+
+.ui-field__control:is([type='checkbox'], [type='radio'], [type='range']) {
+    accent-color: var(--ui-dark-panel-positive);
+}
+
 .ui-field__adornment {
     display: inline-flex;
     flex: none;

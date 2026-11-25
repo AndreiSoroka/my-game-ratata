@@ -12,19 +12,12 @@ import {
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { graveName } from '@/entities/graves'
 import { tGame } from '@/shared/lib/i18n'
 
 import { chestActions } from './chestActions'
 import { interactionDistance } from './interactionTargets'
 import type { InteractionAction, InteractionTarget } from './nearbyInteractionActions'
-
-export function graveName(grave: WorldGraveSnapshot): string {
-    return {
-        active: tGame('game.world.grave'),
-        ruined: tGame('game.world.destroyedGrave'),
-        purified: tGame('game.world.cleansedGrave'),
-    }[grave.phase]
-}
 
 /** Explicit selection pins the grave even while the ordinary prayer preview changes. */
 export function gravePrayerPreview(

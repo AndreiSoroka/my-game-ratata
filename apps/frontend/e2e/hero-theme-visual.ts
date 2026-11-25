@@ -59,30 +59,29 @@ export async function expectCharacterWindowAppearance(
 ): Promise<void> {
     const background = window.getByRole('region', { name: 'Постоянные бонусы прошлого' })
     await expect(background).toContainText(`Прошлое: ${label}`)
-    const frames = [
-        {
-            frame: window.locator(':scope > .game-frame--window'),
-            width: 9,
-            legacy: 'tile_0009.png',
-        },
-        {
-            frame: background.locator(':scope > .game-frame--inset'),
-            width: 5,
-            legacy: 'tile_0008.png',
-        },
-    ]
-    for (const { frame, width, legacy } of frames) {
-        const themed = frame.locator('.game-frame__theme-border')
-        if (heroClass === 'ranger') {
-            await expect(themed).toHaveCount(0)
-            const appearance = await frame.evaluate((element) => {
-                const style = getComputedStyle(element, '::before')
-                return { image: style.borderImageSource, width: style.borderImageWidth }
-            })
-            expect(appearance.image).toContain(legacy)
-            expect(appearance.width).toBe(`${width}px`)
-        } else {
-            const accent = await expectThemedBorder(themed, border, borderWidth)
+    const windowFrame = window.locator(':scope > .game-frame--window')
+    const insetFrame = background.locator(':scope > .game-frame--inset')
+    if (heroClass === 'ranger') {
+        const accent = await expectThemedBorder(
+            windowFrame.locator('.game-frame__theme-border'),
+            'border-014',
+            10
+        )
+        expect(accent).toBe('rgb(198, 184, 155)')
+        await expect(insetFrame.locator('.game-frame__theme-border')).toHaveCount(0)
+        const appearance = await insetFrame.evaluate((element) => {
+            const style = getComputedStyle(element, '::before')
+            return { image: style.borderImageSource, width: style.borderImageWidth }
+        })
+        expect(appearance.image).toContain('tile_0008.png')
+        expect(appearance.width).toBe('5px')
+    } else {
+        for (const frame of [windowFrame, insetFrame]) {
+            const accent = await expectThemedBorder(
+                frame.locator('.game-frame__theme-border'),
+                border,
+                borderWidth
+            )
             expect(accent).toBe(characterWindowAccents[heroClass])
         }
     }

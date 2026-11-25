@@ -8,9 +8,9 @@ import {
     type WorldChestSnapshot,
 } from '@my-game-ratata/contracts'
 
+import { abilityUsage } from '@/entities/progression'
 import { abilityName, tGame } from '@/shared/lib/i18n'
 
-import { abilityUsage } from './abilityUsage'
 import { relation } from './combatTargeting'
 import { interactionDistance } from './interactionTargets'
 import type { InteractionAction } from './nearbyInteractionActions'

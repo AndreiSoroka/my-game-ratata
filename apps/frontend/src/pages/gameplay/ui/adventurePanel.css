@@ -1,0 +1,37 @@
+.adventure-ui {
+    color: var(--ui-dark-panel-text);
+    font-family: var(--ratata-font-family), system-ui, sans-serif;
+}
+
+.adventure-dialogue {
+    --dark-window-max-block-size: calc(100dvh - 130px);
+    position: absolute;
+    z-index: 8;
+    bottom: 76px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(580px, calc(100% - 32px));
+}
+.adventure-dialogue--sign {
+    width: min(420px, calc(100% - 32px));
+}
+.dialogue-switch-status {
+    position: absolute;
+    z-index: 1;
+    inset-inline: 0;
+    inset-block-end: 0;
+    margin: 0;
+    padding: 8px 12px;
+    color: var(--ui-dark-panel-text);
+    background: var(--ui-dark-panel-surface);
+    font:
+        14px/1.4 system-ui,
+        sans-serif;
+    text-align: center;
+}
+@media (max-width: 740px) {
+    .adventure-dialogue {
+        --dark-window-max-block-size: calc(100dvh - 220px);
+        bottom: 160px;
+    }
+}

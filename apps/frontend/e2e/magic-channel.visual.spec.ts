@@ -10,6 +10,7 @@ for (const width of [320, 1280]) {
         )
         const channel = page.locator('.control-status--magic')
         await expect(channel.getByRole('status')).toHaveText('Оковы · 3 с')
+        await expect(channel).toHaveCSS('border-top-width', '0px')
         await expect(channel.getByRole('button', { name: 'Прервать заклинание' })).toBeVisible()
         await expectUiFits(channel, width)
         await readyUiStory(page)

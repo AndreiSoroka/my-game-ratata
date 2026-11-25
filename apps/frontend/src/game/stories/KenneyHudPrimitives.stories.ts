@@ -10,8 +10,8 @@ type Story = StoryObj
 export const Parchment: Story = {
     render: () => renderVueStory(KenneyHudPrimitivesStory, { section: 'parchment' }),
 }
-export const Ribbons: Story = {
-    render: () => renderVueStory(KenneyHudPrimitivesStory, { section: 'ribbons' }),
+export const Identity: Story = {
+    render: () => renderVueStory(KenneyHudPrimitivesStory, { section: 'identity' }),
 }
 export const Resources: Story = {
     render: () => renderVueStory(KenneyHudPrimitivesStory, { section: 'resources' }),

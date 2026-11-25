@@ -70,7 +70,7 @@ test('the hero class toolbar previews the selected class on the join form', asyn
 test('the character window applies the fixture class and follows the hero class toolbar', async ({
     page,
 }) => {
-    await page.goto('/?path=/story/game-characterwindow--statistics')
+    await page.goto('/?path=/story/pages-gameplay-characterwindow--statistics')
     const preview = page.frameLocator('#storybook-preview-iframe')
     const window = preview.getByRole('dialog', { name: 'Персонаж', exact: true })
     await expect(window).toBeVisible()
@@ -95,5 +95,5 @@ async function chooseClass(page: Page, label: string): Promise<void> {
 async function openComponent(page: Page, name: string): Promise<void> {
     const search = page.getByRole('searchbox', { name: 'Search for components' })
     await search.fill(name)
-    await page.getByRole('option', { name: new RegExp(name) }).click()
+    await page.getByRole('option', { name: new RegExp(`^${name}\\b`) }).click()
 }

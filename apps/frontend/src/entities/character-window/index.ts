@@ -1,2 +1,5 @@
 export type { CharacterTab } from './model/characterTab'
+export { heroClassTheme } from './model/heroClassThemes'
 export { default as CharacterWindowView } from './ui/CharacterWindowView.vue'
+export { default as HeroBackgroundSummary } from './ui/HeroBackgroundSummary.vue'
+export { default as HeroClassIcon } from './ui/HeroClassIcon.vue'

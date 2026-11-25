@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<UiButtonProps>(), {
     panel: 'panel-004',
     panelAppearance: 'solid',
     variant: 'secondary',
+    size: 'default',
     highlighted: undefined,
     focusRing: true,
     disabled: false,
@@ -41,9 +42,15 @@ const buttonStyle = computed(() => {
         :type="type"
         :disabled="disabled"
         class="ui-button"
-        :class="[`ui-button--${appearance}`, `ui-button--${variant}`]"
+        :class="[
+            `ui-button--${appearance}`,
+            `ui-button--${variant}`,
+            `ui-button--${size}`,
+            { 'ui-button--icon': icon },
+        ]"
         :data-highlight-managed="highlighted !== undefined"
         :data-highlighted="highlighted"
+        :data-selected="selected"
         :data-focus-ring="focusRing"
         :style="buttonStyle"
     >
@@ -64,6 +71,7 @@ const buttonStyle = computed(() => {
                 as="span"
                 class="ui-button__border"
                 :border="border"
+                :border-width="size === 'default' ? undefined : 5"
                 color="var(--ui-button-current-border)"
                 aria-hidden="true"
             />

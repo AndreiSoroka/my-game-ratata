@@ -6,6 +6,7 @@ import {
     PRAYER_SCHOOL_DEFINITIONS,
     prayerAbilityForDeity,
 } from '@my-game-ratata/contracts'
+import { computed, reactive, readonly, watch } from 'vue'
 
 import { tGame, tLocalized } from '@/shared/lib/i18n'
 
@@ -59,4 +60,29 @@ function hearthPatronDetails(patron: DeitySnapshot) {
                 : undefined,
         changesInMs: changesInMs ?? undefined,
     }
+}
+
+export function createPatronStatusStore(getPatrons: () => readonly PatronStatusEntry[]) {
+    const sortedPatrons = computed(() =>
+        getPatrons()
+            .filter((patron) => patron.name.trim())
+            .sort((left, right) => (right.level ?? 0) - (left.level ?? 0))
+    )
+    const moodChanges = reactive(new Map<DeityId, number>())
+
+    watch(
+        () => sortedPatrons.value.map(({ id, omen }) => [id, omen] as const),
+        (omens, previousOmens) => {
+            const current = new Map(omens)
+            for (const [id, previousOmen] of previousOmens) {
+                const omen = current.get(id)
+                if (!omen) {
+                    moodChanges.delete(id)
+                } else if (previousOmen && previousOmen !== omen) {
+                    moodChanges.set(id, (moodChanges.get(id) ?? 0) + 1)
+                }
+            }
+        }
+    )
+    return { sortedPatrons, moodChanges: readonly(moodChanges) }
 }

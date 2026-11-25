@@ -1,0 +1,41 @@
+.gameplay-party-panel {
+    position: absolute;
+    top: var(--game-hud-top, 14px);
+    left: 14px;
+    z-index: 4;
+    width: 220px;
+}
+@media (max-width: 740px) {
+    .gameplay-party-panel {
+        left: 8px;
+        width: 164px;
+    }
+}
+
+.target-help {
+    display: grid;
+    place-content: center;
+    min-height: 20px;
+    color: var(--rpg-text);
+    font: 10px system-ui;
+    text-align: center;
+    text-shadow: 1px 1px #101c13;
+}
+.nearby-prompt {
+    display: block;
+    justify-self: center;
+    border: 0;
+    padding: 0 4px;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.nearby-prompt:focus-visible {
+    outline: 1px solid var(--rpg-focus);
+}
+@media (max-width: 740px) {
+    .target-help {
+        font-size: 9px;
+        min-height: 24px;
+    }
+}

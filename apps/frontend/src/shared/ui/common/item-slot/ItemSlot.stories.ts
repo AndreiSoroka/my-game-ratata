@@ -3,18 +3,13 @@ import { fn } from 'storybook/test'
 import { h } from 'vue'
 
 import { itemAssetCatalog } from '@/shared/lib/item-assets'
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 
 import ItemSlot from './ItemSlot.vue'
 import type { ItemSlotProps } from './itemSlotProps'
 
-const contents = {
-    empty: () => h('span', { style: { position: 'absolute' } }),
-    marker: () => h('span', { style: { position: 'absolute', top: '3px', left: '4px' } }, '★'),
-}
-
 interface StoryArgs extends ItemSlotProps {
-    content: keyof typeof contents
+    content: StorySlot
     onClick: () => void
 }
 
@@ -29,7 +24,7 @@ const meta = {
         quantity: 3,
         src: itemAssetCatalog.food.src,
         alt: 'Яблоко',
-        content: 'empty',
+        content: 'none',
         onClick: fn(),
     },
     argTypes: {
@@ -41,11 +36,7 @@ const meta = {
         quantity: { control: { type: 'number', min: 1, step: 1 } },
         src: { control: 'text' },
         alt: { control: 'text' },
-        content: {
-            name: 'Содержимое слота',
-            control: { type: 'select', labels: { empty: 'Пустой span', marker: 'Метка' } },
-            options: ['empty', 'marker'],
-        },
+        content: storySlotControl('Содержимое слота'),
         onClick: { control: false },
     },
     render({ content, ...props }) {
@@ -59,7 +50,19 @@ const meta = {
                         ...props,
                         'aria-label': props.as === 'button' ? buttonLabel : undefined,
                     },
-                    contents[content]
+                    {
+                        default: storySlot(
+                            content,
+                            '1',
+                            () =>
+                                h(
+                                    'span',
+                                    { style: { position: 'absolute', top: '3px', left: '4px' } },
+                                    '★'
+                                ),
+                            { inline: true }
+                        ),
+                    }
                 ),
             {}
         )

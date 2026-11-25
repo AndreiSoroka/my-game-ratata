@@ -101,9 +101,9 @@ test('forms a party, cancels follow on manual input and allows a deliberate hit 
         await expect(party.getByRole('button', { pressed: false })).toHaveCount(2)
         await expect(first.getByRole('img', { name: 'Лидер', exact: true })).toHaveCount(1)
         await expect(party).not.toContainText('100%')
-        await expect(first.locator('.party-member__hp > span').first()).toHaveAttribute(
-            'style',
-            'width: 100%;'
+        await expect(party.locator('.party-member__health').first()).toHaveAttribute(
+            'aria-valuenow',
+            '100'
         )
         await first.evaluate(
             (targetId) => window.__ratataTest!.send({ type: 'follow', targetId }),

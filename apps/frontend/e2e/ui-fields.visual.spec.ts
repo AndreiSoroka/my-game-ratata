@@ -93,11 +93,11 @@ test('UiInput Default Controls change both slots independently', async ({ page }
     await page.getByRole('tab', { name: /^Controls/ }).click()
     const leading = page.getByRole('combobox', { name: 'leading', exact: true })
     const trailing = page.getByRole('combobox', { name: 'trailing', exact: true })
-    await leading.selectOption({ label: 'Пустой span' })
-    await trailing.selectOption({ label: 'Пустой span' })
+    await leading.selectOption({ label: 'Цветной блок' })
+    await trailing.selectOption({ label: 'Цветной блок' })
     await expect(preview.getByTestId('ui-input-empty-leading')).toHaveCount(1)
     await expect(preview.getByTestId('ui-input-empty-trailing')).toHaveCount(1)
-    await leading.selectOption({ label: 'Знак ввода' })
+    await leading.selectOption({ label: 'Текст' })
     await expect(preview.getByText('›', { exact: true })).toBeVisible()
     await expect(preview.getByTestId('ui-input-empty-leading')).toHaveCount(0)
     await expect(preview.getByTestId('ui-input-empty-trailing')).toHaveCount(1)
@@ -105,6 +105,43 @@ test('UiInput Default Controls change both slots independently', async ({ page }
     await expect(preview.getByText('›', { exact: true })).toBeVisible()
     await expect(preview.getByText(/\d+ \/ 240/)).toBeVisible()
 })
+
+test('UiSelect Controls drive the native options slot and validity', async ({ page }) => {
+    await page.goto('/?path=/story/shared-common-uiselect--default')
+    const preview = page.frameLocator('#storybook-preview-iframe')
+    const select = preview.getByRole('combobox', { name: 'Место' })
+    await expect(select).toHaveJSProperty('tagName', 'SELECT')
+    await select.selectOption('forest')
+    await expect(select).toHaveValue('forest')
+    await page.getByRole('tab', { name: /^Controls/ }).click()
+    const options = page.locator('#control-optionsSlot')
+    await options.selectOption({ label: 'Пустой цветной пункт' })
+    await expect(select.locator('option')).toHaveCount(1)
+    await expect(select.locator('option')).toBeEmpty()
+    await options.selectOption({ label: 'Текст' })
+    await expect(select.locator('option')).toHaveText('Новогород')
+    await options.selectOption({ label: 'Группа мест' })
+    await expect(select.locator('optgroup')).toHaveAttribute('label', 'Соседние места')
+    await page.locator('label[for="control-invalid"]').click()
+    await expect(select).toHaveAttribute('aria-invalid', 'true')
+    await page.locator('label[for="control-disabled"]').click()
+    await expect(select).toBeDisabled()
+})
+
+for (const width of [1280, 320]) {
+    for (const variant of ['default', 'invalid', 'disabled']) {
+        test(`UiSelect ${variant} at ${width}px`, async ({ page }) => {
+            await page.setViewportSize({ width, height: 844 })
+            await page.goto(uiStoryUrl(`shared-common-uiselect--${variant}`))
+            const frame = page.locator('.ui-select')
+            const select = page.getByRole('combobox', { name: 'Место' })
+            await expect(select).toBeVisible()
+            await readyUiStory(page)
+            await expectUiFits(frame, width)
+            await expect(frame).toHaveScreenshot(`uiselect-${variant}-${width}.png`)
+        })
+    }
+}
 
 test('UiInput slots leave enough room to edit text at 320px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 844 })

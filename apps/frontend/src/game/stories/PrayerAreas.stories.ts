@@ -1,5 +1,5 @@
 import '../../assets/base.css'
-import '../ui/rpgControls.css'
+import '../../pages/gameplay/ui/rpgControls.css'
 import './prayerAreasPreview.css'
 
 import {

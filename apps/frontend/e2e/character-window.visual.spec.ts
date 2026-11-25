@@ -12,7 +12,7 @@ for (const width of [320, 390, 1280]) {
 
         test(`character ${tab} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=game-characterwindow--${tab}&viewMode=story`)
+            await page.goto(`/iframe.html?id=pages-gameplay-characterwindow--${tab}&viewMode=story`)
             const menu = page.getByRole('dialog', { name: 'Персонаж', exact: true })
             await expect(menu).toBeVisible()
             await checkAppearance?.(menu)
@@ -26,7 +26,7 @@ for (const width of [320, 390, 1280]) {
 }
 
 test('the character window entity previews its tab and content controls', async ({ page }) => {
-    await page.goto('/iframe.html?id=game-characterwindow--statistics&viewMode=story')
+    await page.goto('/iframe.html?id=pages-gameplay-characterwindow--statistics&viewMode=story')
     const gameWindow = page.getByRole('dialog', { name: 'Персонаж', exact: true })
     const gameControls = await readCharacterControls(gameWindow)
 
@@ -44,12 +44,12 @@ test('the character window entity previews its tab and content controls', async 
     await expect(window.getByRole('tabpanel')).toContainText('Раздел «Квесты»')
     await page
         .getByRole('combobox', { name: 'content', exact: true })
-        .selectOption({ label: 'Пустой div' })
+        .selectOption({ label: 'Пустой блок с фоном' })
     await expect(window.getByRole('tabpanel')).toBeEmpty()
 })
 
 test('character tab labels have room at narrow widths', async ({ page }) => {
-    await page.goto('/iframe.html?id=game-characterwindow--statistics&viewMode=story')
+    await page.goto('/iframe.html?id=pages-gameplay-characterwindow--statistics&viewMode=story')
     await readyUiStory(page)
     const tabs = page.getByRole('tablist', { name: 'Разделы персонажа' }).getByRole('tab')
     await expect(tabs).toHaveCount(4)

@@ -63,30 +63,8 @@
 }
 
 .market-quantity__field {
-    display: inline-flex;
-    background: color-mix(in srgb, var(--city-market-surface) 90%, var(--city-market-accent));
+    inline-size: 66px;
     color-scheme: dark;
-}
-
-.market-quantity__field:focus-within {
-    outline: 1px solid var(--ui-dark-panel-title);
-    outline-offset: 2px;
-}
-
-.market-quantity input {
-    box-sizing: border-box;
-    inline-size: 62px;
-    padding: 3px 4px;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font:
-        16px/1.25 system-ui,
-        sans-serif;
-}
-
-.market-quantity input:focus {
-    outline: none;
 }
 
 .city-market__stock {

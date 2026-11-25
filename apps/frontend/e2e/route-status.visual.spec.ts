@@ -7,12 +7,11 @@ for (const width of [1280, 390]) {
         const status = page.getByRole('status')
         await expect(status).toContainText('Точка 4: путь перекрыт')
         await expect(status).toContainText('отмена через 8 с')
-        await expect(status.locator(':scope > .game-frame')).toHaveCount(1)
-        const fill = await status.locator(':scope > .game-frame').evaluate((frame) => {
-            const style = getComputedStyle(frame, '::after')
-            return style.backgroundColor !== 'rgba(0, 0, 0, 0)' || style.backgroundImage !== 'none'
-        })
-        expect(fill).toBe(true)
+        await expect(status.locator(':scope > .game-frame, :scope > .fantasy-border')).toHaveCount(
+            0
+        )
+        await expect(status).toHaveCSS('border-top-width', '0px')
+        await expect(status).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
         await page.evaluate(() => document.fonts.ready)
         const cancel = status.getByRole('button', { name: 'Остановить маршрут' })
         await expect(cancel).toBeVisible()

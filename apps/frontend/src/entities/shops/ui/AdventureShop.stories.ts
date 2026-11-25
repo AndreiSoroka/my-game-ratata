@@ -11,7 +11,8 @@ import AdventureShop from './AdventureShop.vue'
 
 const marketExamples = {
     none: undefined,
-    empty: () => h('div'),
+    empty: () => h('div', { style: { minHeight: '24px', background: '#625091' } }),
+    text: () => 'Городской рынок работает до сумерек.',
     example: () =>
         h('div', [
             h('strong', 'Городской рынок'),
@@ -49,9 +50,14 @@ const meta = {
         market: {
             control: {
                 type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', example: 'Городской рынок' },
+                labels: {
+                    none: 'Без слота',
+                    empty: 'Пустой div с фоном',
+                    text: 'Текст',
+                    example: 'Городской рынок',
+                },
             },
-            options: ['none', 'empty', 'example'],
+            options: ['none', 'empty', 'text', 'example'],
         },
         onBuy: { control: false },
     },

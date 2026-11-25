@@ -15,7 +15,7 @@ interface StoryArgs extends QuestDecisionStoryArgs {
     rewardItems: Array<{ itemId: ItemId; quantity: number }>
     rewardFromCity: boolean
     rewardMode: QuestRewardMode
-    status: 'none' | 'empty' | 'occupied'
+    status: 'none' | 'empty' | 'text' | 'occupied'
 }
 
 const meta = {
@@ -46,9 +46,14 @@ const meta = {
             name: 'Слот статуса',
             control: {
                 type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', occupied: 'Активный договор' },
+                labels: {
+                    none: 'Без слота',
+                    empty: 'Пустой div с фоном',
+                    text: 'Текст',
+                    occupied: 'Активный договор',
+                },
             },
-            options: ['none', 'empty', 'occupied'],
+            options: ['none', 'empty', 'text', 'occupied'],
         },
     },
     render: (args) => renderQuestDecisionStory(QuestOfferPanel, args, 'offer'),

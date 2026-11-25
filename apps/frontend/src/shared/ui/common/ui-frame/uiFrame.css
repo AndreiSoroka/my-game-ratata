@@ -1,0 +1,123 @@
+.game-frame {
+    --game-ui-frame-simple: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thin outline/tile_0008.png');
+    --game-ui-frame-parchment: url('/game/map/assets/KenneyUiPackPixelAdventure/Tiles/Large tiles/Thick outline/tile_0013.png');
+    --game-ui-brass-filter: grayscale(1) sepia(1) saturate(0.65) brightness(0.95);
+    display: contents;
+}
+
+:where(.game-frame-host) {
+    position: relative;
+    isolation: isolate;
+}
+
+.game-frame::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+    content: '';
+    background: var(--game-frame-fill, linear-gradient(135deg, #1d3527, #10241c 72%));
+    box-shadow: 0 3px 0 #08150f99;
+}
+
+.game-frame--inset::before,
+.game-frame--speech::before {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    display: block;
+    pointer-events: none;
+    content: '';
+    image-rendering: pixelated;
+    z-index: 1;
+    border: 5px solid transparent;
+    border-image: var(--game-ui-frame-simple) 10 / 5px / 0 stretch;
+}
+
+.game-frame--inset::after {
+    background: var(--game-frame-fill, linear-gradient(135deg, #12271b, #0d1e16));
+    box-shadow: inset 0 2px 4px #07150a66;
+}
+
+.game-frame--inset::before {
+    filter: var(--game-ui-brass-filter);
+    opacity: 0.65;
+}
+
+.game-frame--themed::before {
+    content: none;
+}
+
+.game-frame--themed::after {
+    background: var(
+        --game-frame-fill,
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--ui-themed-panel-surface) 92%, var(--ui-themed-panel-accent)),
+            var(--ui-themed-panel-surface) 72%
+        )
+    );
+}
+
+.game-frame--themed.game-frame--inset::after {
+    background: var(
+        --game-frame-fill,
+        color-mix(in srgb, var(--ui-themed-panel-surface) 92%, #080e0d)
+    );
+}
+
+.game-frame > .game-frame__theme-border {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+}
+
+.game-frame--inset > .game-frame__theme-border {
+    opacity: 0.65;
+}
+
+.game-frame--speech::after {
+    background: var(--game-frame-fill, #f5efe3);
+    box-shadow: 0 3px 0 #08150f66;
+}
+
+.game-frame--speech::before {
+    filter: grayscale(1) brightness(0.38);
+}
+
+.game-frame-host:has(> .game-frame--parchment) {
+    --game-panel-text: #5d6470;
+    --game-panel-muted: #8b7284;
+    --game-panel-divider: #a3916244;
+    --game-panel-warning: #9e3e2c;
+    color: var(--game-panel-text);
+}
+
+.game-frame--parchment::before {
+    content: none;
+}
+
+.game-frame--parchment::after {
+    inset: calc(-1 * var(--game-frame-border-width, 10px));
+    box-sizing: border-box;
+    image-rendering: pixelated;
+    background: #f3ddba;
+    border: var(--game-frame-border-width, 10px) solid transparent;
+    border-image: var(--game-ui-frame-parchment) 10 fill /
+        var(--game-frame-image-width, var(--game-frame-border-width, 10px)) / 0 stretch;
+    box-shadow: none;
+}
+
+.game-frame-host.game-fantasy-surface {
+    --game-panel-text: #5d5037;
+    --game-panel-heading: #554a34;
+    --game-panel-muted: #7e7258;
+    --game-panel-divider: #a3916255;
+    --game-panel-warning: #9e3e2c;
+}
+
+:where(.game-frame-host[tabindex='-1']):focus {
+    outline: none;
+}

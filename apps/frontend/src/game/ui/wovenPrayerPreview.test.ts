@@ -8,9 +8,9 @@ import {
 import { expect, it } from 'vitest'
 
 import { choosePrayerPreviewTargets } from '../../../../../contracts/src/prayerPreviewTargets'
+import { bindingMatchesAction, prayerDescription } from '../../pages/gameplay/model/hotbarBindings'
 import { characterFixture } from '../testing/characterFixture'
 import { graveFixture } from '../testing/graveFixture'
-import { bindingMatchesAction, prayerDescription } from './hotbarBindings'
 
 function caster() {
     const player = characterFixture('caster', { health: { kind: 'exact', current: 26, max: 26 } })

@@ -9,7 +9,7 @@ for (const width of [320, 390, 1280]) {
     test(`full catalogue remains readable and pannable at ${width}px`, async ({ page }, info) => {
         await page.setViewportSize({ width, height: 844 })
         await page.goto(
-            '/iframe.html?id=game-characterwindow--full-mother-development&viewMode=story'
+            '/iframe.html?id=pages-gameplay-characterwindow--full-mother-development&viewMode=story'
         )
         const graph = page.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
@@ -502,7 +502,9 @@ function hitGeometry(graph: Locator) {
 for (const width of [320, 390, 1280]) {
     test(`unknown player stars stay inert at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
-        await page.goto('/iframe.html?id=game-characterwindow--development&viewMode=story')
+        await page.goto(
+            '/iframe.html?id=pages-gameplay-characterwindow--development&viewMode=story'
+        )
         const graph = page.getByRole('group', { name: 'Созвездия развития' })
         await expect(graph).toBeVisible()
         const unknown = graph.locator('[data-node-id].closed').first()

@@ -105,7 +105,9 @@ onMounted(async () => {
                     <h2>{{ nickname }}</h2>
                 </div>
                 <slot name="close" :button-attrs="closeButtonAttrs">
-                    <UiButton v-bind="closeButtonAttrs"><span aria-hidden="true">×</span></UiButton>
+                    <UiButton v-bind="closeButtonAttrs" size="small" icon>
+                        <span aria-hidden="true">×</span>
+                    </UiButton>
                 </slot>
             </header>
             <div

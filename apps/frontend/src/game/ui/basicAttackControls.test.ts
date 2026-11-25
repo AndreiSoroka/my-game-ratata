@@ -2,9 +2,9 @@ import type { CharacterSnapshot, ClientMessage, Vector2 } from '@my-game-ratata/
 import { mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vitest'
 
+import GameplayOverlay from '../../pages/gameplay/ui/GameplayOverlay.vue'
 import { characterFixture, worldFixture } from '../testing/characterFixture'
 import { clickWithPointer } from '../testing/clickWithPointer'
-import GameplayOverlay from './GameplayOverlay.vue'
 
 function pressCombatKey(code: string): void {
     window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }))

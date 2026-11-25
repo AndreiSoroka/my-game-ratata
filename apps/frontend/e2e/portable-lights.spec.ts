@@ -45,8 +45,8 @@ test('buys, equips, swaps and unequips portable lights through the shop and inve
         .toBeGreaterThanOrEqual(13)
     await shop.getByRole('tab', { name: 'Купить' }).click()
     await quantity.fill('1')
-    await marketRow('Факел').getByRole('button', { name: 'Купить 1 · 3 ◈' }).click()
-    await marketRow('Фонарь').getByRole('button', { name: 'Купить 1 · 10 ◈' }).click()
+    await marketRow('Факел').getByRole('button', { name: 'Купить · 3 ◈' }).click()
+    await marketRow('Фонарь').getByRole('button', { name: 'Купить · 10 ◈' }).click()
     await expect
         .poll(() =>
             page.evaluate(() =>

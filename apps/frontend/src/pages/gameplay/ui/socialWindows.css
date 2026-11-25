@@ -1,0 +1,119 @@
+.social-surface {
+    position: absolute;
+    inset: 5% 12%;
+    z-index: 25;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+.social-surface--modal {
+    inset: 0;
+    padding: 5vh 12%;
+    background: #08140cb0;
+    pointer-events: auto;
+}
+.social-surface--quest {
+    inset: 0;
+    align-items: center;
+    padding: 12px;
+}
+.social-window-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    inline-size: min(100%, 780px);
+    min-inline-size: 0;
+    max-block-size: 100%;
+    outline: none;
+}
+.social-window-stack > :first-child {
+    min-block-size: 0;
+}
+.social-window-stack > :not(:first-child) {
+    flex: none;
+    pointer-events: auto;
+}
+.social-window-stack--exchange {
+    inline-size: min(100%, 1040px);
+}
+.social-window-stack--shop {
+    inline-size: min(100%, 580px);
+}
+.quest-window {
+    inline-size: min(100%, 520px);
+}
+.quest-window .social-muted {
+    color: var(--ui-light-panel-muted);
+}
+.quest-window .social-status {
+    color: var(--ui-light-panel-warning);
+}
+:is(.social-surface--exchange, .social-surface--shop) {
+    inset: 3vh 16px;
+    align-items: center;
+}
+.social-hints {
+    position: absolute;
+    right: 12px;
+    top: var(--game-social-hints-top, 240px);
+    max-height: max(0px, calc(100dvh - var(--game-social-hints-top, 240px) - 8px));
+    overflow-y: auto;
+    display: grid;
+    max-width: min(340px, calc(100% - 24px));
+}
+.social-notices {
+    position: absolute;
+    inset-inline: 0;
+    top: var(--game-social-notices-top, 14px);
+    width: min(340px, calc(100% - 24px));
+    max-height: max(0px, calc(100dvh - var(--game-social-notices-top, 14px) - 8px));
+    margin-inline: auto;
+    display: grid;
+    justify-items: center;
+    overflow-y: auto;
+    pointer-events: none;
+}
+.social-hints > button,
+.social-notices__invitation {
+    position: relative;
+    z-index: 12;
+}
+.social-notices__invitation {
+    pointer-events: auto;
+    inline-size: 100%;
+}
+.social-notices__invitation--over-whisper {
+    z-index: 26;
+}
+.social-hints > button {
+    padding: 8px 12px;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+@media (max-width: 740px) {
+    .social-surface {
+        inset: 2% 8px;
+    }
+    .social-surface--modal {
+        inset: 0;
+        padding: 10px 8px;
+    }
+    .social-hints {
+        width: min(210px, calc(100% - 24px));
+    }
+    .social-notices {
+        width: min(260px, calc(100% - 24px));
+    }
+    :is(.social-surface--exchange, .social-surface--shop) {
+        inset: 8px;
+    }
+}
+.social-muted {
+    color: var(--ui-dark-panel-muted, var(--ui-dark-panel-text));
+    font-size: 12px;
+}
+.social-status {
+    color: var(--ui-dark-panel-warning);
+}

@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
+import { BarFill } from '../bar-fill'
 import BarTrackStory from './BarTrackStory.vue'
 import { BarTrack, type BarTrackProps } from './index'
 
-type StoryArgs = BarTrackProps & { content: 'none' | 'empty' | 'text' }
+type StoryArgs = BarTrackProps & { content: StorySlot }
 const meta = {
     title: 'Shared/Common/BarTrack',
     args: { color: lightUiColors.bar.track, height: 24, shadow: true, content: 'none' },
@@ -15,14 +16,7 @@ const meta = {
         color: { control: 'text' },
         height: { control: { type: 'range', min: 8, max: 48, step: 2 } },
         shadow: { control: 'boolean' },
-        content: {
-            name: 'Содержимое слота',
-            control: {
-                type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', text: 'Текст' },
-            },
-            options: ['none', 'empty', 'text'],
-        },
+        content: storySlotControl('Содержимое слота'),
     },
 } satisfies Meta<StoryArgs>
 export default meta
@@ -40,22 +34,9 @@ function preview(section: 'colors' | 'sizes'): HTMLElement {
 
 export const Default: Story = {
     render: ({ content, ...args }) => {
-        const renderContent = {
-            none: undefined,
-            empty: () => h('div'),
-            text: () =>
-                h(
-                    'span',
-                    {
-                        style: {
-                            color: lightUiColors.bar.text,
-                            display: 'block',
-                            textAlign: 'center',
-                        },
-                    },
-                    'Запас'
-                ),
-        }
+        const renderContent = storySlot(content, 'Запас', () =>
+            h(BarFill, { color: lightUiColors.bar.energy.color, style: { width: '55%' } })
+        )
         return renderVueStory(
             {
                 render: () =>
@@ -66,7 +47,7 @@ export const Default: Story = {
                             'data-testid': 'track-default',
                             style: { maxWidth: '560px' },
                         },
-                        renderContent[content]
+                        { default: renderContent }
                     ),
             },
             {}

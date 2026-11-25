@@ -6,7 +6,8 @@ import {
     type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 
-import { graveName } from '../ui/graveInteractions'
+import { graveName } from '@/entities/graves'
+
 import type { AgentTarget } from './agentObservation'
 
 type TargetDescription = Omit<AgentTarget, 'key' | 'distance' | 'actions'>

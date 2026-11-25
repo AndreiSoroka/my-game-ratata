@@ -16,7 +16,9 @@ for (const width of [390, 1280]) {
             page,
         }, info) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=game-characterwindow--${story}&viewMode=story`)
+            await page.goto(
+                `/iframe.html?id=pages-gameplay-characterwindow--${story}&viewMode=story`
+            )
             const window = page.getByRole('dialog', { name: 'Персонаж', exact: true })
             await expect(window).toBeVisible()
             const graph = window.getByRole('group', { name: 'Созвездия развития' })
@@ -70,7 +72,7 @@ for (const width of [390, 1280]) {
         test.setTimeout(60_000)
         await page.setViewportSize({ width, height: 844 })
         await page.goto(
-            '/iframe.html?id=game-characterwindow--full-blade-development&viewMode=story'
+            '/iframe.html?id=pages-gameplay-characterwindow--full-blade-development&viewMode=story'
         )
         const graph = page.getByRole('group', { name: 'Созвездия развития' })
         const snapshot = constellationFixture(true, 'vanguard')

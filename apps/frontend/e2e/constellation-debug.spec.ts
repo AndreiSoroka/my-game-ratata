@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
 import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
-import { describeConstellationEffectChance } from '../src/game/debug/constellationEffectChance'
+import { describeConstellationEffectChance } from '../src/pages/constellation-debug/model/constellationEffectChance'
 import {
     assertBuildWorkflow,
     buildResultPanel,

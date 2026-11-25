@@ -2,7 +2,8 @@ import type { ConstellationNodeSnapshot, ConstellationSnapshot } from '@my-game-
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { ConstellationStarCard } from '@/entities/constellations'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 
 import ConstellationAtlasWidget from './ConstellationAtlasWidget.vue'
 
@@ -37,30 +38,38 @@ const constellation: ConstellationSnapshot = {
 type Args = {
     constellation: ConstellationSnapshot
     selectedStar: ConstellationNodeSnapshot
-    sidebar: 'default' | 'empty' | 'name'
+    enabledIds?: string[]
+    mapId?: string
+    mapKey?: number
+    sidebar: StorySlot
 }
 
 const meta = {
     title: 'Widgets/constellation-atlas/ConstellationAtlasWidget',
-    args: { constellation, selectedStar: root, sidebar: 'default' },
+    args: { constellation, selectedStar: root, sidebar: 'none' },
     argTypes: {
         constellation: { control: 'object' },
         selectedStar: { control: 'object' },
-        sidebar: { control: 'select', options: ['default', 'empty', 'name'] },
+        enabledIds: { control: 'object' },
+        mapId: { control: 'text' },
+        mapKey: { control: 'number' },
+        sidebar: storySlotControl('Боковая панель'),
     },
-    render: ({ sidebar, ...props }) =>
-        sidebar === 'default'
-            ? renderVueStory(ConstellationAtlasWidget, props)
-            : renderVueStory(
-                  () =>
-                      h(ConstellationAtlasWidget, props, {
-                          sidebar: ({ node }: { node?: ConstellationNodeSnapshot }) =>
-                              sidebar === 'name' ? h('p', node?.name) : h('div'),
-                      }),
-                  {}
-              ),
+    render: ({ sidebar, enabledIds, ...args }) => {
+        const props = { ...args, enabledStarIds: enabledIds && new Set(enabledIds) }
+        const renderSidebar = storySlot<{ node?: ConstellationNodeSnapshot }>(
+            sidebar,
+            'Выбранная звезда',
+            ({ node }) => node && h(ConstellationStarCard, { node })
+        )
+        return renderVueStory(
+            () =>
+                h(ConstellationAtlasWidget, props, renderSidebar ? { sidebar: renderSidebar } : {}),
+            {}
+        )
+    },
 } satisfies Meta<Args>
 
 export default meta
 export const Default: StoryObj<Args> = {}
-export const Sidebar: StoryObj<Args> = { args: { sidebar: 'name' } }
+export const Sidebar: StoryObj<Args> = { args: { sidebar: 'text' } }

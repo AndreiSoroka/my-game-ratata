@@ -12,9 +12,9 @@ import ChatToolbar from './ChatToolbar.vue'
 
 interface StoryArgs {
     collapsed: boolean
-    toolbar: 'empty' | 'buttons'
-    history: 'empty' | 'messages'
-    composer: 'none' | 'empty' | 'input'
+    toolbar: 'empty' | 'text' | 'buttons'
+    history: 'empty' | 'text' | 'messages'
+    composer: 'none' | 'empty' | 'text' | 'input'
 }
 
 const entries: readonly ChatHistoryEntry[] = [
@@ -24,23 +24,34 @@ const entries: readonly ChatHistoryEntry[] = [
 
 const meta = {
     title: 'Entities/chats/ChatFrame',
-    args: { collapsed: false, toolbar: 'buttons', history: 'messages', composer: 'none' },
+    args: { collapsed: false, toolbar: 'text', history: 'empty', composer: 'none' },
     argTypes: {
         collapsed: { control: 'boolean' },
         toolbar: {
-            control: { type: 'select', labels: { empty: 'Пустой div', buttons: 'Кнопки' } },
-            options: ['empty', 'buttons'],
+            control: {
+                type: 'select',
+                labels: { empty: 'Пустой div с фоном', text: 'Текст', buttons: 'Кнопки' },
+            },
+            options: ['empty', 'text', 'buttons'],
         },
         history: {
-            control: { type: 'select', labels: { empty: 'Пустой div', messages: 'Сообщения' } },
-            options: ['empty', 'messages'],
+            control: {
+                type: 'select',
+                labels: { empty: 'Пустой div с фоном', text: 'Текст', messages: 'Сообщения' },
+            },
+            options: ['empty', 'text', 'messages'],
         },
         composer: {
             control: {
                 type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой div', input: 'Поле ввода' },
+                labels: {
+                    none: 'Без слота',
+                    empty: 'Пустой div с фоном',
+                    text: 'Текст',
+                    input: 'Поле ввода',
+                },
             },
-            options: ['none', 'empty', 'input'],
+            options: ['none', 'empty', 'text', 'input'],
         },
     },
     render(args) {
@@ -56,37 +67,43 @@ const meta = {
                     const slots = {
                         toolbar: () =>
                             args.toolbar === 'empty'
-                                ? h('div')
-                                : h(ChatToolbar, {
-                                      historyId: listId,
-                                      filter: filter.value,
-                                      collapsed: collapsed.value,
-                                      'onUpdate:filter': (value: ChatHistoryFilter) =>
-                                          (filter.value = value),
-                                      'onUpdate:collapsed': (value: boolean) =>
-                                          (collapsed.value = value),
-                                  }),
+                                ? h('div', { style: { minHeight: '24px', background: '#8b4865' } })
+                                : args.toolbar === 'text'
+                                  ? h('span', 'Фильтр сообщений')
+                                  : h(ChatToolbar, {
+                                        historyId: listId,
+                                        filter: filter.value,
+                                        collapsed: collapsed.value,
+                                        'onUpdate:filter': (value: ChatHistoryFilter) =>
+                                            (filter.value = value),
+                                        'onUpdate:collapsed': (value: boolean) =>
+                                            (collapsed.value = value),
+                                    }),
                         history: () =>
                             args.history === 'empty'
-                                ? h('div')
-                                : h(ChatHistoryPanel, {
-                                      entries,
-                                      listId,
-                                      filter: filter.value,
-                                      collapsed: collapsed.value,
-                                  }),
+                                ? h('div', { style: { minHeight: '24px', background: '#374c82' } })
+                                : args.history === 'text'
+                                  ? h('span', 'Мира: Встретимся у северных ворот.')
+                                  : h(ChatHistoryPanel, {
+                                        entries,
+                                        listId,
+                                        filter: filter.value,
+                                        collapsed: collapsed.value,
+                                    }),
                     }
                     const composer = () =>
                         args.composer === 'empty'
-                            ? h('div')
-                            : h(ChatComposerFrame, { framed: !collapsed.value }, () =>
-                                  h(ChatComposer, {
-                                      ref: composerRef,
-                                      draft: draft.value,
-                                      maxLength: 400,
-                                      'onUpdate:draft': (value: string) => (draft.value = value),
-                                  })
-                              )
+                            ? h('div', { style: { minHeight: '24px', background: '#625091' } })
+                            : args.composer === 'text'
+                              ? h('span', 'Здесь появляется черновик сообщения.')
+                              : h(ChatComposerFrame, { framed: !collapsed.value }, () =>
+                                    h(ChatComposer, {
+                                        ref: composerRef,
+                                        draft: draft.value,
+                                        maxLength: 400,
+                                        'onUpdate:draft': (value: string) => (draft.value = value),
+                                    })
+                                )
                     return () =>
                         h(
                             ChatFrame,
@@ -107,4 +124,6 @@ type Story = StoryObj<StoryArgs>
 
 export const Default: Story = {}
 
-export const Typing: Story = { args: { composer: 'input' } }
+export const WithHistory: Story = { args: { toolbar: 'buttons', history: 'messages' } }
+
+export const Typing: Story = { args: { ...WithHistory.args, composer: 'input' } }

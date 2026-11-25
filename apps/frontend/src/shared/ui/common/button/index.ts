@@ -10,6 +10,7 @@ export type {
     UiButtonColors,
     UiButtonPanelAppearance,
     UiButtonProps,
+    UiButtonSize,
     UiButtonStateColors,
     UiButtonVariant,
 } from './uiButtonProps'

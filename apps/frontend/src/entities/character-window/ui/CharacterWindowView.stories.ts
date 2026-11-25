@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
+import { UiButton } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 
 import { type CharacterTab, characterTabs } from '../model/characterTab'
@@ -11,11 +12,11 @@ import CharacterWindowView from './CharacterWindowView.vue'
 interface StoryArgs {
     nickname: string
     tab: CharacterTab
-    frame: 'empty' | 'border'
-    close: 'empty' | 'button'
-    tabButton: 'empty' | 'button'
-    content: 'empty' | 'text'
-    footer: 'empty' | 'text'
+    frame: StorySlot
+    close: StorySlot
+    tabButton: StorySlot
+    content: StorySlot
+    footer: StorySlot
     onClose: () => void
 }
 
@@ -26,9 +27,9 @@ const meta = {
     args: {
         nickname: 'Андрей Сорока',
         tab: 'stats',
-        frame: 'empty',
-        close: 'button',
-        tabButton: 'button',
+        frame: 'none',
+        close: 'none',
+        tabButton: 'none',
         content: 'text',
         footer: 'text',
         onClose: fn().mockName('close'),
@@ -36,54 +37,64 @@ const meta = {
     argTypes: {
         nickname: { control: 'text' },
         tab: { control: { type: 'select', labels }, options: characterTabs.map(({ id }) => id) },
-        frame: {
-            control: { type: 'select', labels: { empty: 'Пустой div', border: 'Рамка' } },
-            options: ['empty', 'border'],
-        },
-        close: {
-            control: { type: 'select', labels: { empty: 'Пустой div', button: 'Кнопка' } },
-            options: ['empty', 'button'],
-        },
-        tabButton: {
-            control: { type: 'select', labels: { empty: 'Пустой div', button: 'Кнопка' } },
-            options: ['empty', 'button'],
-        },
-        content: {
-            control: { type: 'select', labels: { empty: 'Пустой div', text: 'Текст вкладки' } },
-            options: ['empty', 'text'],
-        },
-        footer: {
-            control: { type: 'select', labels: { empty: 'Пустой div', text: 'Подсказка' } },
-            options: ['empty', 'text'],
-        },
+        frame: storySlotControl('frame'),
+        close: storySlotControl('close'),
+        tabButton: storySlotControl('tabButton'),
+        content: storySlotControl('content'),
+        footer: storySlotControl('footer'),
         onClose: { control: false },
     },
 } satisfies Meta<StoryArgs>
 export default meta
 type Story = StoryObj<StoryArgs>
+type Slots = InstanceType<typeof CharacterWindowView>['$slots']
+type SlotProps<Key extends 'close' | 'tab'> = Parameters<NonNullable<Slots[Key]>>[0]
 
 export const Default: Story = {
     render(args) {
         const slots = {
-            frame: () => [
-                args.frame === 'empty'
-                    ? h('div')
-                    : h(FantasyBorder, {
-                          border: 'border-017',
-                          color: 'var(--ui-dark-panel-border)',
-                          style: { position: 'absolute', inset: 0, pointerEvents: 'none' },
-                          'aria-hidden': 'true',
-                      }),
-            ],
-            ...(args.close === 'empty' && { close: () => [h('div')] }),
-            ...(args.tabButton === 'empty' && { tab: () => [h('div')] }),
-            default: ({ tab }) => [
-                args.content === 'empty' ? h('div') : h('p', `Раздел «${labels[tab]}»`),
-            ],
-            footer: () => [
-                args.footer === 'empty' ? h('div') : h('span', 'Стрелки — выбрать вкладку'),
-            ],
-        } satisfies InstanceType<typeof CharacterWindowView>['$slots']
+            frame: storySlot(args.frame, 'Рамка персонажа', () =>
+                h(FantasyBorder, {
+                    border: 'border-017',
+                    color: 'var(--ui-dark-panel-border)',
+                    style: { position: 'absolute', inset: 0, pointerEvents: 'none' },
+                    'aria-hidden': 'true',
+                })
+            ),
+            close: storySlot<SlotProps<'close'>>(
+                args.close,
+                'Закрыть',
+                ({ buttonAttrs }) =>
+                    h(
+                        UiButton,
+                        { ...buttonAttrs, size: 'small', icon: true },
+                        { default: () => '×' }
+                    ),
+                { inline: true, color: '#9d604d' }
+            ),
+            tab: storySlot<SlotProps<'tab'>>(
+                args.tabButton,
+                'Вкладка',
+                ({ label, buttonAttrs }) =>
+                    h(
+                        UiButton,
+                        { ...buttonAttrs, highlighted: buttonAttrs['aria-selected'] },
+                        {
+                            default: () => label,
+                        }
+                    ),
+                { inline: true, color: '#486c94' }
+            ),
+            default: storySlot(
+                args.content,
+                `Раздел «${labels[args.tab]}»`,
+                () => h('dl', [h('dt', 'Здоровье'), h('dd', '68 / 100')]),
+                { color: '#5e7d66' }
+            ),
+            footer: storySlot(args.footer, 'Стрелки — выбрать вкладку', () =>
+                h('span', [h('kbd', 'Esc'), ' — закрыть'])
+            ),
+        }
         const host = renderVueStory(
             {
                 render: () =>
@@ -93,6 +104,7 @@ export const Default: Story = {
                         slots
                     ),
             },
+            {},
             { padding: '0' }
         )
         host.style.minHeight = '100dvh'

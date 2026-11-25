@@ -8,11 +8,10 @@ import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 import { defineComponent, h, nextTick, shallowRef } from 'vue'
 
+import ActionChannelStatus from '../../pages/gameplay/ui/ActionChannelStatus.vue'
+import GamePlayerStatus from '../../pages/gameplay/ui/GamePlayerStatus.vue'
 import { worldFixture } from '../testing/characterFixture'
 import { playerStatusFixture } from '../testing/playerStatusFixture'
-import ActionChannelStatus from '../ui/ActionChannelStatus.vue'
-import GamePlayerStatus from '../ui/GamePlayerStatus.vue'
-import MovementStatus from '../ui/MovementStatus.vue'
 
 it('updates time-driven overlays while frozen unchanged player and HUD branches retain identity', async () => {
     const player = playerStatusFixture({
@@ -32,7 +31,6 @@ it('updates time-driven overlays while frozen unchanged player and HUD branches 
             const character = state.characters[0]!
             return h('div', [
                 h(GamePlayerStatus, { character, serverTime: state.serverTime }),
-                h(MovementStatus, { character }),
                 h(ActionChannelStatus, { player: character, serverTime: state.serverTime }),
             ])
         })
@@ -47,22 +45,5 @@ it('updates time-driven overlays while frozen unchanged player and HUD branches 
     expect(wrapper.findAll('[role="progressbar"]')[0]!.element).toBe(health)
     expect(wrapper.get('h2').text()).toBe(player.nickname)
     expect(initial.serverTime).toBe(100000)
-    const changed = {
-        ...next,
-        tick: 3,
-        serverTime: 102150,
-        characters: [
-            {
-                ...player,
-                movement: { mode: 'walking' as const, dashing: false, dashCooldownMsLeft: 1500 },
-            },
-        ],
-    }
-    snapshot.value = freezeSnapshot(
-        applySnapshotPatch(snapshot.value, diffSnapshots(snapshot.value, changed), changed)
-    )
-    await nextTick()
-    expect(wrapper.get('.movement-status').text()).toContain('2')
-    expect(initial.characters[0]!.movement!.dashCooldownMsLeft).toBe(0)
     wrapper.unmount()
 })

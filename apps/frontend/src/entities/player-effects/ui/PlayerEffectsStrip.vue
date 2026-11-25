@@ -1,28 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue'
+import { computed, useId } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 import { UiButton, type UiButtonColors } from '@/shared/ui/common'
 
-import type { PlayerEffect, PlayerEffectKind } from '../model/playerEffects'
+import type { PlayerEffect } from '../model/playerEffects'
+import { createPlayerEffectSelection } from '../model/playerEffectsSelection'
 import PlayerEffectDetails from './PlayerEffectDetails.vue'
 import { presentPlayerEffects } from './playerEffectPresentation'
 
 const props = defineProps<{ effects: readonly PlayerEffect[] }>()
 const activeEffects = computed(() => presentPlayerEffects(props.effects))
 const detailId = useId()
-const selectedKind = ref<PlayerEffectKind>()
-const selectedEffect = computed(() =>
-    activeEffects.value.find((effect) => effect.kind === selectedKind.value)
+const { selectedKind, selectedEffect, toggleEffect } = createPlayerEffectSelection(
+    () => activeEffects.value
 )
-
-watch(selectedEffect, (effect) => {
-    if (!effect) selectedKind.value = undefined
-})
-
-function toggleEffect(kind: PlayerEffectKind): void {
-    selectedKind.value = selectedKind.value === kind ? undefined : kind
-}
 
 const tileColors: UiButtonColors = {
     normal: {

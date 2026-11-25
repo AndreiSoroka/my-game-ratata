@@ -4,9 +4,8 @@ import {
     type MarketRow,
     type MarketSide,
     type MarketSnapshot,
-    quoteMarketTradeBreakdown,
 } from '@my-game-ratata/contracts'
-import { computed, ref, useId, useTemplateRef } from 'vue'
+import { useId, useTemplateRef } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
 import { navigationDirection } from '@/shared/lib/input'
@@ -16,23 +15,22 @@ import {
     ItemSlot,
     selectedDarkPanelButtonColors,
     UiButton,
+    UiInput,
 } from '@/shared/ui/common'
 import { FantasyBorder } from '@/shared/ui/external'
 import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 import type { MarketTradeSelection } from '../model/marketTradeSelection'
+import { createMarketTradeStore } from '../model/marketTradeStore'
 
 const props = defineProps<{ market: MarketSnapshot; gold: number; blocked?: boolean }>()
 const emit = defineEmits<{ trade: [selection: MarketTradeSelection] }>()
 const theme = useDarkPanelTheme()
 const sides = ['buy', 'sell'] as const
-const side = ref<MarketSide>('buy')
-const quantity = ref(1)
-const quotedRows = computed(() =>
-    props.market.rows.map((row) => ({
-        row,
-        quote: quoteMarketTradeBreakdown(row, side.value, quantity.value),
-    }))
+const { side, quantity, quotedRows, canTrade, selectTrade } = createMarketTradeStore(
+    () => props.market,
+    () => props.gold,
+    () => props.blocked
 )
 const tabs = useTemplateRef<HTMLDivElement>('tabs')
 const instanceId = useId()
@@ -55,17 +53,9 @@ function tabKey(event: KeyboardEvent): void {
     tabs.value?.querySelector<HTMLElement>(`[id="${tabId(side.value)}"]`)?.focus()
 }
 
-function canTrade(expectedTotal: number | null): expectedTotal is number {
-    return (
-        !props.blocked &&
-        expectedTotal !== null &&
-        (side.value === 'sell' || props.gold >= expectedTotal)
-    )
-}
-
 function trade(row: MarketRow, expectedTotal: number | null): void {
-    if (!canTrade(expectedTotal)) return
-    emit('trade', { side: side.value, itemId: row.itemId, quantity: quantity.value, expectedTotal })
+    const selection = selectTrade(row.itemId, expectedTotal)
+    if (selection) emit('trade', selection)
 }
 </script>
 
@@ -122,14 +112,15 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
             </p>
             <label class="market-quantity">
                 {{ tGame('game.trade.quantity') }}
-                <FantasyBorder
-                    as="span"
+                <UiInput
+                    v-model.number="quantity"
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="1"
                     border="border-015"
                     class="market-quantity__field"
-                    color="var(--city-market-accent)"
-                >
-                    <input v-model.number="quantity" type="number" min="1" max="100" step="1" />
-                </FantasyBorder>
+                />
             </label>
             <FantasyBorder
                 v-if="market.rows.length"
@@ -166,9 +157,11 @@ function trade(row: MarketRow, expectedTotal: number | null): void {
                             <template v-if="quote !== null">
                                 <span>
                                     {{
-                                        tGame(side === 'buy' ? 'game.trade.buy' : 'game.trade.sell')
+                                        side === 'buy'
+                                            ? tGame('game.trade.buy')
+                                            : `${tGame('game.trade.sell')} ${quantity}`
                                     }}
-                                    {{ quantity }} · {{ quote.total }} ◈
+                                    · {{ quote.total }} ◈
                                 </span>
                                 <small v-if="side === 'sell'" class="market-row__tax">
                                     {{ tGame('game.trade.cityTaxAmount', { tax: quote.tax }) }}

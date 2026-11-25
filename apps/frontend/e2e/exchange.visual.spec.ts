@@ -178,7 +178,9 @@ for (const width of [1280, 390, 320]) {
 
         test(`exchange ${state} at ${width}px`, async ({ page }) => {
             await page.setViewportSize({ width, height: 844 })
-            await page.goto(`/iframe.html?id=game-exchangewindow--${state}&viewMode=story`)
+            await page.goto(
+                `/iframe.html?id=pages-gameplay-exchangesessionwindow--${state}&viewMode=story`
+            )
             const dialog = page.getByRole('dialog', { name: /^Обмен:/ })
             await expect(dialog).toBeVisible()
             await prepare(dialog)
@@ -199,7 +201,7 @@ for (const width of [1280, 390, 320]) {
 
 test('exchange keeps whisper and actions reachable on a short 320px screen', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 460 })
-    await page.goto('/iframe.html?id=game-exchangewindow--draft&viewMode=story')
+    await page.goto('/iframe.html?id=pages-gameplay-exchangesessionwindow--draft&viewMode=story')
     const dialog = page.getByRole('dialog', { name: /^Обмен:/ })
     const whisper = dialog.getByRole('region', { name: 'Приватный разговор' })
     const history = whisper.getByRole('list', { name: 'История шёпота' })
@@ -245,7 +247,7 @@ test('exchange keeps whisper and actions reachable on a short 320px screen', asy
 
 test('exchange keeps the header and actions visible while offers scroll', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 460 })
-    await page.goto('/iframe.html?id=game-exchangewindow--overflow&viewMode=story')
+    await page.goto('/iframe.html?id=pages-gameplay-exchangesessionwindow--overflow&viewMode=story')
     const dialog = page.getByRole('dialog', { name: /^Обмен:/ })
     const frame = dialog.locator('.exchange-window-frame')
     const title = frame.getByRole('heading', { name: /^Обмен · Капля/ })
@@ -269,7 +271,7 @@ test('exchange keeps the header and actions visible while offers scroll', async 
 })
 
 test('independent handshake states', async ({ page }) => {
-    await page.goto('/iframe.html?id=game-exchangewindow--consent&viewMode=story')
+    await page.goto('/iframe.html?id=game-exchange-consent-gallery--default&viewMode=story')
     const gallery = page.getByLabel('Подтверждение обмена', { exact: true })
     await expect(
         gallery.getByRole('img', { name: 'Вы: не подтверждено', exact: true })

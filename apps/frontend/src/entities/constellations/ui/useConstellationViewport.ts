@@ -5,12 +5,12 @@ import type {
 } from '@my-game-ratata/contracts'
 import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue'
 
+import { createConstellationViewportStore } from '../model/constellationViewportStore'
 import { constellationViewportFocus } from './constellationViewportFocus'
 
 export function useConstellationViewport(snapshot: () => ConstellationSnapshot) {
     const svg = ref<SVGSVGElement>()
-    const zoom = ref(1)
-    const dimensions = ref({ width: 700, height: 450 })
+    const { focusedId, zoom, dimensions, offset } = createConstellationViewportStore()
     const bounds = computed(() => snapshot().layout?.bounds ?? fallbackBounds(snapshot().nodes))
     const mapCenter = computed(() => ({
         x: bounds.value.x + bounds.value.width / 2,
@@ -23,7 +23,7 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
         )
     )
     const unitScale = computed(() => baseScale.value / zoom.value)
-    const { offset, dragOffset, setOffset } = viewportCamera(bounds, unitScale)
+    const { dragOffset, setOffset } = viewportCamera(bounds, unitScale, offset)
     const visibleBounds = computed(() =>
         viewportBounds(bounds.value, dimensions.value, unitScale.value, offset.value)
     )
@@ -68,6 +68,7 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
     observeDimensions(svg, dimensions)
     return {
         svg,
+        focusedId,
         zoom,
         dragOffset,
         dimensions,
@@ -85,9 +86,9 @@ export function useConstellationViewport(snapshot: () => ConstellationSnapshot) 
 
 function viewportCamera(
     bounds: Readonly<Ref<{ width: number; height: number }>>,
-    unitScale: Readonly<Ref<number>>
+    unitScale: Readonly<Ref<number>>,
+    offset: Ref<Vector2>
 ) {
-    const offset = ref<Vector2>({ x: 0, y: 0 })
     // Derive both foreground and background pan from the actual constrained camera.
     const dragOffset = computed(() => ({
         x: -offset.value.x / unitScale.value,
@@ -103,7 +104,7 @@ function viewportCamera(
     watch([() => bounds.value.width, () => bounds.value.height], () => setOffset(offset.value), {
         flush: 'sync',
     })
-    return { offset, dragOffset, setOffset }
+    return { dragOffset, setOffset }
 }
 
 function formatViewBox({ x, y, width, height }: ReturnType<typeof viewportBounds>): string {

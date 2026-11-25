@@ -1,23 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-import { ItemSlot } from '@/shared/ui/common'
+import { ItemSlot, UiButton, UiFrame, UiInput, UiSelect, UiTextarea } from '@/shared/ui/common'
 
 import { itemAssetCatalog } from '../assets/itemCatalog'
-import GameButton from '../ui/primitives/GameButton.vue'
-import GameFrame from '../ui/primitives/GameFrame.vue'
-import GameInput from '../ui/primitives/GameInput.vue'
-import GameSelect from '../ui/primitives/GameSelect.vue'
-import GameTextarea from '../ui/primitives/GameTextarea.vue'
 
 defineProps<{ section: 'buttons' | 'fields' | 'frames' | 'slots' }>()
-const variants = ['secondary', 'primary', 'success', 'danger', 'slot'] as const
+const variants = ['secondary', 'primary', 'success', 'danger'] as const
 const labels = {
     secondary: 'Закрыть',
     primary: 'Предложить',
     success: 'Подтвердить',
     danger: 'Отменить',
-    slot: '1',
 }
 const message = ref('Можем обменяться?')
 const quantity = ref(2)
@@ -34,65 +28,84 @@ const choice = ref('party')
             <div v-for="variant in variants" :key="variant" class="primitive-example">
                 <h3>{{ variant }}</h3>
                 <div class="primitive-row">
-                    <GameButton :variant="variant" :data-testid="`${variant}-default`">{{
+                    <UiButton size="small" :variant="variant" :data-testid="`${variant}-default`">{{
                         labels[variant]
-                    }}</GameButton>
-                    <GameButton :variant="variant" disabled>{{ labels[variant] }}</GameButton>
-                    <GameButton :variant="variant" aria-pressed="true">{{
+                    }}</UiButton>
+                    <UiButton size="small" :variant="variant" disabled>{{
                         labels[variant]
-                    }}</GameButton>
+                    }}</UiButton>
+                    <UiButton size="small" :variant="variant" aria-pressed="true" selected>{{
+                        labels[variant]
+                    }}</UiButton>
                 </div>
             </div>
             <div class="primitive-example primitive-selected">
                 <h3>Выбранные переключатели и текущий пункт</h3>
                 <div class="primitive-row">
-                    <GameButton role="switch" aria-checked="true">Автозапуск</GameButton>
-                    <GameButton aria-current="true">Текущее задание</GameButton>
-                    <GameButton aria-current="false">Другое задание</GameButton>
+                    <UiButton size="small" role="switch" aria-checked="true" selected
+                        >Автозапуск</UiButton
+                    >
+                    <UiButton size="small" aria-current="true" selected>Текущее задание</UiButton>
+                    <UiButton size="small" aria-current="false">Другое задание</UiButton>
                 </div>
             </div>
             <div class="primitive-example">
                 <h3>Компактные действия</h3>
                 <div class="primitive-row">
-                    <GameButton size="compact">Всё</GameButton>
-                    <GameButton size="compact" icon aria-label="Уменьшить">−</GameButton>
-                    <GameButton size="compact" icon aria-label="Увеличить">+</GameButton>
-                    <GameButton icon aria-label="Закрыть окно">×</GameButton>
+                    <UiButton size="compact">Всё</UiButton>
+                    <UiButton size="compact" icon aria-label="Уменьшить">−</UiButton>
+                    <UiButton size="compact" icon aria-label="Увеличить">+</UiButton>
+                    <UiButton size="small" icon aria-label="Закрыть окно">×</UiButton>
                 </div>
             </div>
         </template>
         <template v-else-if="section === 'fields'">
             <h2>Поля ввода</h2>
             <div class="primitive-fields">
-                <label>Сообщение<GameInput v-model="message" maxlength="400" /></label>
                 <label
-                    >Количество<GameInput v-model.number="quantity" type="number" min="0" max="9"
+                    >Сообщение<UiInput :border-width="4" v-model="message" maxlength="400"
                 /></label>
                 <label
-                    >Место<GameSelect v-model="destination"
+                    >Количество<UiInput
+                        :border-width="4"
+                        v-model.number="quantity"
+                        type="number"
+                        min="0"
+                        max="9"
+                /></label>
+                <label
+                    >Место<UiSelect :border-width="4" v-model="destination"
                         ><option value="novogorod">Новогород</option>
-                        <option value="forest">Лес</option></GameSelect
+                        <option value="forest">Лес</option></UiSelect
                     ></label
                 >
-                <label>Пустое поле<GameInput placeholder="Сообщение собеседнику" /></label>
                 <label
-                    >Ошибка<GameInput
+                    >Пустое поле<UiInput :border-width="4" placeholder="Сообщение собеседнику"
+                /></label>
+                <label
+                    >Ошибка<UiInput
+                        :border-width="4"
                         value="Недоступно"
                         aria-invalid="true"
                         aria-describedby="field-error"
                     /><small id="field-error">Измените значение</small></label
                 >
-                <label>Недоступное поле<GameInput value="Собеседник недоступен" disabled /></label>
-                <label>Заметка<GameTextarea v-model="notes" rows="3" /></label>
+                <label
+                    >Недоступное поле<UiInput
+                        :border-width="4"
+                        value="Собеседник недоступен"
+                        disabled
+                /></label>
+                <label>Заметка<UiTextarea v-model="notes" rows="3" /></label>
                 <label class="primitive-check"
-                    ><GameInput v-model="enabled" type="checkbox" /> Общая награда</label
+                    ><UiInput v-model="enabled" type="checkbox" /> Общая награда</label
                 >
                 <div class="primitive-row">
                     <label class="primitive-check"
-                        ><GameInput v-model="choice" type="radio" value="party" /> Отряд</label
+                        ><UiInput v-model="choice" type="radio" value="party" /> Отряд</label
                     >
                     <label class="primitive-check"
-                        ><GameInput v-model="choice" type="radio" value="self" /> Только я</label
+                        ><UiInput v-model="choice" type="radio" value="self" /> Только я</label
                     >
                 </div>
             </div>
@@ -100,20 +113,20 @@ const choice = ref('party')
         <template v-else-if="section === 'frames'">
             <h2>Рамки</h2>
             <div class="primitive-frame game-frame-host">
-                <GameFrame variant="window" />
+                <UiFrame variant="window" />
                 <h3>Игровое окно</h3>
                 <div class="primitive-frame game-frame-host">
-                    <GameFrame variant="panel" />
+                    <UiFrame variant="panel" />
                     <h3>Ваше предложение</h3>
                     <p>Внутренняя панель</p>
                 </div>
                 <div class="primitive-frame game-frame-host">
-                    <GameFrame variant="inset" />
+                    <UiFrame variant="inset" />
                     <p>Углублённая поверхность</p>
                 </div>
             </div>
             <div class="primitive-frame primitive-frame--speech game-frame-host">
-                <GameFrame variant="speech" />
+                <UiFrame variant="speech" />
                 <p>Буль, выбирай. Я подожду.</p>
             </div>
         </template>
@@ -216,7 +229,7 @@ h3 {
     align-items: center;
 }
 .primitive-fields small {
-    color: var(--game-ui-danger);
+    color: var(--ui-dark-panel-warning);
 }
 .primitive-frame {
     padding: 17px;

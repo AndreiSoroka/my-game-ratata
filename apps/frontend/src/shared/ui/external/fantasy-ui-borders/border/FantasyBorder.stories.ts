@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import FantasyBorderStory from './FantasyBorderStory.vue'
 import { FantasyBorder, type FantasyBorderProps, type FantasyBorderVariant } from './index'
 
-type BorderArgs = FantasyBorderProps & { slotContent: 'empty' | 'sample' }
+type BorderArgs = FantasyBorderProps & { slotContent: StorySlot }
 type Section = 'variants' | 'colors' | 'composition' | 'sizes'
 const variants = Array.from(
     { length: 32 },
@@ -15,18 +15,14 @@ const variants = Array.from(
 )
 const meta = {
     title: 'Shared/External/fantasy-ui-borders/FantasyBorder',
-    args: { as: 'div', border: 'border-026', color: 'currentColor', slotContent: 'sample' },
+    args: { as: 'div', border: 'border-026', color: 'currentColor', slotContent: 'text' },
     parameters: { backgrounds: { disable: false } },
     argTypes: {
         as: { control: 'select', options: ['div', 'span'] },
         border: { control: 'select', options: variants },
         borderWidth: { control: 'number' },
         color: { control: 'text' },
-        slotContent: {
-            name: 'Default slot',
-            control: { type: 'select', labels: { empty: 'Empty element', sample: 'Sample text' } },
-            options: ['empty', 'sample'],
-        },
+        slotContent: storySlotControl('Содержимое слота'),
     },
 } satisfies Meta<BorderArgs>
 export default meta
@@ -64,10 +60,14 @@ export const Default: Story = {
                             padding: '16px',
                         },
                     },
-                    () =>
-                        slotContent === 'empty'
-                            ? h(props.as === 'span' ? 'span' : 'div')
-                            : 'Рамка с содержимым'
+                    {
+                        default: storySlot(
+                            slotContent,
+                            'Рамка с содержимым',
+                            () => h('strong', 'Сообщение из Новогорода'),
+                            { inline: props.as === 'span' }
+                        ),
+                    }
                 ),
             {}
         )

@@ -2,25 +2,29 @@ import type { ExchangeOfferSnapshot } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
+import { itemAssetCatalog } from '@/shared/lib/item-assets'
 import { renderVueStory } from '@/shared/lib/storybook'
-import { darkPanelButtonColors, UiButton } from '@/shared/ui/common'
+import { darkPanelButtonColors, ItemSlot, UiButton } from '@/shared/ui/common'
 
 import ExchangeOfferPane from './ExchangeOfferPane.vue'
 
 const contentExamples = {
     offer: undefined,
-    empty: () => h('div'),
+    empty: () => h('div', { style: { minHeight: '30px', background: '#8b4865' } }),
     bag: () => h('div', { style: { padding: '8px 10px' } }, 'В рюкзаке осталось 3 яблока.'),
+    example: () => h(ItemSlot, { quantity: 3, alt: 'Яблоки', src: itemAssetCatalog.food.src }),
 }
 
 const goldExamples = {
     offer: undefined,
-    empty: () => h('div'),
+    empty: () => h('div', { style: { height: '16px', background: '#374c82' } }),
+    text: () => 'В кошельке есть золото.',
     balance: () => [h('span', 'Золото в кошельке'), h('strong', '◈ 12')],
 }
 const actionExamples = {
     none: undefined,
-    empty: () => h('div'),
+    empty: () => h('div', { style: { height: '24px', background: '#625091' } }),
+    text: () => 'Предложение можно изменить.',
     edit: () =>
         h(
             UiButton,
@@ -68,7 +72,7 @@ const meta = {
                 type: 'select',
                 labels: { offer: 'Предметы предложения', empty: 'Пустой div', bag: 'Рюкзак' },
             },
-            options: ['offer', 'empty', 'bag'],
+            options: ['offer', 'empty', 'bag', 'example'],
         },
         gold: {
             name: 'Слот золота',
@@ -76,7 +80,7 @@ const meta = {
                 type: 'select',
                 labels: { offer: 'Золото предложения', empty: 'Пустой div', balance: 'Кошелёк' },
             },
-            options: ['offer', 'empty', 'balance'],
+            options: ['offer', 'empty', 'text', 'balance'],
         },
         actions: {
             name: 'Слот действий',
@@ -84,7 +88,7 @@ const meta = {
                 type: 'select',
                 labels: { none: 'Без действий', empty: 'Пустой div', edit: 'Изменить предложение' },
             },
-            options: ['none', 'empty', 'edit'],
+            options: ['none', 'empty', 'text', 'edit'],
         },
     },
     render({ default: content, gold, actions, ...props }) {

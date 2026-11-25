@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import FantasyPanelStory from './FantasyPanelStory.vue'
@@ -10,7 +10,7 @@ import { FantasyPanel, type FantasyPanelProps, type FantasyPanelVariant } from '
 type PanelArgs = Omit<FantasyPanelProps, 'backgroundGradient'> & {
     gradientTop: string
     gradientBottom: string
-    slotContent: 'empty' | 'sample'
+    slotContent: StorySlot
 }
 type Section = 'variants' | 'appearances' | 'colors' | 'composition' | 'sizes'
 const variants = Array.from(
@@ -28,7 +28,7 @@ const meta = {
         backgroundColor: lightUiColors.panel.parchment,
         gradientTop: '',
         gradientBottom: '',
-        slotContent: 'sample',
+        slotContent: 'text',
     },
     parameters: { backgrounds: { disable: false } },
     argTypes: {
@@ -46,11 +46,7 @@ const meta = {
         backgroundColor: { control: 'text' },
         gradientTop: { name: 'Gradient top color', control: 'text' },
         gradientBottom: { name: 'Gradient bottom color', control: 'text' },
-        slotContent: {
-            name: 'Default slot',
-            control: { type: 'select', labels: { empty: 'Empty element', sample: 'Sample text' } },
-            options: ['empty', 'sample'],
-        },
+        slotContent: storySlotControl('Содержимое слота'),
     },
 } satisfies Meta<PanelArgs>
 export default meta
@@ -94,14 +90,22 @@ export const Default: Story = {
                             padding: '16px',
                         },
                     },
-                    () =>
-                        slotContent === 'empty'
-                            ? h(props.as === 'span' ? 'span' : 'div')
-                            : h(
-                                  'span',
-                                  { style: { color: lightUiColors.panel.text } },
-                                  'Панель с содержимым'
-                              )
+                    {
+                        default:
+                            slotContent === 'text'
+                                ? () =>
+                                      h(
+                                          'span',
+                                          { style: { color: lightUiColors.panel.text } },
+                                          'Панель с содержимым'
+                                      )
+                                : storySlot(
+                                      slotContent,
+                                      'Панель с содержимым',
+                                      () => h('strong', 'Записка у городских ворот'),
+                                      { inline: props.as === 'span' }
+                                  ),
+                    }
                 ),
             {}
         )

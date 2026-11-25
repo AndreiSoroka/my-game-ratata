@@ -21,7 +21,7 @@ export function withVueStorySetup<T>(setup: () => void, render: () => T): T {
 /** Reuse the production component and release its subscriptions when Storybook removes it. */
 export function renderVueStory(
     component: Component,
-    props: Record<string, unknown>,
+    props: object,
     presentation: StoryPresentationOptions = {}
 ): HTMLElement {
     const host = document.createElement('div')
@@ -36,7 +36,7 @@ export function renderVueStory(
                   return () => h(component, props)
               },
           })
-        : createApp(component, props)
+        : createApp(component, { ...props })
     app.mount(host)
     let connected = false
     const observer = new MutationObserver(() => {

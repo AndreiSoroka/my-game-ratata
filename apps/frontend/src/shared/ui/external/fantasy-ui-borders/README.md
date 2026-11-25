@@ -12,4 +12,4 @@ Import the pack's components from `@/shared/ui/external` when using them outside
 
 Each component folder owns its styles, types, documentation, focused Storybook stories and unit tests. Within Shared, use that folder's `index.ts`. Raw asset metadata is private. The filled panel artwork uses different native slices from the border artwork and includes additional inner-edge detail.
 
-The complete source pack, license and archive origin are preserved in `assets`. The old public asset directory keeps only outline `026` and its license/source record for legacy game buttons. Existing game controls use their current implementation until explicitly migrated.
+The complete source pack, license and archive origin are preserved in `assets`. The public compatibility directory keeps the original URL for outline `026` and its license and source record. The Shared controls import the pack locally.

@@ -49,6 +49,7 @@ async function expectSegmentGeometry(stage: Locator): Promise<void> {
             return {
                 width: bounds.width,
                 height: bounds.height,
+                radius: getComputedStyle(element).borderRadius,
                 fills: Array.from(element.children, (fill) => {
                     const fillBounds = fill.getBoundingClientRect()
                     return {
@@ -67,7 +68,7 @@ async function expectSegmentGeometry(stage: Locator): Promise<void> {
             expect(fill.left).toBeCloseTo(left, 1)
             expect(fill.width).toBeCloseTo(expectedWidth, 1)
             expect(fill.height).toBe(geometry.height)
-            expect(fill.radius).toBe('0px')
+            expect(fill.radius).toBe(geometry.radius)
             left += expectedWidth + 2
         }
     }

@@ -1,35 +1,12 @@
 <script setup lang="ts">
-import type { DeityId } from '@my-game-ratata/contracts'
-import { computed, reactive, watch } from 'vue'
-
 import { HudRow } from '@/shared/ui/common'
 import { FantasyDivider } from '@/shared/ui/external'
 
-import type { PatronStatusEntry } from '../model/patronStatus'
+import { createPatronStatusStore, type PatronStatusEntry } from '../model/patronStatus'
 import FaithStatus from './FaithStatus.vue'
 
 const props = defineProps<{ patrons: readonly PatronStatusEntry[] }>()
-const sortedPatrons = computed(() =>
-    props.patrons
-        .filter((patron) => patron.name.trim())
-        .sort((left, right) => (right.level ?? 0) - (left.level ?? 0))
-)
-const moodChanges = reactive(new Map<DeityId, number>())
-
-watch(
-    () => sortedPatrons.value.map(({ id, omen }) => [id, omen] as const),
-    (omens, previousOmens) => {
-        const current = new Map(omens)
-        for (const [id, previousOmen] of previousOmens) {
-            const omen = current.get(id)
-            if (!omen) {
-                moodChanges.delete(id)
-            } else if (previousOmen && previousOmen !== omen) {
-                moodChanges.set(id, (moodChanges.get(id) ?? 0) + 1)
-            }
-        }
-    }
-)
+const { sortedPatrons, moodChanges } = createPatronStatusStore(() => props.patrons)
 </script>
 
 <template>

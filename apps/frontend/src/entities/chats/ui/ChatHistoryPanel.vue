@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import './chatButton.css'
 
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 
 import { characterName, gameLocale, tGame } from '@/shared/lib/i18n'
 import { hudPanelButtonColors, UiButton } from '@/shared/ui/common'
@@ -14,6 +14,7 @@ import {
     filterChatHistory,
     speechDisplayText,
 } from '../model/chatHistory'
+import { createChatHistoryReadState } from '../model/chatHistoryReadState'
 
 const props = withDefaults(
     defineProps<{
@@ -39,27 +40,23 @@ const preview = computed(() => visible.value.at(-1))
 const speakerName = (entry: ChatHistoryEntry): string =>
     entry.self ? tGame('game.chat.you') : characterName(entry.actorId ?? '', entry.name)
 
-let atBottom = true
 let resizeObserver: ResizeObserver | undefined
-const unread = ref(0)
+const { unread, isAtBottom, updateScroll, receive } = createChatHistoryReadState()
 
 function scroll(): void {
     const list = scroller.value
-    atBottom = !list || list.scrollHeight - list.scrollTop - list.clientHeight < 24
-    if (atBottom) unread.value = 0
+    updateScroll(!list || list.scrollHeight - list.scrollTop - list.clientHeight < 24)
 }
 
 function latest(): void {
     if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
-    atBottom = true
-    unread.value = 0
+    updateScroll(true)
 }
 
 watch(
     () => (props.privateConversation ? visible.value : props.entries).at(-1)?.id,
     (id) => {
-        if (!id || atBottom) latest()
-        else unread.value += 1
+        if (receive(id)) latest()
     },
     { flush: 'post' }
 )
@@ -67,7 +64,7 @@ watch(() => props.filter, latest, { flush: 'post' })
 watch(
     () => props.collapsed,
     (hidden) => {
-        if (!hidden && atBottom) latest()
+        if (!hidden && isAtBottom()) latest()
     },
     { flush: 'post' }
 )
@@ -75,7 +72,7 @@ onMounted(() => {
     latest()
     if (!scroller.value || typeof ResizeObserver === 'undefined') return
     resizeObserver = new ResizeObserver(() => {
-        if (!props.collapsed && atBottom) latest()
+        if (!props.collapsed && isAtBottom()) latest()
     })
     resizeObserver.observe(scroller.value)
 })

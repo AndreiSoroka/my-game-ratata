@@ -4,6 +4,7 @@ import type { FantasyPanelVariant } from '@/shared/ui/external/fantasy-ui-border
 export type UiButtonVariant = 'secondary' | 'primary' | 'success' | 'danger'
 export type UiButtonAppearance = 'filled' | 'ghost' | 'panel'
 export type UiButtonPanelAppearance = 'solid' | 'transparent-center'
+export type UiButtonSize = 'default' | 'small' | 'compact'
 
 export interface UiButtonStateColors {
     text?: string
@@ -28,8 +29,11 @@ export interface UiButtonProps {
     panel?: FantasyPanelVariant
     panelAppearance?: UiButtonPanelAppearance
     variant?: UiButtonVariant
+    size?: UiButtonSize
+    icon?: boolean
     colors?: UiButtonColors
     highlighted?: boolean
+    selected?: boolean
     focusRing?: boolean
     disabled?: boolean
     type?: 'button' | 'submit' | 'reset'

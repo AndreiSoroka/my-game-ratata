@@ -1,4 +1,12 @@
 :root {
+    --game-ui-surface: #14291f;
+    --game-ui-brass: #a59c66;
+    --game-ui-brass-muted: #66734e;
+    --game-ui-text: #f6edcf;
+    --game-ui-muted: #b6bba1;
+    --game-ui-focus: #ffe39a;
+    --game-ui-control-font: var(--ratata-font-family, 'Pixelify Sans', system-ui, sans-serif);
+
     --ui-light-border-white: #ffffff;
     --ui-light-border-cream: #f1ddb6;
     --ui-light-border-gold: #f8f3b8;

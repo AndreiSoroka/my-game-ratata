@@ -19,7 +19,7 @@ interface StoryArgs {
     gold: number
     blockedReason?: string
     market?: MarketSnapshot
-    navigation: 'none' | 'empty' | 'neighbor'
+    navigation: 'none' | 'empty' | 'text' | 'neighbor'
     onBuy: (itemId: AdventureTradeItemId) => void
     onTrade: (selection: MarketTradeSelection) => void
     onClose: () => void
@@ -49,9 +49,14 @@ const meta = {
         navigation: {
             control: {
                 type: 'select',
-                labels: { none: 'Нет', empty: 'Пустой div', neighbor: 'Сосед' },
+                labels: {
+                    none: 'Нет',
+                    empty: 'Пустой div с фоном',
+                    text: 'Текст',
+                    neighbor: 'Сосед',
+                },
             },
-            options: ['none', 'empty', 'neighbor'],
+            options: ['none', 'empty', 'text', 'neighbor'],
         },
         onBuy: { control: false },
         onTrade: { control: false },
@@ -60,7 +65,8 @@ const meta = {
     render({ navigation, ...args }) {
         const slots = {
             none: undefined,
-            empty: () => h('div'),
+            empty: () => h('div', { style: { minHeight: '20px', background: '#374c82' } }),
+            text: () => 'Лада ждёт у входа.',
             neighbor: () =>
                 h(DialogueTargetSwitcher, {
                     neighbors: { right: { key: 'character:ally', name: 'Лада' } },

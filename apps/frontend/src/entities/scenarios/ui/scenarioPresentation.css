@@ -1,0 +1,45 @@
+.automation-fields,
+.automation-fields label {
+    display: grid;
+    min-inline-size: 0;
+}
+
+.automation-fields {
+    gap: 10px;
+}
+
+.automation-fields label {
+    gap: 4px;
+}
+
+.automation-status .automation-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.automation-status p {
+    margin: 0;
+}
+
+.automation-status,
+.automation-fields {
+    color: var(--ui-dark-panel-text);
+}
+
+.automation-status .automation-muted,
+.automation-fields .automation-muted {
+    color: var(--ui-dark-panel-muted, var(--ui-dark-panel-text));
+    font-size: 12px;
+}
+
+.automation-status {
+    padding: 8px;
+    border-inline-start: 2px solid var(--ui-dark-panel-border);
+    background: color-mix(in srgb, var(--ui-dark-panel-surface) 82%, var(--ui-dark-panel-ornament));
+}
+
+.automation-status .automation-error {
+    color: var(--ui-dark-panel-warning);
+}

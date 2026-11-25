@@ -1,9 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { RatataGame } from '../runtime/ratataGame'
+import MapLoadError from '../../pages/gameplay/ui/MapLoadError.vue'
 import { adventureFixture, characterFixture, worldFixture } from '../testing/characterFixture'
-import MapLoadError from './MapLoadError.vue'
 import { worldInteractionActions } from './worldInteractionActions'
 
 it.each(['silent', 'prepared', 'active'] as const)(
@@ -50,7 +49,7 @@ describe('retrying map loading', () => {
             props: {
                 message: 'Карта временно недоступна',
                 status: 'Map loading failed',
-                game: { retryMap } as unknown as RatataGame,
+                onRetry: retryMap,
             },
         })
         expect(wrapper.get('[role="alert"]').text()).toContain('Не удалось загрузить местность')

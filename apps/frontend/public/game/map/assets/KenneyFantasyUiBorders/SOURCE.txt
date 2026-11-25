@@ -11,8 +11,8 @@ This legacy public directory retains only:
 - the original License.txt
 - this project source record
 
-The unchanged PNG preserves the existing /game/map/assets/KenneyFantasyUiBorders/
-URL used by the current GameButton skin. The complete original asset pack,
+The unchanged PNG preserves its existing /game/map/assets/KenneyFantasyUiBorders/
+URL. The complete original asset pack,
 including all native-size and double-size PNGs, SVG, previews and license,
 is now maintained at the canonical project directory:
 apps/frontend/src/shared/ui/external/fantasy-ui-borders/assets/

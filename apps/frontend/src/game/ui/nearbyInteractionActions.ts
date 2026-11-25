@@ -17,6 +17,7 @@ import {
     THEFT_RULES,
 } from '@my-game-ratata/contracts'
 
+import { itemStackLabel } from '@/entities/items'
 import { characterName, locationName, tGame, tLocalized } from '@/shared/lib/i18n'
 
 import type { TargetHighlight } from '../runtime/interactionTargetViews'
@@ -25,7 +26,6 @@ import { chestActions } from './chestActions'
 import { relation } from './combatTargeting'
 import { corpseSharesGrave, graveTargets } from './graveInteractions'
 import { facingInteractionTarget, interactionDistance } from './interactionTargets'
-import { itemStackLabel } from './itemLabels'
 import { justiceActions } from './justiceActions'
 import type { NearbyAction } from './nearbyActions'
 import {

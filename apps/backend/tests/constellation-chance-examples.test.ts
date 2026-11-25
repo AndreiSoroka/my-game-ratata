@@ -4,7 +4,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
-import { criticalChance } from '../../frontend/src/game/debug/constellationChanceMath'
+import { criticalChance } from '../../frontend/src/pages/constellation-debug/model/constellationChanceMath'
 import type { PendingAttackHit } from '../src/game/characterState'
 import { resolveAttackDamage } from '../src/game/combatDamage'
 import { defendContact } from '../src/game/combatDefense'

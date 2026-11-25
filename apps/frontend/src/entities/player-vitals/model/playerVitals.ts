@@ -2,11 +2,6 @@ import { readonly, shallowRef } from 'vue'
 
 export const playerResourceKinds = ['hp', 'mana', 'energy'] as const
 
-export interface ResourceNumbers {
-    readonly current: number
-    readonly max: number
-}
-
 export interface PlayerVitalsResources {
     hpPercent: number
     manaPercent: number

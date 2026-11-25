@@ -4,7 +4,6 @@ import {
     type WorkshopOffer,
     type WorkshopSnapshot,
 } from '@my-game-ratata/contracts'
-import { computed, ref } from 'vue'
 
 import { itemName, tGame } from '@/shared/lib/i18n'
 import { itemAssetCatalog } from '@/shared/lib/item-assets'
@@ -14,18 +13,14 @@ import { darkPanelThemeStyle, useDarkPanelTheme } from '@/shared/ui/theme'
 
 import { craftOrderPaymentText, craftOrderStatusLabels as statuses } from '../lib/craftOrderLabels'
 import type { WorkshopOrderAction } from '../model/workshopOrderAction'
+import { createWorkshopOrderSelection } from '../model/workshopOrderSelection'
 
 const props = defineProps<{ workshop: WorkshopSnapshot; gold: number; blocked?: boolean }>()
 const emit = defineEmits<{ action: [action: WorkshopOrderAction] }>()
-const selectedId = ref<WorkshopOffer['itemId']>()
-const cancelId = ref<string>()
+const { selectedId, cancelId, selected, cancelling } = createWorkshopOrderSelection(
+    () => props.workshop
+)
 const theme = useDarkPanelTheme()
-const selected = computed(() =>
-    props.workshop.offers.find((offer) => offer.itemId === selectedId.value)
-)
-const cancelling = computed(() =>
-    props.workshop.orders.find((order) => order.id === cancelId.value)
-)
 
 function place(offer: WorkshopOffer): void {
     if (!offer.canOrder || props.blocked || props.gold < offer.deposit) return

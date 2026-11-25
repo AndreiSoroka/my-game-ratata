@@ -1,11 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 
+import { HeroBackgroundSummary } from '@/entities/character-window'
+import CharacterDevelopment from '@/pages/gameplay/ui/CharacterDevelopment.vue'
+import CharacterStats from '@/pages/gameplay/ui/CharacterStats.vue'
+
+import JoinGamePanel from '../../pages/start-game/ui/JoinGamePanel.vue'
 import { characterFixture } from '../testing/characterFixture'
-import CharacterDevelopment from './CharacterDevelopment.vue'
-import CharacterStats from './CharacterStats.vue'
-import HeroBackgroundSummary from './HeroBackgroundSummary.vue'
-import JoinGamePanel from './JoinGamePanel.vue'
 
 it.each([
     ['vanguard', '+20 к здоровью', '+20 к энергии'],

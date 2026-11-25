@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import GameFrame from '../ui/primitives/GameFrame.vue'
-
+import { UiFrame } from '@/shared/ui/common'
 defineProps<{ state: 'closed' | 'open' }>()
 </script>
 
@@ -9,7 +8,7 @@ defineProps<{ state: 'closed' | 'open' }>()
         class="chest-preview game-frame-host"
         :aria-label="state === 'open' ? 'Open chest' : 'Closed chest'"
     >
-        <GameFrame variant="panel" />
+        <UiFrame variant="panel" />
         <span
             class="chest-preview__sprite"
             :class="{ 'chest-preview__sprite--open': state === 'open' }"

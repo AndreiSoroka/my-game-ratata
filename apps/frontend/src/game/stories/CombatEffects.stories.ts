@@ -1,5 +1,5 @@
 import '../../assets/base.css'
-import '../ui/rpgControls.css'
+import '../../pages/gameplay/ui/rpgControls.css'
 
 import { ABILITY_DEFINITIONS, type DeityId } from '@my-game-ratata/contracts'
 import type { Meta, StoryObj } from '@storybook/web-components-vite'

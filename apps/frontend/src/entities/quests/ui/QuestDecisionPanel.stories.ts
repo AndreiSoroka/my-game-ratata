@@ -9,13 +9,14 @@ import {
     questDecisionControls,
     type QuestDecisionStoryArgs,
 } from './questDecisionStory'
+import QuestItemList from './QuestItemList.vue'
 
 const contentExamples = {
-    empty: () => h('div'),
+    empty: () => h('div', { style: { minHeight: '22px', background: '#8b4865' } }),
     details: () => [
         h('h3', 'Проверить дорогу'),
         h('p', 'Осмотрите тропу до поселения.'),
-        h('ul', [h('li', 'Дойдите до моста.'), h('li', 'Вернитесь к заказчику.')]),
+        h(QuestItemList, { items: [{ itemId: 'wood', quantity: 2 }] }),
     ],
     text: () => 'Вернитесь к заказчику до заката.',
 }

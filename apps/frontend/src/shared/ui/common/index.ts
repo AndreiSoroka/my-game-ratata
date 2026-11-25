@@ -10,6 +10,7 @@ export {
     type UiButtonColors,
     type UiButtonPanelAppearance,
     type UiButtonProps,
+    type UiButtonSize,
     type UiButtonStateColors,
     type UiButtonVariant,
 } from './button'
@@ -20,10 +21,15 @@ export {
     type UiInputHandle,
     type UiInputProps,
     type UiInputType,
+    UiSelect,
+    type UiSelectProps,
     UiTextarea,
     type UiTextareaHandle,
 } from './field'
+export { UiNumberInput } from './field'
 export { GameBar, type GameBarProps } from './game-bar'
 export { HudFrame } from './hud-frame'
 export { HudRow } from './hud-row'
+export { CloseIcon, RefreshIcon } from './icons'
 export { ItemSlot, type ItemSlotProps } from './item-slot'
+export { UiFrame } from './ui-frame'

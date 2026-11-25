@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-import GameButton from '../ui/primitives/GameButton.vue'
-import GameFrame from '../ui/primitives/GameFrame.vue'
-
+import { UiButton, UiFrame } from '@/shared/ui/common'
 defineProps<{ section: 'menu' | 'variants' | 'sizes' | 'states' }>()
 const titles = {
     menu: 'Игровое меню',
@@ -16,7 +14,6 @@ const variants = [
     { id: 'secondary', label: 'Закрыть' },
     { id: 'success', label: 'Подтвердить' },
     { id: 'danger', label: 'Отменить' },
-    { id: 'slot', label: '1' },
 ] as const
 const menuActions = [
     { id: 'resume', label: 'Вернуться в игру', variant: 'primary' },
@@ -43,25 +40,25 @@ function activate(action: (typeof menuActions)[number]): void {
         :role="section === 'menu' ? 'dialog' : 'region'"
         :aria-label="section === 'menu' ? titles.menu : `Кнопки Fantasy: ${section}`"
     >
-        <GameFrame skin="parchment" />
+        <UiFrame skin="parchment" />
         <header class="fantasy-buttons-header">
             <h2>{{ titles[section] }}</h2>
             <p v-if="section === 'menu'">Мир продолжает жить, пока открыто меню.</p>
         </header>
         <div v-if="section === 'menu'" class="fantasy-buttons-menu">
-            <GameButton
+            <UiButton
                 v-for="action in menuActions"
                 :key="action.id"
-                skin="fantasy"
                 :variant="action.variant"
                 :data-testid="`fantasy-menu-${action.id}`"
                 :aria-pressed="action.id === 'sound' ? muted : undefined"
+                :selected="action.id === 'sound' ? muted : undefined"
                 @click="activate(action)"
             >
                 {{
                     action.id === 'sound' ? `Звук: ${muted ? 'выключен' : 'включён'}` : action.label
                 }}
-            </GameButton>
+            </UiButton>
             <p v-if="actionCount" role="status" aria-label="Результат действия">
                 Действие: {{ lastAction }} · {{ actionCount }}
             </p>
@@ -70,15 +67,11 @@ function activate(action: (typeof menuActions)[number]): void {
             <section v-for="variant in variants" :key="variant.id" class="fantasy-buttons-example">
                 <h3>{{ variant.id }}</h3>
                 <div class="fantasy-buttons-row">
-                    <GameButton skin="fantasy" :variant="variant.id">{{
+                    <UiButton :variant="variant.id">{{ variant.label }}</UiButton>
+                    <UiButton :variant="variant.id" disabled>{{ variant.label }}</UiButton>
+                    <UiButton :variant="variant.id" aria-pressed="true" selected>{{
                         variant.label
-                    }}</GameButton>
-                    <GameButton skin="fantasy" :variant="variant.id" disabled>{{
-                        variant.label
-                    }}</GameButton>
-                    <GameButton skin="fantasy" :variant="variant.id" aria-pressed="true">{{
-                        variant.label
-                    }}</GameButton>
+                    }}</UiButton>
                 </div>
             </section>
         </div>
@@ -86,43 +79,31 @@ function activate(action: (typeof menuActions)[number]): void {
             <section class="fantasy-buttons-example">
                 <h3>Обычные</h3>
                 <div class="fantasy-buttons-row">
-                    <GameButton skin="fantasy" variant="primary">Предложить</GameButton>
-                    <GameButton skin="fantasy">Закрыть</GameButton>
+                    <UiButton variant="primary">Предложить</UiButton>
+                    <UiButton>Закрыть</UiButton>
                 </div>
             </section>
             <section class="fantasy-buttons-example">
                 <h3>Компактные</h3>
                 <div class="fantasy-buttons-row">
-                    <GameButton skin="fantasy" size="compact">Всё</GameButton>
-                    <GameButton skin="fantasy" size="compact" icon aria-label="Уменьшить"
-                        >−</GameButton
-                    >
-                    <GameButton skin="fantasy" size="compact" icon aria-label="Увеличить"
-                        >+</GameButton
-                    >
-                    <GameButton skin="fantasy" icon aria-label="Закрыть окно">×</GameButton>
+                    <UiButton size="compact">Всё</UiButton>
+                    <UiButton size="compact" icon aria-label="Уменьшить">−</UiButton>
+                    <UiButton size="compact" icon aria-label="Увеличить">+</UiButton>
+                    <UiButton icon aria-label="Закрыть окно">×</UiButton>
                 </div>
             </section>
             <section class="fantasy-buttons-example">
                 <h3>Длинная подпись</h3>
-                <GameButton skin="fantasy" class="fantasy-buttons-long"
-                    >Вернуться к городским приключениям</GameButton
-                >
+                <UiButton class="fantasy-buttons-long">Вернуться к городским приключениям</UiButton>
             </section>
         </div>
         <div v-else class="fantasy-buttons-examples">
             <div class="fantasy-buttons-row">
-                <GameButton skin="fantasy" data-testid="fantasy-focus">Фокус</GameButton>
-                <GameButton skin="fantasy" variant="primary" data-testid="fantasy-hover"
-                    >Наведите курсор</GameButton
-                >
-                <GameButton skin="fantasy" data-testid="fantasy-pressed">Нажатие</GameButton>
-                <GameButton skin="fantasy" disabled data-testid="fantasy-disabled"
-                    >Недоступно</GameButton
-                >
-                <GameButton skin="fantasy" aria-pressed="true" data-testid="fantasy-selected"
-                    >Выбрано</GameButton
-                >
+                <UiButton data-testid="fantasy-focus">Фокус</UiButton>
+                <UiButton variant="primary" data-testid="fantasy-hover">Наведите курсор</UiButton>
+                <UiButton data-testid="fantasy-pressed">Нажатие</UiButton>
+                <UiButton disabled data-testid="fantasy-disabled">Недоступно</UiButton>
+                <UiButton aria-pressed="true" data-testid="fantasy-selected">Выбрано</UiButton>
             </div>
         </div>
     </section>
@@ -174,7 +155,7 @@ p {
     display: grid;
     gap: 15px;
 }
-.fantasy-buttons-menu > .game-button {
+.fantasy-buttons-menu > .ui-button {
     width: 100%;
     min-height: 46px;
 }

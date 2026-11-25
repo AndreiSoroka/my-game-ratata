@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { ITEM_DEFINITIONS } from '@my-game-ratata/contracts'
 
+import { ItemIcon } from '@/entities/items'
+import { UiFrame } from '@/shared/ui/common'
+
 import { itemAssetList } from '../assets/itemCatalog'
-import ItemIcon from '../ui/ItemIcon.vue'
-import GameFrame from '../ui/primitives/GameFrame.vue'
 </script>
 
 <template>
     <section class="item-catalog game-frame-host" aria-label="Item catalog">
-        <GameFrame />
+        <UiFrame />
         <h2>Предметы</h2>
         <div class="item-catalog__grid">
             <article v-for="item in itemAssetList" :key="item.id">

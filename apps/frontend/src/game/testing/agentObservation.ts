@@ -13,10 +13,11 @@ import {
     WORLD_LOCATION_DEFINITIONS,
 } from '@my-game-ratata/contracts'
 
+import { itemStackLabel } from '@/entities/items'
+
 import type { BuildingEntrance } from '../runtime/buildingEntrances'
 import { relation } from '../ui/combatTargeting'
 import { targetInteractionDistance } from '../ui/interactionTargets'
-import { itemStackLabel } from '../ui/itemLabels'
 import { type InteractionAction, nearbyInteractionTarget } from '../ui/nearbyInteractionActions'
 import { observeAdventure } from './observeAdventure'
 import { environmentTargets } from './observeEnvironment'

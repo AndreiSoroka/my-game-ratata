@@ -19,7 +19,7 @@ const meta = {
         ...questDecisionControls,
         default: {
             ...questDecisionControls?.default,
-            options: ['details', 'long', 'empty', 'delivery'],
+            options: ['details', 'long', 'empty', 'text', 'delivery'],
         },
         chooseRewardMode: { control: 'boolean' },
         rewardMode: { control: 'inline-radio', options: ['party_equal', 'submitter'] },

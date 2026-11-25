@@ -149,14 +149,14 @@ test('FantasyPanel Default Controls switch slot content and panel gradient', asy
     await page.getByRole('tab', { name: /^Controls/ }).click()
 
     const slot = page.locator('#control-slotContent')
-    await slot.selectOption({ label: 'Empty element' })
+    await slot.selectOption({ label: 'Пустой блок с фоном' })
     await expect(panel.locator(':scope > div')).toBeEmpty()
 
     await page.locator('#control-as').selectOption('span')
     await expect(panel).toHaveJSProperty('tagName', 'SPAN')
     await expect(panel.locator(':scope > span')).toBeEmpty()
 
-    await slot.selectOption({ label: 'Sample text' })
+    await slot.selectOption({ label: 'Текст' })
     await expect(panel).toHaveText('Панель с содержимым')
     await page.locator('#control-gradientTop').fill('rgb(120, 80, 40)')
     await page.locator('#control-gradientTop').press('Tab')

@@ -1,4 +1,5 @@
 export { type StartGameStatus, useStartGameReadiness } from './model/useStartGameReadiness'
 export { useWorldAdministration } from './model/useWorldAdministration'
+export { default as JoinGameScreen } from './ui/JoinGameScreen.vue'
 export { default as StartGameReadiness } from './ui/StartGameReadiness.vue'
 export { default as StartGameSettings } from './ui/StartGameSettings.vue'

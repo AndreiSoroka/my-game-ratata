@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import GameBarStory from './GameBarStory.vue'
 import { GameBar, type GameBarProps } from './index'
 
-type StoryArgs = GameBarProps & { content: 'native' | 'empty' | 'text' }
+type StoryArgs = GameBarProps & { content: StorySlot }
 type GalleryProps = Partial<GameBarProps> & { secondSegments?: readonly number[] }
 const meta = {
     title: 'Shared/Common/GameBar',
@@ -22,7 +22,7 @@ const meta = {
         showValue: false,
         shadow: true,
         segments: [],
-        content: 'native',
+        content: 'none',
     },
     argTypes: {
         value: { control: 'number' },
@@ -35,14 +35,7 @@ const meta = {
         showValue: { control: 'boolean' },
         shadow: { control: 'boolean' },
         segments: { control: 'object' },
-        content: {
-            name: 'Содержимое слота',
-            control: {
-                type: 'select',
-                labels: { native: 'Значение полосы', empty: 'Пустой span', text: 'Текст' },
-            },
-            options: ['native', 'empty', 'text'],
-        },
+        content: storySlotControl('Содержимое слота'),
     },
 } satisfies Meta<StoryArgs>
 export default meta
@@ -60,11 +53,17 @@ function preview(section: string, props: GalleryProps = {}): HTMLElement {
 
 export const Default: Story = {
     render: ({ content, ...args }) => {
-        const renderContent = {
-            native: undefined,
-            empty: () => h('span'),
-            text: () => 'Доступно',
-        }
+        const renderContent = storySlot(
+            content,
+            'Доступно',
+            () =>
+                h(
+                    'strong',
+                    { 'aria-label': 'Текущее и максимальное значение' },
+                    `${args.value}/${args.max}`
+                ),
+            { inline: true }
+        )
         return renderVueStory(
             {
                 render: () =>
@@ -75,7 +74,7 @@ export const Default: Story = {
                             'data-testid': 'game-bar-default',
                             style: { maxWidth: '560px' },
                         },
-                        renderContent[content]
+                        { default: renderContent }
                     ),
             },
             {}

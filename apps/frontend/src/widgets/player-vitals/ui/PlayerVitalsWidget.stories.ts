@@ -40,6 +40,7 @@ const meta = {
 export default meta
 type Story = StoryObj<PlayerVitalsData>
 
+export const Default: Story = {}
 export const Normal: Story = {}
 
 export const Segmented: Story = {

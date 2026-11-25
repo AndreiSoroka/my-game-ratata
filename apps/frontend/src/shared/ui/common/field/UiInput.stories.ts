@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
 import { h } from 'vue'
 
+import { RefreshIcon } from '../icons'
 import {
     type FieldStoryArgs,
     fieldStoryArgTypes,
@@ -10,15 +11,26 @@ import {
 } from './fieldStoryExamples'
 import UiInput from './UiInput.vue'
 
-const inputTypes = ['text', 'search', 'email', 'password', 'tel', 'url'] as const
+const inputTypes = [
+    'text',
+    'search',
+    'email',
+    'password',
+    'tel',
+    'url',
+    'number',
+    'checkbox',
+    'radio',
+    'range',
+] as const
 
 interface InputArgs extends FieldStoryArgs {
     type: (typeof inputTypes)[number]
     borderWidth?: number
     focusRing: boolean
     framed: boolean
-    leading: 'none' | 'empty' | 'prompt'
-    trailing: 'none' | 'empty' | 'count'
+    leading: 'none' | 'empty' | 'prompt' | 'icon'
+    trailing: 'none' | 'empty' | 'text' | 'count'
 }
 
 const meta = {
@@ -50,34 +62,53 @@ const meta = {
             name: 'Левый слот (leading)',
             control: {
                 type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой span', prompt: 'Знак ввода' },
+                labels: {
+                    none: 'Без слота',
+                    empty: 'Цветной блок',
+                    prompt: 'Текст',
+                    icon: 'Значок',
+                },
             },
-            options: ['none', 'empty', 'prompt'],
+            options: ['none', 'empty', 'prompt', 'icon'],
         },
         trailing: {
             name: 'Правый слот (trailing)',
             control: {
                 type: 'select',
-                labels: { none: 'Без слота', empty: 'Пустой span', count: 'Счётчик' },
+                labels: {
+                    none: 'Без слота',
+                    empty: 'Цветной блок',
+                    text: 'Текст',
+                    count: 'Счётчик',
+                },
             },
-            options: ['none', 'empty', 'count'],
+            options: ['none', 'empty', 'text', 'count'],
         },
     },
     render({ leading, trailing, ...args }) {
         const leadingSamples = {
             none: undefined,
-            empty: () => h('span', { 'data-testid': 'ui-input-empty-leading' }),
+            empty: () =>
+                h('span', {
+                    'data-testid': 'ui-input-empty-leading',
+                    style: 'display:block;width:16px;height:14px;background:#a64440',
+                }),
             prompt: () => h('span', { 'aria-hidden': 'true' }, '›'),
+            icon: () => h(RefreshIcon, { width: 16, height: 16 }),
         }
-        return renderFieldStory(UiInput, args, (value) => ({
-            leading: leadingSamples[leading],
-            trailing:
-                trailing === 'count'
-                    ? () => h('span', `${value.length} / ${args.maxlength ?? 240}`)
-                    : trailing === 'empty'
-                      ? () => h('span', { 'data-testid': 'ui-input-empty-trailing' })
-                      : undefined,
-        }))
+        return renderFieldStory(UiInput, args, (value) => {
+            const trailingSamples = {
+                none: undefined,
+                empty: () =>
+                    h('span', {
+                        'data-testid': 'ui-input-empty-trailing',
+                        style: 'display:block;width:28px;height:14px;background:#265c97',
+                    }),
+                text: () => h('span', 'символов'),
+                count: () => h('span', `${String(value).length} / ${args.maxlength ?? 240}`),
+            }
+            return { leading: leadingSamples[leading], trailing: trailingSamples[trailing] }
+        })
     },
 } satisfies Meta<InputArgs>
 

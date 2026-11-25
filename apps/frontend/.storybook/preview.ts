@@ -5,8 +5,9 @@ import '../src/assets/base.css'
 import { HERO_BACKGROUND_DEFINITIONS, heroClasses } from '@my-game-ratata/contracts'
 import type { Preview } from '@storybook/web-components-vite'
 
+import { heroClassTheme } from '@/entities/character-window'
+
 import { parseStoryHeroClass } from '../src/game/stories/storyHeroClass'
-import { heroClassTheme } from '../src/game/ui/heroClassThemes'
 import { withVueStorySetup } from '../src/shared/lib/storybook'
 import { lightUiColors, provideDarkPanelTheme } from '../src/shared/ui/theme'
 

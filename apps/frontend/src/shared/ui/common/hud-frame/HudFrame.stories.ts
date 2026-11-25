@@ -1,14 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { h } from 'vue'
 
-import { renderVueStory } from '@/shared/lib/storybook'
+import { renderVueStory, type StorySlot, storySlot, storySlotControl } from '@/shared/lib/storybook'
 import type { FantasyBorderVariant } from '@/shared/ui/external/fantasy-ui-borders/border'
 
+import { GameBar } from '../game-bar'
 import HudFrame from './HudFrame.vue'
 
 interface StoryArgs {
     border: FantasyBorderVariant
-    content: 'text' | 'empty'
+    content: StorySlot
 }
 
 const meta = {
@@ -22,11 +23,7 @@ const meta = {
                 (_, index) => `border-${String(index).padStart(3, '0')}`
             ),
         },
-        content: {
-            name: 'Содержимое слота',
-            control: { type: 'select', labels: { text: 'Текст', empty: 'Пустой div' } },
-            options: ['text', 'empty'],
-        },
+        content: storySlotControl('Содержимое слота'),
     },
 } satisfies Meta<StoryArgs>
 export default meta
@@ -35,8 +32,14 @@ export const Default: StoryObj<StoryArgs> = {
         const host = renderVueStory(
             {
                 render: () =>
-                    h(HudFrame, { border }, () =>
-                        content === 'empty' ? h('div') : 'Статус игрока'
+                    h(
+                        HudFrame,
+                        { border },
+                        {
+                            default: storySlot(content, 'Статус игрока', () =>
+                                h(GameBar, { value: 72, label: 'Здоровье', height: 18 })
+                            ),
+                        }
                     ),
             },
             {}

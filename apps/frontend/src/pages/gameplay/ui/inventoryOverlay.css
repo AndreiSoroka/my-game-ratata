@@ -1,0 +1,107 @@
+.inventory-overlay {
+    position: absolute;
+    top: 58px;
+    left: 14px;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 180px minmax(318px, 392px);
+    gap: 10px;
+    max-width: calc(100vw - 28px);
+    max-height: calc(100dvh - 130px);
+    overflow: auto;
+    color: var(--ui-dark-panel-text);
+    font-family: var(--ratata-font-family);
+}
+
+.inventory-overlay__inventory {
+    border: 2px solid transparent;
+    padding: 10px;
+}
+
+.inventory-overlay__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 28px;
+    margin-bottom: 8px;
+}
+
+.inventory-overlay__header h2 {
+    margin: 0;
+    color: var(--ui-dark-panel-title);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.inventory-overlay__close {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    place-items: center;
+}
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.inventory-gold {
+    margin: 0 0 12px;
+    padding: 9px 10px;
+    border: 1px solid transparent;
+
+    color: var(--ui-dark-panel-title);
+    font:
+        700 16px/1.4 system-ui,
+        sans-serif;
+}
+
+.inventory-inspection {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.inventory-grid .inventory-slot {
+    --ui-item-slot-image-size: min(24px, 100%);
+    height: auto;
+    position: relative;
+    display: grid;
+    width: 100%;
+    aspect-ratio: 1;
+    min-height: 24px;
+    padding: 0;
+    place-items: center;
+}
+
+@media (max-width: 720px) {
+    .inventory-overlay {
+        grid-template-columns: 1fr;
+        right: 14px;
+        overflow: auto;
+    }
+}
+
+.inventory-capacity {
+    margin-left: auto;
+    margin-right: 10px;
+    color: var(--ui-dark-panel-text);
+    font:
+        12px/1.5 system-ui,
+        sans-serif;
+    white-space: nowrap;
+}
+.inventory-overlay__inventory,
+.inventory-gold {
+    position: relative;
+}
+
+.inventory-hotbar-help {
+    margin: 4px 0 0;
+    color: var(--ui-dark-panel-text);
+    font:
+        14px/1.4 system-ui,
+        sans-serif;
+}

@@ -2,10 +2,11 @@ import { ABILITY_DEFINITIONS, forwardAbilityAttack, forwardShot } from '@my-game
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import { AbilityKnowledge } from '@/entities/progression'
+import { abilityUsage } from '@/entities/progression'
+
+import ActionHotbar from '../../pages/gameplay/ui/ActionHotbar.vue'
 import { characterFixture } from '../testing/characterFixture'
-import AbilityKnowledge from './AbilityKnowledge.vue'
-import { abilityUsage } from './abilityUsage'
-import ActionHotbar from './ActionHotbar.vue'
 import { ashCharacterActions, ashHotbarCommand, ashHotbarReason } from './ashActions'
 
 const parameters = {

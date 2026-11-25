@@ -2,12 +2,11 @@
 import type { HealthSnapshot, SoulSnapshot } from '@my-game-ratata/contracts'
 
 import { SoulBadgeIcons } from '@/entities/player-effects'
+import { healthBarPercent, healthText } from '@/shared/lib/resource-display'
+import { GameBar, HudFrame, UiFrame } from '@/shared/ui/common'
+import { lightUiColors } from '@/shared/ui/theme'
 
-import GameFrame from '../ui/primitives/GameFrame.vue'
-import GameResourceBar from '../ui/primitives/GameResourceBar.vue'
-import GameRibbon from '../ui/primitives/GameRibbon.vue'
-
-defineProps<{ section: 'parchment' | 'ribbons' | 'resources' }>()
+defineProps<{ section: 'parchment' | 'identity' | 'resources' }>()
 const soul: SoulSnapshot = {
     kind: 'spark',
     controlSource: 'human',
@@ -32,6 +31,12 @@ const resources: Array<{
         value: { kind: 'exact', current: 17.870400000000018, max: 30 },
     },
 ]
+const colors = {
+    hp: lightUiColors.bar.health.color,
+    mana: lightUiColors.bar.mana.color,
+    energy: lightUiColors.bar.energy.color,
+}
+const names = ['Астрия Янтарь', 'МихаилСорокаНовгородский']
 </script>
 
 <template>
@@ -39,31 +44,34 @@ const resources: Array<{
         <template v-if="section === 'parchment'">
             <h2>Пергаментная панель</h2>
             <div class="kenney-hud-frame game-frame-host">
-                <GameFrame skin="parchment" />
+                <UiFrame skin="parchment" />
                 <h3>Панель персонажа</h3>
                 <p>Общая рамка Kenney сохраняет светлую подложку и деревянные края.</p>
             </div>
         </template>
-        <template v-else-if="section === 'ribbons'">
-            <h2>Лента имени</h2>
-            <GameRibbon class="kenney-hud-ribbon">
-                <strong>Астрия Янтарь</strong>
-                <SoulBadgeIcons :soul-kind="soul.kind" :is-can-speak="soul.canSpeak" />
-            </GameRibbon>
-            <GameRibbon class="kenney-hud-ribbon">
-                <strong title="МихаилСорокаНовгородский">МихаилСорокаНовгородский</strong>
-                <SoulBadgeIcons :soul-kind="soul.kind" :is-can-speak="soul.canSpeak" />
-            </GameRibbon>
+        <template v-else-if="section === 'identity'">
+            <h2>Имя персонажа</h2>
+            <HudFrame v-for="name in names" :key="name" class="kenney-hud-identity">
+                <div class="kenney-hud-name">
+                    <strong :title="name">{{ name }}</strong>
+                    <SoulBadgeIcons :soul-kind="soul.kind" :is-can-speak="soul.canSpeak" />
+                </div>
+            </HudFrame>
         </template>
         <template v-else>
             <h2>Полосы ресурсов</h2>
             <div v-for="resource in resources" :key="resource.label" class="kenney-hud-resource">
                 <span>{{ resource.label }}</span>
-                <GameResourceBar
-                    :value="resource.value"
-                    :kind="resource.kind"
-                    :aria-label="resource.label"
-                />
+                <GameBar
+                    :value="healthBarPercent(resource.value)"
+                    :label="resource.label"
+                    :color="colors[resource.kind]"
+                    :aria-valuetext="healthText(resource.value) || undefined"
+                >
+                    <template v-if="resource.value.kind === 'exact'" #default>
+                        {{ healthText(resource.value) }}
+                    </template>
+                </GameBar>
             </div>
         </template>
     </section>
@@ -102,22 +110,24 @@ p {
     border: 10px solid transparent;
     padding: 14px;
 }
-.kenney-hud-ribbon {
+.kenney-hud-identity {
+    margin-bottom: 18px;
+}
+.kenney-hud-name {
     display: flex;
     align-items: center;
     justify-content: center;
     min-width: 0;
     gap: 10px;
-    margin-bottom: 18px;
-    padding-inline: 18px;
+    padding: 6px;
 }
-.kenney-hud-ribbon strong {
+.kenney-hud-name strong {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.kenney-hud-ribbon :deep(.soul-badge-icons) {
+.kenney-hud-name :deep(.soul-badge-icons) {
     flex: 0 0 auto;
     color: inherit;
     gap: 5px;
@@ -133,15 +143,9 @@ p {
     .kenney-hud-stage {
         padding: 10px;
     }
-    .kenney-hud-ribbon {
-        --game-ribbon-height: 24px;
-        --game-ribbon-cap-width: 12px;
+    .kenney-hud-name {
         font-size: 12px;
         gap: 6px;
-    }
-    .kenney-hud-resource {
-        --game-resource-border-width: 3px;
-        --game-resource-height: 17px;
     }
 }
 </style>

@@ -1,22 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue'
+import { computed, useId } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
 import { HudFrame, HudRow } from '@/shared/ui/common'
 
+import { createPlayerEffectsDisclosure } from '../model/playerEffectsSelection'
 import { presentPlayerEffects } from './playerEffectPresentation'
 import type { PlayerEffectsData } from './playerEffectsViewProps'
 
 const props = defineProps<PlayerEffectsData>()
 defineSlots<{ identity?(props: { class: string }): unknown }>()
 const listId = useId()
-const expanded = ref(false)
 
 const activeEffects = computed(() => presentPlayerEffects(props.effects))
 const hasActiveEffects = computed(() => activeEffects.value.length > 0)
-watch(hasActiveEffects, () => {
-    expanded.value = false
-})
+const { expanded, toggle } = createPlayerEffectsDisclosure(() => hasActiveEffects.value)
 </script>
 
 <template>
@@ -43,7 +41,7 @@ watch(hasActiveEffects, () => {
                     "
                     :aria-controls="listId"
                     :aria-expanded="expanded"
-                    @click="expanded = !expanded"
+                    @click="toggle"
                 >
                     <span class="player-effects__preview" aria-hidden="true">
                         <span

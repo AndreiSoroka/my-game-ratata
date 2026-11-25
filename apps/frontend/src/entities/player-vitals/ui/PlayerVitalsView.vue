@@ -2,12 +2,12 @@
 import { computed } from 'vue'
 
 import { tGame } from '@/shared/lib/i18n'
+import { resourceNumbersText } from '@/shared/lib/resource-display'
 import { HudRow } from '@/shared/ui/common'
 import { FantasyDivider } from '@/shared/ui/external'
 import { lightUiColors } from '@/shared/ui/theme'
 
 import { playerResourceKinds } from '../model/playerVitals'
-import { resourceNumbersText } from './healthPresentation'
 import PlayerVitalsBar from './PlayerVitalsBar.vue'
 import type { PlayerVitalsViewProps } from './playerVitalsViewProps'
 

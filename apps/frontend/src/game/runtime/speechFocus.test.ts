@@ -1,8 +1,8 @@
 import type { Engine } from 'excalibur'
 import { describe, expect, it, vi } from 'vitest'
 
+import { returnFromSpeech } from '../../pages/gameplay/model/dialogueSpeechKeys'
 import { combatInputBlocked } from '../ui/combatTargeting'
-import { returnFromSpeech } from '../ui/dialogueSpeechKeys'
 import { installRuntimeInputs } from './runtimeInputLifecycle'
 import { isEditableTarget } from './runtimeQueries'
 
