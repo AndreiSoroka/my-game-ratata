@@ -47,6 +47,12 @@ export interface ItemStatBonuses {
     dodgeChance?: number
 }
 
+interface GatheringCapability {
+    energy: number
+    durationMs: number
+    wear: number
+}
+
 export interface ItemDefinition {
     maxStack?: number
     description?: string
@@ -56,12 +62,11 @@ export interface ItemDefinition {
     name: string
     price?: number
     maxDurability?: number
-    gathering?: Partial<
-        Record<
-            'tree' | 'stone' | 'bush',
-            { energy: number; durationMs: number; wear: number }
-        >
-    >
+    gathering?: {
+        tree?: GatheringCapability & { removalEnergy?: number }
+        stone?: GatheringCapability
+        bush?: GatheringCapability
+    }
     fullRepairPrice?: number
     durabilityWear?: {
         attack?: number
@@ -91,7 +96,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         price: 25,
         maxDurability: 1000,
         gathering: {
-            tree: { energy: 5, durationMs: 2000, wear: 1 },
+            tree: { energy: 10, removalEnergy: 5, durationMs: 2000, wear: 1 },
             bush: { energy: 1, durationMs: 400, wear: 1 },
         },
         fullRepairPrice: 10,
@@ -109,7 +114,7 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         fullRepairPrice: 4,
         durabilityWear: { attack: 5 },
         gathering: {
-            tree: { energy: 5, durationMs: 2000, wear: 1 },
+            tree: { energy: 10, removalEnergy: 5, durationMs: 2000, wear: 1 },
             bush: { energy: 1, durationMs: 400, wear: 1 },
         },
         weapon: { minDamage: 2, maxDamage: 4 },

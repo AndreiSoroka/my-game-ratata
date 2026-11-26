@@ -1,3 +1,4 @@
+import { artisanEnglishText } from './constellationArtisan'
 import { constellationEnglishArcana } from './constellationEnglishArcana'
 import { constellationEnglishArrow } from './constellationEnglishArrow'
 import { constellationEnglishAsh } from './constellationEnglishAsh'
@@ -17,4 +18,5 @@ export const constellationEnglishText: Readonly<Record<string, StarText>> = {
     ...constellationEnglishUndead,
     ...constellationEnglishAsh,
     ...constellationEnglishStealthTheft,
+    ...artisanEnglishText,
 }

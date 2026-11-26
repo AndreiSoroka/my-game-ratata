@@ -18,12 +18,12 @@ describe('personal planar skies', () => {
         ).toHaveLength(261)
         expect(skyComponents(historicalCatalogue)).toHaveLength(11)
 
-        expect(expandedConstellationCatalog).toHaveLength(300)
+        expect(expandedConstellationCatalog).toHaveLength(305)
         expect(
             expandedConstellationCatalog.flatMap((node) => node.parents)
-        ).toHaveLength(319)
+        ).toHaveLength(323)
         const components = skyComponents(expandedConstellationCatalog)
-        expect(components).toHaveLength(12)
+        expect(components).toHaveLength(13)
         const zombieIds = expandedConstellationCatalog
             .filter((node) => node.constellationId === 'fat_zombie')
             .map(({ id }) => id)

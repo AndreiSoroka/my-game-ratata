@@ -132,7 +132,7 @@ function advanceGather(
         return finish(actor)
     }
     state.ownsLock = true
-    if (isWorkToolBroken(actor)) {
+    if (inspection.tool !== undefined && isItemBroken(inspection.tool)) {
         return finish(actor)
     }
     const node = service
@@ -239,11 +239,4 @@ function sourceFinished(node: AdventureResourceNode | undefined): boolean {
 }
 function gatherOperation(action: Extract<ForestAction, { kind: 'gather' }>) {
     return action.operation ?? 'harvest'
-}
-
-function isWorkToolBroken(actor: GameCharacter): boolean {
-    return (
-        actor.equipment.weapon !== undefined &&
-        isItemBroken(actor.equipment.weapon)
-    )
 }

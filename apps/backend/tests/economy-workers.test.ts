@@ -1,157 +1,172 @@
-import {
-    type AdventureClientMessage,
-    type AdventureResourceNode,
-    CENTER_LOCATION_ID,
-} from '@my-game-ratata/contracts'
+import { CENTER_LOCATION_ID, ITEM_DEFINITIONS } from '@my-game-ratata/contracts'
 import { expect, it } from 'vitest'
 
-import { AdventureService } from '../src/game/adventure'
-import { GameCharacter } from '../src/game/character'
-import { EconomyWorkerController } from '../src/game/economyWorkers'
-import {
-    countInventoryItem,
-    createItemInstance,
-    equipDirect,
-} from '../src/game/inventory'
-import { advanceCharacter } from '../src/game/movement'
-import { NavigationService } from '../src/game/navigation'
-import type { GameRoom } from '../src/game/room'
+import { repairSnapshot } from '../src/game/adventureTrading'
+import { countInventoryItem, createItemInstance } from '../src/game/inventory'
+import { readWorkerActivity } from '../src/game/workerActivityState'
+import { required } from './containerTestHelpers'
+import { economyWorkerFixture, source } from './workerEconomyFixture'
 
-it('a worker walks to a shared tree and merchant, delivering one real unit within its work budget', () => {
-    const test = fixture()
-    let moved = false
-    for (let tick = 0; tick < 1000; tick += 1) {
-        const before = { ...test.worker.position }
-        test.tick()
-        moved ||=
-            Math.hypot(
-                before.x - test.worker.position.x,
-                before.y - test.worker.position.y
-            ) > 0
+it('makes two-log trips on foot and transfers only existing goods without a sale', () => {
+    const test = economyWorkerFixture([source('tree')])
+    for (
+        let elapsed = 0;
+        elapsed < 20_000 && test.deliveries.mock.results.length === 0;
+        elapsed += 100
+    ) {
+        test.run(100)
     }
-    expect(moved).toBe(true)
-    expect(
-        test.service.resourceSnapshot(CENTER_LOCATION_ID)[0]?.remaining
-    ).toBe(7)
-    expect(
-        test.service.economy
-            .snapshot(CENTER_LOCATION_ID, test.now())
-            ?.rows.find((row) => row.itemId === 'wood')?.stock
-    ).toBe(7)
+    expect(test.remaining('tree')).toBe(6)
+    expect(test.row('wood')).toMatchObject({
+        stock: 8,
+        deliveredLast10Minutes: 2,
+    })
+    expect(test.deliveries.mock.results).toHaveLength(1)
+    expect(test.deliveries.mock.results[0]?.value).toMatchObject({
+        accepted: true,
+    })
     expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(0)
-    expect(test.service.snapshot(test.worker.id).gold).toBeGreaterThan(20)
-    expect(test.worker.equipment.weapon?.durability).toBe(999)
-    expect(test.commands).toContain('gather')
-    expect(test.commands).toContain('market_trade')
+    expect(test.service.snapshot(test.worker.id).gold).toBe(20)
+    expect(test.worker.equipment.weapon?.durability).toBe(994)
+    expect(
+        test.commands.filter((message) => message.type === 'gather')
+    ).toHaveLength(6)
+    expect(
+        test.commands.some((message) => message.type === 'market_trade')
+    ).toBe(false)
 })
 
-it('a dead worker cannot gather or deliver and an absent merchant does not cause remote transfer', () => {
-    const dead = fixture()
+it('keeps supplies on the worker when dead, too far, blocked by a request, or with no merchant', () => {
+    const dead = economyWorkerFixture([source('tree')])
     dead.worker.alive = false
-    for (let index = 0; index < 100; index += 1) {
-        dead.tick()
-    }
-    expect(
-        dead.service.resourceSnapshot(CENTER_LOCATION_ID)[0]?.remaining
-    ).toBe(8)
+    dead.run(10_000)
+    expect(dead.remaining('tree')).toBe(8)
     expect(dead.commands).toHaveLength(0)
-    const absent = fixture(false)
-    for (let index = 0; index < 1000; index += 1) {
-        absent.tick()
-    }
-    expect(countInventoryItem(absent.worker.inventory, 'wood')).toBe(1)
-    expect(
-        absent.service.economy
-            .snapshot(CENTER_LOCATION_ID, absent.now())
-            ?.rows.find((row) => row.itemId === 'wood')?.stock
-    ).toBe(6)
+
+    const absent = economyWorkerFixture([source('tree')], {
+        merchantPresent: false,
+    })
+    absent.run(25_000)
+    expect(countInventoryItem(absent.worker.inventory, 'wood')).toBe(2)
+    expect(absent.row('wood').stock).toBe(6)
+    const deposit = () =>
+        absent.service.deliverWorkerSupplies(
+            absent.worker,
+            absent.merchant,
+            absent.navigation,
+            absent.now()
+        )
+    expect(deposit().accepted).toBe(false)
+    absent.worker.position = { x: 48, y: 72 }
+    absent.service.setWorkPermission(
+        (_actor, command) => command !== 'worker_delivery'
+    )
+    expect(deposit().accepted).toBe(false)
+    expect(absent.row('wood').stock).toBe(6)
+    absent.service.setWorkPermission(() => true)
+    expect(deposit().accepted).toBe(true)
+    expect(deposit().accepted).toBe(false)
+    expect(absent.row('wood').stock).toBe(8)
+    expect(absent.service.snapshot(absent.worker.id).gold).toBe(20)
 })
 
-function fixture(merchantPresent = true) {
-    let now = 0
-    const navigation = new NavigationService({
-        id: 'workers',
-        width: 20,
-        height: 20,
-        tileWidth: 16,
-        tileHeight: 16,
-        solidLayerNames: [],
-        solid: Array<boolean>(400).fill(false),
-    })
-    const node: AdventureResourceNode = {
-        id: 'test-tree',
-        kind: 'wood',
-        source: 'tree',
-        phase: 'ready',
-        locationId: CENTER_LOCATION_ID,
-        remaining: 8,
-        bounds: { x: 80, y: 80, width: 16, height: 16 },
-        position: { x: 88, y: 96 },
-        collisionBounds: { x: 80, y: 80, width: 16, height: 16 },
-        matureBounds: { x: 80, y: 80, width: 16, height: 16 },
+it('fills one log from 19 and rotates actual town stops as demand returns', () => {
+    const test = economyWorkerFixture([source('tree')])
+    test.stockTo('wood', 19)
+    test.run(20_000)
+    expect(test.row('wood').stock).toBe(20)
+    expect(test.remaining('tree')).toBe(7)
+    expect(readWorkerActivity(test.worker)?.text).toContain('на площади')
+    expect(
+        Math.hypot(test.worker.position.x - 56, test.worker.position.y - 120)
+    ).toBeLessThan(18)
+    test.advanceTo(300_000)
+    test.run(20_000)
+    expect(test.row('wood').stock).toBe(20)
+    expect(test.remaining('tree')).toBe(6)
+    expect(readWorkerActivity(test.worker)?.text).toContain('у лавки')
+    expect(
+        Math.hypot(test.worker.position.x - 56, test.worker.position.y - 200)
+    ).toBeLessThan(18)
+    test.advanceTo(600_000)
+    test.run(20_000)
+    expect(test.row('wood').stock).toBe(20)
+    expect(test.remaining('tree')).toBe(5)
+    expect(readWorkerActivity(test.worker)?.text).toContain('у гильдии')
+    expect(
+        Math.hypot(test.worker.position.x - 56, test.worker.position.y - 280)
+    ).toBeLessThan(18)
+})
+
+it('replants real saplings after a mature tree falls, using ordinary plant validation', () => {
+    const test = economyWorkerFixture(
+        [{ ...source('tree', { x: 200, y: 136 }), remaining: 1 }],
+        { plantable: true }
+    )
+    test.stockTo('wood', 19)
+    test.run(25_000)
+    expect(test.row('wood').stock).toBe(20)
+    const replanted = test.service
+        .resourceSnapshot(CENTER_LOCATION_ID)
+        .filter((node) => node.phase === 'growing')
+    expect(replanted.length).toBeGreaterThanOrEqual(1)
+    expect(
+        countInventoryItem(test.worker.inventory, 'sapling') + replanted.length
+    ).toBe(2)
+    expect(test.commands.some((message) => message.type === 'plant_tree')).toBe(
+        true
+    )
+})
+
+it('physically visits the smith for sponsored issued equipment repair', () => {
+    const test = economyWorkerFixture([source('tree')])
+    test.stockTo('wood', 20)
+    const axe = required(test.worker.equipment.weapon)
+    const boots = required(test.worker.equipment.boots)
+    axe.durability = 0
+    boots.durability = 0
+    const spare = createItemInstance('stone_axe')
+    spare.durability = 0
+    expect(repairSnapshot(test.worker).total).toBe(0)
+    test.worker.inventory.push(spare)
+    expect(repairSnapshot(test.worker).total).toBe(4)
+    test.smith.alive = false
+    test.run(5_000)
+    expect(axe.durability).toBe(0)
+    expect(boots.durability).toBe(0)
+    test.smith.alive = true
+    test.run(10_000)
+    expect(axe.durability).toBe(ITEM_DEFINITIONS.axe.maxDurability)
+    expect(boots.durability).toBe(ITEM_DEFINITIONS.boots.maxDurability)
+    expect(spare.durability).toBe(0)
+    expect(test.service.snapshot(test.worker.id).gold).toBe(20)
+    expect(test.commands).toContainEqual(
+        expect.objectContaining({ type: 'repair_items', expectedTotal: 0 })
+    )
+})
+
+it('covers three hours of twelve-log baseline consumption after filling the real reserve', () => {
+    const test = economyWorkerFixture(
+        [
+            source('tree', { x: 200, y: 72 }, 'tree-a'),
+            source('tree', { x: 200, y: 120 }, 'tree-b'),
+            source('tree', { x: 200, y: 168 }, 'tree-c'),
+            source('tree', { x: 200, y: 216 }, 'tree-d'),
+            source('tree', { x: 248, y: 72 }, 'tree-e'),
+            source('tree', { x: 248, y: 120 }, 'tree-f'),
+            source('tree', { x: 248, y: 168 }, 'tree-g'),
+        ],
+        { plantable: true }
+    )
+    test.run(200_000)
+    expect(test.row('wood').stock).toBe(20)
+    for (let interval = 1; interval <= 36; interval += 1) {
+        test.advanceTo(interval * 300_000)
+        expect(test.row('wood').stock).toBe(19)
+        test.run(25_000)
+        expect(test.row('wood').stock).toBe(20)
     }
-    const service = new AdventureService({
-        now: () => now,
-        resourceNodes: [node],
-        worldObjects: [],
-    })
-    const worker = new GameCharacter({
-        id: 'worker',
-        nickname: 'worker',
-        archetype: 'human',
-        controllerKind: 'scripted',
-        faction: 'peaceful',
-        spawnPosition: { x: 152, y: 24 },
-    })
-    const merchant = new GameCharacter({
-        id: 'npc_merchant_1',
-        nickname: 'merchant',
-        archetype: 'human',
-        controllerKind: 'scripted',
-        faction: 'peaceful',
-        spawnPosition: { x: 24, y: 24 },
-    })
-    equipDirect(worker.equipment, createItemInstance('axe'))
-    const controller = new EconomyWorkerController('lumberjack')
-    const commands: string[] = []
-    const characters = merchantPresent ? [worker, merchant] : [worker]
-    const room = {
-        adventureForWorkers: () => service,
-        navigationFor: () => navigation,
-        findVisibleTarget: () => undefined,
-        getCharacter: (id: string) =>
-            characters.find((actor) => actor.id === id),
-        requestAdventure: (
-            actor: GameCharacter,
-            message: AdventureClientMessage,
-            at: number
-        ) => {
-            commands.push(message.type)
-            return service.handleResult(
-                actor,
-                message,
-                characters,
-                navigation,
-                at
-            )
-        },
-        publishEvents: () => undefined,
-    } as unknown as GameRoom
-    return {
-        worker,
-        service,
-        commands,
-        now: () => now,
-        tick: () => {
-            now += 50
-            service.update(now, () => navigation, characters)
-            controller.update(worker, room, now)
-            advanceCharacter({
-                character: worker,
-                deltaMs: 50,
-                now,
-                navigation,
-            })
-        },
-    }
-}
+    expect(test.deliveries.mock.results).toHaveLength(43)
+    expect(test.row('wood').consumptionPer10Minutes).toBe(2)
+    expect(test.service.snapshot(test.worker.id).gold).toBe(20)
+})

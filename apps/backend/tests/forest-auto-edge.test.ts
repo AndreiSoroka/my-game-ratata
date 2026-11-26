@@ -1,5 +1,6 @@
 import {
     type AdventureResourceNode,
+    ARTISAN_STARS,
     type ClientMessage,
     type GameEventPayload,
     itemDurability,
@@ -179,9 +180,11 @@ it('ordinary manual movement cancels and immediately frees movement while preser
     expect(f.start(f.actor, 100)).toBe(true)
     f.tick(100)
     f.tick(1999)
-    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
+    expect(f.actor.equipment.weapon?.durability).toBe(999)
     f.tick(2000)
-    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(2)
+    f.tick(4000)
+    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
 })
 
 it('preserves an unrelated later action lock when canceling forest work', () => {
@@ -220,7 +223,8 @@ it('a rejected route preserves active forest work and its current cooldown', () 
     expect(f.actor.actionLockUntil).toBe(lock)
     expect(f.service.workAvailableAt(f.actor)).toBe(2000)
     f.tick(2000)
-    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(2)
+    f.tick(4000)
+    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
 })
 
 it('rejects a selected source behind a wall without paying costs or starting navigation', () => {
@@ -246,8 +250,8 @@ it('lost access interrupts immediately during cooldown instead of waiting or har
     expect(f.service.workAvailableAt(f.actor)).toBe(2000)
     f.tick(2000)
     expect(f.actor.energy).toBe(energy)
-    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
-    expect(f.read()?.remaining).toBe(7)
+    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
+    expect(f.read()?.remaining).toBe(8)
 })
 
 it('a source taken by another actor while approaching stops the pinned intention and leaves neighbors alone', () => {
@@ -257,6 +261,7 @@ it('a source taken by another actor while approaching stops the pinned intention
     f.tick(0)
     expect(f.actor.hasPath()).toBe(true)
     const other = character('competitor')
+    other.progression.constellations.opened.add(ARTISAN_STARS.oneStrike)
     expect(
         f.service.handleResult(
             other,
@@ -277,20 +282,32 @@ it('a source taken by another actor while approaching stops the pinned intention
     expect(f.actor.inventory).toEqual([])
 })
 
-it('two automatic controllers contesting the last strike grant the complete harvest exactly once', () => {
+it('combines mixed-skill strikes into one harvest and rewards only the finisher', () => {
     const f = fixture(1)
     const other = character('competitor')
+    other.progression.constellations.opened.add(ARTISAN_STARS.hand)
     const otherEnergy = other.energy
     expect(f.start()).toBe(true)
     expect(f.start(other)).toBe(true)
     f.tick(0)
     f.tick(0, other)
+    expect(f.read()?.remaining).toBe(1)
+    expect(f.actor.inventory).toEqual([])
+    expect(other.inventory).toEqual([])
+    f.tick(2000)
+    f.tick(2000, other)
     expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
     expect(countInventoryItem(f.actor.inventory, 'sapling')).toBe(2)
     expect(countInventoryItem(f.actor.inventory, 'brushwood')).toBe(1)
     expect(other.inventory).toEqual([])
-    expect(other.energy).toBe(otherEnergy)
-    expect(other.equipment.weapon?.durability).toBe(1000)
+    expect(other.energy).toBe(otherEnergy - 10)
+    expect(other.equipment.weapon?.durability).toBe(999)
+    expect(
+        f.actor.progression.constellations.opened.has(ARTISAN_STARS.root)
+    ).toBe(true)
+    expect(
+        other.progression.constellations.opened.has(ARTISAN_STARS.root)
+    ).toBe(false)
     expect(
         f.events.filter(
             (event) =>
@@ -315,7 +332,7 @@ it('zero damage leaves continuous work running until an actual positive damage r
     expect(f.actor.isActionLocked(101)).toBe(false)
     expect(f.service.workAvailableAt(f.actor)).toBe(2000)
     f.tick(2000)
-    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+    expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
 })
 
 it('duplicate planting confirmation for the same normalized tile does not reset the no-progress deadline', () => {
@@ -367,6 +384,6 @@ it.each<ClientMessage>([
         expect(f.actor.isActionLocked(1)).toBe(false)
         expect(snapshotControl(f.actor).mode).toBe('none')
         advanceCharacterControl(f.actor, f.world, 5000)
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
     }
 )

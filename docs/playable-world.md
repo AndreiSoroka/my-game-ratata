@@ -322,7 +322,9 @@ NPCs without an active model-control lease use local authored rules. The UI repo
 
 The server checks Codex CLI or Claude Code before the world starts. Mira, the necromancer Savva, Kaplya, Leia and Bran use the model to choose activities. Passive NPCs use it in addressed conversations. An exclusive lease renews while a task is active, and the server determines completion from ordinary action receipts. [NPC reasoning, readiness and world modes](npc-ai.md).
 
-Routine gathering and farming use the same scenario movement and work actions as assigned jobs. The city worker service still handles trade, repair, supplies and requests. When danger blocks work, Danila, Gordey or Agafya reports to Mira. After the quest holder requests turn-in, the worker returns to the original worksite, checks safety with a real profession action and reports back before the reward is available. Guard, artisan, companion and hostile strategies retain their server-owned policies.
+Routine gathering and farming use the same scenario movement and work actions as assigned jobs. Danila brings batches of wood and any collected brushwood to the merchant for the city warehouse. At 20 logs he takes a break at the plaza, by the shop or near the guild. He returns to work as soon as stock drops below 20.
+
+When danger blocks work, Danila, Gordey or Agafya reports to Mira. After the quest holder requests turn-in, the worker returns to the original worksite, checks safety with a real profession action and reports back before the reward is available. Guard, artisan, companion and hostile strategies retain their server-owned policies.
 
 Прохор and Дарья wander through city street routes using the shared scenario runner. Players can ask Kaplya, Leia and Bran for companionship. The server checks explicit consent, existing promises, reach, line of sight and availability before assigning work.
 

@@ -7,6 +7,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import { arrowExpansionStars } from './constellationArrowStars'
+import { artisanStars } from './constellationArtisan'
 import { ashStars } from './constellationAshStars'
 import {
     constellationPaths,
@@ -174,7 +175,9 @@ const joints = [
 const authoredNodes = [
     ...roots.filter(
         ({ constellationId }) =>
-            constellationId !== 'undead' && constellationId !== 'fat_zombie'
+            constellationId !== 'undead' &&
+            constellationId !== 'fat_zombie' &&
+            constellationId !== 'artisan'
     ),
     ...constellationStars,
     ...explicitAbilities,
@@ -188,6 +191,8 @@ const authoredNodes = [
     ...ashStars,
     ...roots.filter(({ constellationId }) => constellationId === 'fat_zombie'),
     ...fatZombieStars,
+    ...roots.filter(({ constellationId }) => constellationId === 'artisan'),
+    ...artisanStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(

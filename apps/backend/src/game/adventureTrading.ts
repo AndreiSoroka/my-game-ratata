@@ -18,11 +18,13 @@ import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import type { CityEconomyService } from './cityEconomy'
 import { cityTradeRefusal } from './crimeRules'
+import type { InventoryItemInstance } from './inventory'
 import { repairItem } from './itemDurability'
 import { resetMartyrStreak } from './martyr'
 import type { NavigationService } from './navigation'
 import { setAuthoredNotice, setNotice } from './notices'
 import { availableGold } from './rewardReservations'
+import { isIssuedLumberjackEquipment } from './workerEquipment'
 
 export interface AdventureActionResult {
     accepted: boolean
@@ -89,8 +91,10 @@ export function repairSnapshot(
         ...Object.values(actor.equipment),
     ]) {
         const definition = ITEM_DEFINITIONS[item.itemId]
-        const price = itemRepairPrice(item)
-        if (definition.maxDurability === undefined || price === 0) {
+        if (
+            definition.maxDurability === undefined ||
+            itemRepairPrice(item) === 0
+        ) {
             continue
         }
         items.push({
@@ -99,7 +103,7 @@ export function repairSnapshot(
             label: definition.name,
             durability: itemDurability(item) ?? definition.maxDurability,
             maxDurability: definition.maxDurability,
-            price,
+            price: repairCharge(actor, item),
             equipped: equipped.has(item.instanceId),
         })
     }
@@ -272,7 +276,10 @@ function repair(
             'Одна из выбранных вещей больше не нуждается в ремонте или отсутствует.'
         )
     }
-    const total = selected.reduce((sum, item) => sum + itemRepairPrice(item), 0)
+    const total = selected.reduce(
+        (sum, item) => sum + repairCharge(actor, item),
+        0
+    )
     if (total !== message.expectedTotal) {
         return rejected('Стоимость ремонта изменилась. Проверь предложение.')
     }
@@ -285,6 +292,13 @@ function repair(
         repairItem(item)
     }
     return { accepted: true, error: null, events: [] }
+}
+
+function repairCharge(
+    actor: GameCharacter,
+    item: InventoryItemInstance
+): number {
+    return isIssuedLumberjackEquipment(actor, item) ? 0 : itemRepairPrice(item)
 }
 function rejected(error: string): AdventureActionResult {
     return { accepted: false, error, events: [] }

@@ -912,7 +912,9 @@
                 "apps/backend/tests/forest-resources.test.ts",
                 "apps/backend/tests/forest-auto-action.test.ts"
             ],
-            "facts": {}
+            "facts": {
+                "forestry.strikesPerLog": 3
+            }
         },
         {
             "id": "forestry.chopping.expert",
@@ -940,7 +942,8 @@
                 "forestry.adult.brushwood": 1,
                 "forestry.small.wood": 2,
                 "forestry.small.brushwood": 1,
-                "forestry.axe.energy": 5,
+                "forestry.axe.energy": 10,
+                "forestry.axe.economyEnergy": 7,
                 "forestry.axe.durationMs": 2000,
                 "forestry.axe.wear": 1,
                 "forestry.sword.energy": 10,

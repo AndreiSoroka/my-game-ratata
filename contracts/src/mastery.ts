@@ -29,6 +29,7 @@ export const MASTERY_NAMES: Readonly<Record<ConstellationId, string>> =
         prayer_grave: 'Прах',
         undead: 'Нежить',
         fat_zombie: 'Тяжёлая плоть',
+        artisan: 'Ремесленник',
     })
 
 export const MASTERY_REWARDS = Object.freeze({
@@ -55,6 +56,7 @@ export const MASTERY_REWARDS = Object.freeze({
     theftQuietPractice: 25,
     magicChapter: 50,
     magicTeaching: 50,
+    woodHarvest: 25,
 })
 export type MasteryRewardId = keyof typeof MASTERY_REWARDS
 
@@ -83,6 +85,7 @@ const rewardLabels: Record<MasteryRewardId, string> = {
     theftQuietPractice: 'Учтённая незамеченная попытка у NPC',
     magicChapter: 'Изучение новой главы',
     magicTeaching: 'Обучение другого новому заклинанию',
+    woodHarvest: 'Добытое бревно после открытия Ремесленника',
 }
 const pathRewards: Record<ConstellationId, readonly MasteryRewardId[]> = {
     blade: ['swordHit'],
@@ -112,6 +115,7 @@ const pathRewards: Record<ConstellationId, readonly MasteryRewardId[]> = {
     prayer_grave: ['healing', 'resurrection', 'ashRaise', 'ashBrand'],
     undead: [],
     fat_zombie: [],
+    artisan: ['woodHarvest'],
 }
 export function masteryRewardsForConstellation(id: ConstellationId) {
     return pathRewards[id].map((reward) => ({

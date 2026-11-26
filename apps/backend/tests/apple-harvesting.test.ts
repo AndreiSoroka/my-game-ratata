@@ -70,6 +70,13 @@ function fixture(
     update()
     const gather = () =>
         resources.gather(actor, state, node.id, clock.now, navigation)
+    const gatherLog = () => {
+        gather()
+        clock.now += 2_000
+        gather()
+        clock.now += 2_000
+        return gather()
+    }
     return {
         actor,
         inventory,
@@ -79,6 +86,7 @@ function fixture(
         clock,
         update,
         gather,
+        gatherLog,
         dropped,
         node,
         navigation,
@@ -95,6 +103,12 @@ describe('real apple-tree food drops', () => {
         'checks one 20 percent roll after accepted wood: %s',
         (roll, falls) => {
             const f = fixture('apple', 8, roll)
+            expect(f.gather()[0]?.kind).toBe('notice')
+            f.clock.now += 2_000
+            expect(f.gather()[0]?.kind).toBe('notice')
+            expect(f.random).not.toHaveBeenCalled()
+            expect(f.actor.inventory).toEqual([])
+            f.clock.now += 2_000
             expect(f.gather()[0]?.kind).toBe('resource_gather')
             expect(f.random).toHaveBeenCalledTimes(1)
             expect(f.actor.inventory.map((item) => item.itemId)).toEqual([
@@ -121,14 +135,17 @@ describe('real apple-tree food drops', () => {
         'never rolls for a %s tree',
         (profile) => {
             const f = fixture(profile)
-            expect(f.gather()[0]?.kind).toBe('resource_gather')
+            expect(f.gatherLog()[0]?.kind).toBe('resource_gather')
             expect(f.random).not.toHaveBeenCalled()
             expect(f.inventory.snapshotItems()).toEqual([])
         }
     )
+})
+
+describe('apple-tree state transitions', () => {
     it('rolls on the final cut but requires clearing the stump before a new forest tree can grow', () => {
         const f = fixture('apple', 1)
-        f.gather()
+        f.gatherLog()
         expect(f.random).toHaveBeenCalledTimes(1)
         expect(f.resources.snapshot()[0]).toMatchObject({
             phase: 'stump',
@@ -193,15 +210,18 @@ describe('real apple-tree food drops', () => {
         })
         f.clock.now += TREE_GROW_MS
         f.update()
-        expect(
-            f.resources.gather(
-                f.actor,
-                f.state,
-                planted.id,
-                f.clock.now,
-                f.navigation
-            )[0]?.kind
-        ).toBe('resource_gather')
+        for (let index = 0; index < 3; index++) {
+            expect(
+                f.resources.gather(
+                    f.actor,
+                    f.state,
+                    planted.id,
+                    f.clock.now,
+                    f.navigation
+                )[0]?.kind
+            ).toBe(index === 2 ? 'resource_gather' : 'notice')
+            f.clock.now += 2_000
+        }
         expect(f.random).not.toHaveBeenCalled()
     })
 })
@@ -260,7 +280,7 @@ describe('rejected logging never rolls or creates food', () => {
     })
     it('does not reroll while the work cooldown is active', () => {
         const f = fixture()
-        f.gather()
+        f.gatherLog()
         f.gather()
         expect(f.random).toHaveBeenCalledTimes(1)
         expect(f.inventory.snapshotItems()).toHaveLength(1)

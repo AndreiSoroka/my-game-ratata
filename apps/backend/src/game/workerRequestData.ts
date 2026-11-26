@@ -9,6 +9,7 @@ import {
     type WorkRequestSnapshot,
 } from '@my-game-ratata/contracts'
 
+import type { GameCharacter } from './character'
 import type { WorkerWorkAdapter } from './workerRequestWork'
 
 export const WORKER_SETTLEMENT_PROFILES: readonly WorkerSettlementProfile[] = [
@@ -16,6 +17,12 @@ export const WORKER_SETTLEMENT_PROFILES: readonly WorkerSettlementProfile[] = [
 ]
 export const WORKER_REQUEST_ORPHAN_MS = 300_000
 export const WORKER_REQUEST_RADIUS = 160
+
+export type WorkerProductionCommand = AdventureClientMessage | 'worker_delivery'
+export type WorkerProductionCheck = (
+    actor: GameCharacter,
+    message: WorkerProductionCommand
+) => boolean
 
 export interface WorkerRequestClaim {
     key: string
@@ -76,16 +83,19 @@ export function openIncident(incident: WorkerIncident): boolean {
 }
 
 /** Blocking is independent of which controller currently owns the worker. */
-export function isWorkerProduction(message: AdventureClientMessage): boolean {
-    return [
-        'gather',
-        'farm_action',
-        'farm_supply',
-        'craft',
-        'plant_tree',
-        'market_trade',
-        'repair_items',
-    ].includes(message.type)
+export function isWorkerProduction(message: WorkerProductionCommand): boolean {
+    return (
+        message === 'worker_delivery' ||
+        [
+            'gather',
+            'farm_action',
+            'farm_supply',
+            'craft',
+            'plant_tree',
+            'market_trade',
+            'repair_items',
+        ].includes(message.type)
+    )
 }
 
 export function resourceWorkTarget(

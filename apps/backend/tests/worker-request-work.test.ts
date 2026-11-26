@@ -251,7 +251,7 @@ describe('trial safety and production pacing', () => {
         }
     )
 
-    it('skips the long profession interval for a probe, then preserves its ordinary budget', () => {
+    it('requires actual timber during the trial and resumes ordinary deliveries after release', () => {
         const test = new WorkerSimulation('lumberjack')
         test.enemy.alive = false
         test.tick()
@@ -265,26 +265,22 @@ describe('trial safety and production pacing', () => {
         test.accept()
         test.player.inventory.push(createItemInstance('bone'))
         expect(test.report()).toBeNull()
+        test.until(() => test.commands.length === 2)
+        expect(test.current().stage).toBe('working')
+        expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(0)
         test.until(() => test.current().stage === 'ready')
         expect(test.now).toBeLessThan(600_000)
         expect(
             test.commands.filter((entry) => entry.message.type === 'gather')
-        ).toHaveLength(2)
+        ).toHaveLength(3)
+        expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(1)
         expect(test.requests.complete(test.current().id, 'solo:hero')).toBe(
             true
         )
-        for (let tick = 0; tick < 400; tick += 1) {
-            test.tick()
-        }
+        test.until(() => test.stock('wood') >= 8)
+        expect(test.now).toBeLessThan(600_000)
         expect(
-            test.commands.filter((entry) => entry.message.type === 'gather')
-        ).toHaveLength(2)
-        expect(
-            test.commands.some(
-                (entry) =>
-                    entry.message.type === 'market_trade' &&
-                    entry.result.accepted
-            )
-        ).toBe(true)
+            test.commands.some((entry) => entry.message.type === 'market_trade')
+        ).toBe(false)
     })
 })

@@ -48,6 +48,7 @@ function describeArrowCatch(): ConstellationEffectChance {
 const targetDodge = 'Итоговое уклонение цели в процентах.'
 const baseCritical =
     'Базовый критический шанс атакующего в процентах; экипировка сейчас не добавляет крит.'
+const authoredPassivePaths = new Set(['undead', 'fat_zombie', 'artisan'])
 
 /** Explanations of resolved effects, deliberately separate from acquiring a star. */
 export function describeOtherEffectChance(
@@ -64,8 +65,7 @@ export function describeOtherEffectChance(
     const special = specialDescriptions[node.id]
     if (special !== undefined) return special()
     if (
-        node.constellationId === 'undead' ||
-        node.constellationId === 'fat_zombie' ||
+        authoredPassivePaths.has(node.constellationId) ||
         (node.constellationId === 'arrow' && node.results?.length)
     )
         return withChanceFormulas(

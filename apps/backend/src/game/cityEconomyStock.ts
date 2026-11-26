@@ -1,4 +1,5 @@
 import {
+    type ItemId,
     type MarketItemId,
     PORTABLE_LIGHT_ITEMS,
 } from '@my-game-ratata/contracts'
@@ -102,29 +103,42 @@ export interface CityState {
     history: StockEvent[]
 }
 
-export function depositHerbs(
+export function lumberjackStockTarget(capacity: number): number {
+    return Math.ceil(capacity * 0.8)
+}
+
+export function depositStockSupplies(
     source: InventoryItemInstance[],
     city: CityState,
+    supplier: 'herbalist' | 'lumberjack',
     now: number
-): void {
-    const herbs = availableItemQuantity(source, 'herbs')
-    if (herbs === 0) {
-        return
+): boolean {
+    const items: MarketItemId[] =
+        supplier === 'lumberjack' ? ['wood', 'brushwood'] : ['herbs']
+    let deposited = false
+    for (const itemId of items) {
+        const definition = CITY_COMMODITIES.find(
+            (entry) => entry.itemId === itemId
+        )
+        if (definition === undefined) {
+            continue
+        }
+        const capacity = definition.target * 2
+        const limit =
+            itemId === 'wood' ? lumberjackStockTarget(capacity) : capacity
+        const quantity = Math.min(
+            availableItemQuantity(source, itemId),
+            limit - countInventoryItem(city.inventory, itemId)
+        )
+        if (
+            quantity > 0 &&
+            transferQuantity(source, city.inventory, itemId, quantity, Infinity)
+        ) {
+            recordStockDelivery(city, itemId, quantity, now)
+            deposited = true
+        }
     }
-    const definition = CITY_COMMODITIES.find(({ itemId }) => itemId === 'herbs')
-    if (definition === undefined) {
-        return
-    }
-    const quantity = Math.min(
-        herbs,
-        definition.target * 2 - countInventoryItem(city.inventory, 'herbs')
-    )
-    if (
-        quantity > 0 &&
-        transferQuantity(source, city.inventory, 'herbs', quantity, Infinity)
-    ) {
-        recordStockDelivery(city, 'herbs', quantity, now)
-    }
+    return deposited
 }
 
 export function recordStockDelivery(
@@ -135,6 +149,18 @@ export function recordStockDelivery(
 ): void {
     city.revision += 1
     city.history.push({ at, itemId, quantity, kind: 'delivery' })
+}
+
+export function recordWarehouseDelivery(
+    city: CityState,
+    itemId: ItemId,
+    quantity: number,
+    at: number
+): void {
+    const definition = CITY_COMMODITIES.find((row) => row.itemId === itemId)
+    if (definition !== undefined) {
+        recordStockDelivery(city, definition.itemId, quantity, at)
+    }
 }
 
 export function transferQuantity(

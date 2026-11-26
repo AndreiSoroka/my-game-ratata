@@ -1,4 +1,9 @@
-import { ABILITY_DEFINITIONS, type HeroClass, MASTERY_NAMES } from '@my-game-ratata/contracts'
+import {
+    ABILITY_DEFINITIONS,
+    ARTISAN_STARS,
+    type HeroClass,
+    MASTERY_NAMES,
+} from '@my-game-ratata/contracts'
 
 import { magicLevelAbilities } from '../../../../../backend/src/game/constellationMagicStars'
 import { fullConstellationCatalog } from '../../../../../backend/src/game/constellationNodes'
@@ -12,7 +17,15 @@ export interface ConstellationUnlockDescription {
     conditions: string[]
     chanceBoosts: string[]
 }
+const artisanOpening = [
+    'Все условия обязательны. При их выполнении тратится одно открытие Ремесленника. Если следующая звезда пока недоступна, открытие сохраняется.',
+]
 const eventConditions: Record<string, string[]> = {
+    [ARTISAN_STARS.root]: ['Открывается после добычи последнего бревна из стоящего дерева.'],
+    [ARTISAN_STARS.hand]: artisanOpening,
+    [ARTISAN_STARS.economy]: artisanOpening,
+    [ARTISAN_STARS.oneStrike]: artisanOpening,
+    [ARTISAN_STARS.endurance]: artisanOpening,
     'arrow.moving_shot': ['Открывается автоматически на 4-м уровне Стрелы без расхода открытия.'],
     'prayer.martyr': [
         'Уровень Чудес от 0 до 2: до третьего уровня.',
@@ -103,6 +116,7 @@ function acquisitionConditions(
         return [
             'Корень открывается после первой учтённой вражеской раны или первого восстановления энергии, потраченной на успешную полевую работу.',
         ]
+    if (eventConditions[nodeId]) return [...eventConditions[nodeId]!]
     if (acquisition === 'root')
         return [
             'Корень открывается при получении соответствующей школы или первой учтённой практике. Стартовый класс получает свой корень сразу.',
@@ -123,7 +137,6 @@ function acquisitionConditions(
         ]
     if (magicLevelAbilities.some(([ability]) => nodeId === `magic.${ability}`))
         return ['Открывается автоматически при достижении требуемого уровня Магии.']
-    if (eventConditions[nodeId]) return [...eventConditions[nodeId]!]
     return [
         'Есть накопленное открытие. Все условия обязательны: только после их выполнения звезда входит в случайный пул. Если подходящих звёзд нет, открытие сохраняется.',
     ]

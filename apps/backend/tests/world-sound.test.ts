@@ -154,18 +154,25 @@ it('hides precise actor sounds and leaves a nearby public object cue anonymous',
     expect(projectWorldSound(chest, view)).toBeUndefined()
 })
 
-it('uses one sound for a successful gathering action with multiple outputs', () => {
-    const { actor, navigation, node, gather } = harvestFixture('tree', 1)
+it('uses one chop sound per strike, including the strike with multiple outputs', () => {
+    const { actor, clock, navigation, node, gather } = harvestFixture('tree', 1)
     const view = {
         observer: actor,
         navigation,
         now,
         getCharacter: () => actor,
     }
-    const events = gather()
-    expect(events).toHaveLength(3)
-    const cues = events.flatMap((event) => projectWorldSound(event, view) ?? [])
-    expect(cues).toMatchObject([{ effect: 'chop', position: node.position }])
+    for (const outputCount of [1, 1, 3]) {
+        const events = gather()
+        expect(events).toHaveLength(outputCount)
+        const cues = events.flatMap(
+            (event) => projectWorldSound(event, view) ?? []
+        )
+        expect(cues).toMatchObject([
+            { effect: 'chop', position: node.position },
+        ])
+        clock.now += 2_000
+    }
     expect(gather()).toEqual([])
 })
 

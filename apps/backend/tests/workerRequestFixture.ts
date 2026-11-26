@@ -151,6 +151,15 @@ export class WorkerSimulation {
             }: Pick<GameCharacter, 'locationId'>) =>
                 this.world.get(locationId).navigation,
             getCharacter: (id: string) => this.characters.get(id),
+            charactersFor: (actor: GameCharacter) =>
+                [...this.characters.values()].filter(
+                    (character) => character.locationId === actor.locationId
+                ),
+            scenarioEnvironment: (actor: GameCharacter) => ({
+                items: this.world
+                    .get(actor.locationId)
+                    .inventory.snapshotItems(),
+            }),
             findVisibleTarget: (
                 observer: GameCharacter,
                 radius: number,

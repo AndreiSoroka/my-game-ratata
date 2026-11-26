@@ -1,5 +1,4 @@
 import type {
-    AdventureClientMessage,
     AdventureSnapshot,
     GameEventPayload,
     WorldObjectBounds,
@@ -33,6 +32,8 @@ import { CityWorldState } from './cityWorldState'
 import { CraftOrderCommands } from './customerOrderCommands'
 import type { NavigationService } from './navigation'
 import { QuestFunding } from './questFunding'
+import type { WorkerProductionCheck } from './workerRequestData'
+import { createWorkerDelivery } from './workerSupplies'
 import type { WorldObjects } from './worldObjects'
 
 export class AdventureService {
@@ -55,20 +56,12 @@ export class AdventureService {
     public readonly farmSupply: CityFarmSupply
     private readonly trading: AdventureTrading
     private readonly orderCommands: CraftOrderCommands
-    private workPermission: (
-        actor: GameCharacter,
-        message: AdventureClientMessage
-    ) => boolean = () => true
+    private workPermission: WorkerProductionCheck = () => true
     private questRewardMembers = (actorId: string): readonly string[] => [
         actorId,
     ]
 
-    public setWorkPermission(
-        check: (
-            actor: GameCharacter,
-            message: AdventureClientMessage
-        ) => boolean
-    ): void {
+    public setWorkPermission(check: WorkerProductionCheck): void {
         this.workPermission = check
     }
 
@@ -123,6 +116,11 @@ export class AdventureService {
     public readonly previewPlant = this.forest.previewPlant
     public readonly workAvailableAt = this.forest.workAvailableAt
     public readonly reportWorkProblem = this.forest.reportWorkProblem
+
+    public readonly deliverWorkerSupplies = createWorkerDelivery(
+        () => this.economy,
+        (actor) => this.workPermission(actor, 'worker_delivery')
+    )
 
     private readonly sessions = createAdventureSessions(
         this.players,

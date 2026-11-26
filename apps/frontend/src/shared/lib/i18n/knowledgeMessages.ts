@@ -131,6 +131,10 @@ export const knowledgeMessages = {
     studentMagicLevel: ['Ученику требуется Магия 3.', 'The student needs Magic level 3.'],
     studentNearby: ['Ученик рядом', 'Student nearby'],
     teachFirebolt: ['Научить огненной стреле', 'Teach Firebolt'],
+    artisanExperience: [
+        'Опыт за добытые брёвна. Ремесленник открывается после завершения рубки дерева.',
+        'Earn experience for harvesting logs. Artisan unlocks when you finish cutting down a tree.',
+    ],
     theftExperience: [
         'Опыт за кражу предмета и за тихий промах по NPC с доступным предметом. Откройте взаимодействие клавишей F в тихом ходе.',
         'Earn experience for stealing an item or failing unnoticed against an NPC carrying a stealable item. Press F to interact while sneaking.',

@@ -240,7 +240,7 @@ export class WorkerRequestService {
 
     public allowsWork(
         actorId: string,
-        message: AdventureClientMessage
+        message: AdventureClientMessage | 'worker_delivery'
     ): boolean {
         const request = this.byWorker.get(actorId)
         return (

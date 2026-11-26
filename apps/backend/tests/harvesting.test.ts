@@ -1,4 +1,8 @@
-import { INVENTORY_CAPACITY, itemDurability } from '@my-game-ratata/contracts'
+import {
+    ARTISAN_STARS,
+    INVENTORY_CAPACITY,
+    itemDurability,
+} from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { createAdventureState } from '../src/game/adventureState'
@@ -6,6 +10,7 @@ import { GameCharacter } from '../src/game/character'
 import { STONE_REGROW_MS, TREE_GROW_MS } from '../src/game/harvestResources'
 import { countInventoryItem, createItemInstance } from '../src/game/inventory'
 import { resourceChecks } from '../src/game/resourceObservation'
+import { RewardReservations } from '../src/game/rewardReservations'
 import { fixture, weapon } from './harvestTestHelpers'
 
 it('uses authored gathering capabilities for a crafted stone axe', () => {
@@ -13,45 +18,58 @@ it('uses authored gathering capabilities for a crafted stone axe', () => {
     const tool = createItemInstance('stone_axe')
     f.actor.equipment.weapon = tool
     const energy = f.actor.energy
-    expect(f.gather()[0]?.kind).toBe('resource_gather')
+    expect(f.gather()[0]?.kind).toBe('notice')
     expect(itemDurability(tool)).toBe(99)
-    expect(f.actor.energy).toBe(energy - 5)
+    expect(f.actor.energy).toBe(energy - 10)
     f.clock.now = 1_999
     expect(f.gather()).toEqual([])
     f.clock.now = 2_000
+    expect(f.gather()[0]?.kind).toBe('notice')
+    f.clock.now = 4_000
     expect(f.gather()[0]?.kind).toBe('resource_gather')
 })
 
 describe('shared authoritative logging and mining', () => {
-    it.each(['tree', 'stone'] as const)(
+    it.each([
+        ['tree', 9, 'notice', 8],
+        ['stone', 4.5, 'resource_gather', 7],
+    ] as const)(
         'validates and charges the discounted cost for %s work',
-        (source) => {
+        (source, cost, eventKind, remaining) => {
             const f = fixture(source)
-            f.actor.energy = 4.5
+            f.actor.energy = cost
             expect(f.gather()).toEqual([])
-            expect(f.actor.energy).toBe(4.5)
+            expect(f.actor.energy).toBe(cost)
 
             f.actor.progression.constellations.opened.add('life.work')
-            f.actor.energy = 4.49
+            f.actor.energy = cost - 0.01
             expect(f.gather()).toEqual([])
-            expect(f.actor.energy).toBe(4.49)
+            expect(f.actor.energy).toBe(cost - 0.01)
             expect(f.resources.snapshot()[0]?.remaining).toBe(8)
-            f.actor.energy = 4.5
-            expect(f.gather()[0]?.kind).toBe('resource_gather')
+            f.actor.energy = cost
+            expect(f.gather()[0]?.kind).toBe(eventKind)
             expect(f.actor.energy).toBe(0)
-            expect(f.resources.snapshot()[0]?.remaining).toBe(7)
+            expect(f.resources.snapshot()[0]?.remaining).toBe(remaining)
         }
     )
 
-    it('turns eight cuts into eight wood, a stump and two real saplings, wearing the axe once per result', () => {
+    it('turns each three blows into one log and yields the stump and saplings once', () => {
         const f = fixture()
         const tool = weapon(f.actor)
-        for (let index = 0; index < 8; index++) {
+        const opened = f.actor.progression.constellations.opened
+        for (let index = 1; index <= 24; index++) {
             f.actor.energy = 100
-            expect(f.gather()[0]?.kind).toBe('resource_gather')
+            const yieldsLog = index % 3 === 0
+            expect(f.gather()[0]?.kind).toBe(
+                yieldsLog ? 'resource_gather' : 'notice'
+            )
+            expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(
+                Math.floor(index / 3)
+            )
+            expect(opened.has(ARTISAN_STARS.root)).toBe(index === 24)
             f.clock.now += 2_000
         }
-        expect(itemDurability(tool)).toBe(992)
+        expect(itemDurability(tool)).toBe(976)
         expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(8)
         expect(countInventoryItem(f.actor.inventory, 'sapling')).toBe(2)
         expect(countInventoryItem(f.actor.inventory, 'brushwood')).toBe(1)
@@ -87,7 +105,7 @@ describe('shared authoritative logging and mining', () => {
         expect(sword.durability).toBe(0)
         f.clock.now = 12_000
         expect(f.gather()).toEqual([])
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(3)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
     })
 
     it('keeps final wood, both saplings, tool, energy and source atomic when the bag is full', () => {
@@ -104,7 +122,10 @@ describe('shared authoritative logging and mining', () => {
         expect(f.resources.snapshot()[0]?.remaining).toBe(1)
         f.actor.inventory.pop()
         f.actor.inventory.pop()
-        f.gather()
+        for (let index = 0; index < 3; index++) {
+            f.gather()
+            f.clock.now += 2_000
+        }
         expect(f.actor.inventory).toHaveLength(INVENTORY_CAPACITY)
         expect(f.resources.snapshot()[0]?.phase).toBe('stump')
     })
@@ -162,13 +183,16 @@ describe('harvest refusal and shared source state', () => {
             spawnPosition: f.actor.position,
         })
         npc.equipment.weapon = createItemInstance('axe')
-        f.gather()
+        for (let index = 0; index < 3; index++) {
+            f.gather()
+            f.clock.now += 2_000
+        }
         expect(
             f.resources.handle(
                 npc,
                 createAdventureState(),
                 { type: 'gather', nodeId: f.node.id },
-                0,
+                f.clock.now,
                 f.navigation
             )
         ).toEqual([])
@@ -192,6 +216,77 @@ describe('harvest refusal and shared source state', () => {
             remaining: 8,
         })
         expect(f.navigation.isSolidTile({ x: 11, y: 11 })).toBe(true)
+    })
+})
+
+describe('artisan logging', () => {
+    it.each([
+        [ARTISAN_STARS.hand, 2, 10],
+        [ARTISAN_STARS.economy, 2, 7],
+        [ARTISAN_STARS.oneStrike, 1, 7],
+    ] as const)('applies the speed and energy of %s', (star, strikes, cost) => {
+        const f = fixture()
+        const opened = f.actor.progression.constellations.opened
+        opened.add(ARTISAN_STARS.root)
+        opened.add(ARTISAN_STARS.hand)
+        opened.add(star)
+        if (star === ARTISAN_STARS.oneStrike) {
+            opened.add(ARTISAN_STARS.economy)
+        }
+        f.actor.energy = cost - 0.01
+        expect(f.gather()).toEqual([])
+        f.actor.energy = cost * strikes
+        for (let index = 1; index <= strikes; index++) {
+            expect(f.gather()[0]?.kind).toBe(
+                index === strikes ? 'resource_gather' : 'notice'
+            )
+            f.clock.now += 2_000
+        }
+        expect(f.actor.energy).toBe(0)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+        expect(weapon(f.actor).durability).toBe(1000 - strikes)
+    })
+
+    it('uses an unreserved bag axe ahead of a held sword, without changing equipment', () => {
+        const f = fixture()
+        const sword = createItemInstance('old_sword')
+        const reserved = createItemInstance('axe')
+        const working = createItemInstance('stone_axe')
+        const broken = createItemInstance('axe')
+        broken.durability = 0
+        f.actor.equipment.weapon = sword
+        f.actor.inventory.push(broken, reserved, working)
+        const reservations = new RewardReservations()
+        expect(
+            reservations.reserve(
+                'reward',
+                { inventory: f.actor.inventory, wallet: { gold: 0 } },
+                0,
+                [{ instanceId: reserved.instanceId, quantity: 1 }]
+            )
+        ).toBe(true)
+
+        f.actor.progression.constellations.opened.add(ARTISAN_STARS.root)
+        expect(f.gather()[0]?.kind).toBe('notice')
+        expect(f.actor.equipment.weapon).toBe(sword)
+        expect(sword.durability).toBe(200)
+        expect(reserved.durability).toBe(1000)
+        expect(working.durability).toBe(99)
+    })
+
+    it('requires the root for using a bag tool and leaves mining costs unchanged', () => {
+        const f = fixture('stone')
+        const tool = weapon(f.actor)
+        delete f.actor.equipment.weapon
+        f.actor.inventory.push(tool)
+        const energy = f.actor.energy
+        expect(f.gather()).toEqual([])
+        f.actor.progression.constellations.opened.add(ARTISAN_STARS.root)
+        f.actor.progression.constellations.opened.add(ARTISAN_STARS.economy)
+        expect(f.gather()[0]?.kind).toBe('resource_gather')
+        expect(f.actor.energy).toBe(energy - 5)
+        expect(tool.durability).toBe(999)
+        expect(f.actor.equipment.weapon).toBeUndefined()
     })
 })
 

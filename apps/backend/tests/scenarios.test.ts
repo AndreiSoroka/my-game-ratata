@@ -331,7 +331,7 @@ it('harvests real wood and deposits only run-acquired items while preserving ini
             .snapshot(f.actor, 31000)
             ?.items.filter((item) => item.itemId === 'wood')
     ).toHaveLength(3)
-    expect(f.actor.equipment.weapon?.durability).toBe(997)
+    expect(f.actor.equipment.weapon?.durability).toBe(991)
     expect(
         f.events.filter((event) => event.kind === 'item_stash')
     ).toHaveLength(3)

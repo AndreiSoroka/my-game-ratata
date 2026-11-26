@@ -166,7 +166,24 @@ function gatherStep(
         }
     }
     const result = perform({ type: 'gather', nodeId: node.id })
-    return { done: result.accepted, reason: result.error }
+    return {
+        done: completedResourceWork(node, result),
+        reason: result.error,
+    }
+}
+
+function completedResourceWork(
+    node: AdventureResourceNode,
+    result: AdventureActionResult
+): boolean {
+    return (
+        result.accepted &&
+        (node.source !== 'tree' ||
+            result.events.some(
+                (event) =>
+                    event.kind === 'resource_gather' && event.itemId === 'wood'
+            ))
+    )
 }
 
 function genericGatherStep(
@@ -280,26 +297,3 @@ export const WORKER_WORK_ADAPTERS: ReadonlyMap<string, WorkerWorkAdapter> =
         ['lumberjack', gatherAdapter(['wood'])],
         ['miner', gatherAdapter(['stone', 'scrap'])],
     ])
-
-export function recordWorkerProbeWork(
-    actor: GameCharacter,
-    room: GameRoom,
-    message: AdventureClientMessage,
-    job: string,
-    now: number,
-    nextWorkAt: Map<string, number>
-): void {
-    if (message.type !== 'gather') {
-        return
-    }
-    const node = room
-        .adventureForWorkers()
-        .resourceSnapshot(actor.locationId)
-        .find((source) => source.id === message.nodeId)
-    if (node !== undefined) {
-        nextWorkAt.set(
-            node.kind,
-            now + (job === 'lumberjack' ? 600_000 : 1_200_000)
-        )
-    }
-}

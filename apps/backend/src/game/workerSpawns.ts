@@ -11,6 +11,7 @@ import { citySpawnPosition } from './mapCityAnchors'
 import type { NavigationService } from './navigation'
 import { initializeNpcProgression } from './npcProgression'
 import type { SpawnedCharacter } from './spawns'
+import { registerLumberjackEquipment } from './workerEquipment'
 import { walkableNear } from './workerNavigation'
 export type WorkerJob = 'lumberjack' | 'miner' | 'farmer'
 const jobs: Array<{
@@ -95,6 +96,9 @@ export function createEconomyWorkers(
                 character.equipment,
                 createItemInstance(definition.tool)
             )
+        }
+        if (definition.job === 'lumberjack') {
+            registerLumberjackEquipment(character)
         }
         if (definition.job === 'farmer') {
             addInventoryItem(

@@ -215,6 +215,7 @@ const evidencePaths: Readonly<Partial<Record<string, ConstellationId>>> = {
     prayer_lantern: 'prayer_lantern',
     prayer_grave: 'prayer_grave',
     undead: 'undead',
+    artisan: 'artisan',
 }
 
 function chooseStar(

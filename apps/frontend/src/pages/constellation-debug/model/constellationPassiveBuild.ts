@@ -1,4 +1,9 @@
-import { ITEM_DEFINITIONS, MOVEMENT_RULES } from '@my-game-ratata/contracts'
+import {
+    ARTISAN_LUMBER_RULES,
+    ARTISAN_STARS,
+    ITEM_DEFINITIONS,
+    MOVEMENT_RULES,
+} from '@my-game-ratata/contracts'
 
 import { resolveConstellationBonuses } from '../../../../../backend/src/game/constellationBonuses'
 import type { ConstellationStar } from '../../../../../backend/src/game/constellationCatalog'
@@ -16,6 +21,16 @@ const reduction = (label: string, value: number) => [row(label, `−${percent(va
 const theftEnergy = (b: Bonuses) => row('Расход энергии кражи', `−${b.theftEnergyDiscount} EN`)
 const theftTempo = (b: Bonuses) => row('Общий кулдаун кражи', `−${b.theftCooldownDiscount} мс`)
 const contributions: Record<string, Builder> = {
+    [ARTISAN_STARS.root]: () => [row('Исправный инструмент', 'В руке или в рюкзаке')],
+    [ARTISAN_STARS.hand]: () => [row('Ударов на бревно', String(ARTISAN_LUMBER_RULES.handStrikes))],
+    [ARTISAN_STARS.economy]: () =>
+        reduction('Расход энергии удара при рубке', 1 - ARTISAN_LUMBER_RULES.energyMultiplier),
+    [ARTISAN_STARS.oneStrike]: () => [
+        row('Ударов на бревно', String(ARTISAN_LUMBER_RULES.masterStrikes)),
+    ],
+    [ARTISAN_STARS.endurance]: () => [
+        row('Максимальный запас энергии', `+${ARTISAN_LUMBER_RULES.energyBonus} EN`),
+    ],
     'blade.damage1': (b) => additive('Усиление урона мечом', b.swordDamageMultiplier - 1),
     'blade.damage2': (b) => additive('Усиление урона мечом', b.swordDamageMultiplier - 1),
     'blade.economy': (b) => reduction('Расход энергии удара мечом', 1 - b.swordEnergyMultiplier),
@@ -163,7 +178,7 @@ export function describePassiveConstellationBuild(
             rows: node.results.map((value, index) => row(`Результат ${index + 1}`, value)),
             effects: [node.description],
         }
-    if (node.kind === 'root')
+    if (node.kind === 'root' && node.id !== ARTISAN_STARS.root)
         return {
             rows: [row('Дополнительный численный эффект', 'Нет')],
             effects: [node.description],

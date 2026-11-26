@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/test'
+import { ARTISAN_STARS, type HeroClass } from '@my-game-ratata/contracts'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { fullConstellationCatalog } from '../../backend/src/game/constellationNodes'
 import { describeConstellationEffectChance } from '../src/pages/constellation-debug/model/constellationEffectChance'
@@ -8,6 +9,20 @@ import {
     selectBuildStar,
     setBuildPanelsOpen,
 } from './atlas-build-workflow'
+
+// Initial mounting loads the Vite module graph and computes the personal sky.
+const pageMountTimeout = 20_000
+
+async function openAtlas(
+    page: Page,
+    seed: string,
+    heroClass: HeroClass = 'cleric'
+): Promise<Locator> {
+    await page.goto(`/?debug=constellations&class=${heroClass}&seed=${seed}`)
+    const atlas = page.getByTestId('constellation-debug')
+    await expect(atlas).toBeVisible({ timeout: pageMountTimeout })
+    return atlas
+}
 
 async function assertChanceAccordion(page: Page, id: string): Promise<void> {
     const effect = describeConstellationEffectChance(id)
@@ -44,10 +59,39 @@ async function enableInspectedStar(page: Page, id: string): Promise<void> {
     await page.getByTestId('selected-star-toggle').click()
 }
 
+test('Artisan shows the ordered lumberjack stars and their mastery reward', async ({ page }) => {
+    await openAtlas(page, 'artisan', 'vanguard')
+    const graph = page.getByRole('group', { name: 'Созвездия развития' })
+    await expect(graph.locator('[data-node-id^="artisan."]')).toHaveCount(5)
+    await enableInspectedStar(page, ARTISAN_STARS.root)
+    const card = page.getByTestId('selected-star-card')
+    await expect(card.getByRole('heading')).toHaveText('Ремесленник')
+    await expect(card).toContainText('рюкзак')
+    const mastery = page.getByTestId('debug-mastery-summary')
+    await mastery.locator(':scope > summary').click()
+    await expect(mastery.getByTestId('debug-mastery-reward').locator('option')).toContainText(
+        '25 XP'
+    )
+
+    for (const [id, name, level] of [
+        [ARTISAN_STARS.hand, 'Мастерская рука', 1],
+        [ARTISAN_STARS.economy, 'Экономный замах', 2],
+        [ARTISAN_STARS.oneStrike, 'Точный удар', 3],
+        [ARTISAN_STARS.endurance, 'Рабочая выносливость', 4],
+    ] as const) {
+        await enableInspectedStar(page, id)
+        await expect(card.getByRole('heading')).toHaveText(name)
+        await expect(page.locator('[data-required-path="artisan"]')).toHaveAttribute(
+            'data-required',
+            String(level)
+        )
+    }
+})
+
 test('stealth and theft have separate constellations, practice and chance examples', async ({
     page,
 }) => {
-    await page.goto('/?debug=constellations&class=vanguard&seed=stealth-and-theft')
+    await openAtlas(page, 'stealth-and-theft', 'vanguard')
     const graph = page.getByRole('group', { name: 'Созвездия развития' })
     await expect(graph.locator('[data-node-id^="shadow."]')).toHaveCount(10)
     await expect(graph.locator('[data-node-id^="theft."]')).toHaveCount(10)
@@ -108,8 +152,7 @@ for (const width of [320, 390, 1280]) {
         page,
     }) => {
         await page.setViewportSize({ width, height: 900 })
-        await page.goto('/?debug=constellations&class=cleric&seed=kara-result')
-        await expect(page.getByTestId('constellation-debug')).toBeVisible()
+        await openAtlas(page, 'kara-result')
         await setBuildPanelsOpen(page, true)
         await selectBuildStar(page, 'prayer.harm')
         await expect(page.getByTestId('debug-build-count').locator('strong')).toHaveText('2')
@@ -204,9 +247,7 @@ for (const width of [320, 390, 1280]) {
     test(`mastery atlas is compact and consistent at ${width}px`, async ({ page }) => {
         test.setTimeout(180_000)
         await page.setViewportSize({ width, height: 900 })
-        await page.goto('/?debug=constellations&class=cleric&seed=mastery-atlas')
-        const atlas = page.getByTestId('constellation-debug')
-        await expect(atlas).toBeVisible()
+        await openAtlas(page, 'mastery-atlas')
         await expect(page.locator('[data-star-id]')).toHaveCount(fullConstellationCatalog.length)
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
             width
@@ -283,8 +324,7 @@ test('atlas compares current levels with every required path instead of claiming
     page,
 }) => {
     await page.setViewportSize({ width: 390, height: 900 })
-    await page.goto('/?debug=constellations&class=cleric&seed=required-current')
-    await expect(page.getByTestId('constellation-debug')).toBeVisible()
+    await openAtlas(page, 'required-current')
     await selectBuildStar(page, 'prayer.harm1')
     const prayer = page.locator('[data-required-path="prayer"]')
     await expect(prayer).toHaveAttribute('data-required', '6')
@@ -320,8 +360,7 @@ test('atlas notices pause while reading and refresh on another failed attempt', 
     page,
 }) => {
     await page.setViewportSize({ width: 390, height: 900 })
-    await page.goto('/?debug=constellations&class=cleric&seed=notice-timing')
-    await expect(page.getByTestId('constellation-debug')).toBeVisible()
+    await openAtlas(page, 'notice-timing')
     await page.clock.install()
     await selectBuildStar(page, 'prayer.harm2')
     const toggle = page.getByTestId('selected-star-toggle')
@@ -350,8 +389,7 @@ test('Heavy Flesh displays all 25 stars and both prerequisites of the final shov
 }) => {
     const errors: Error[] = []
     page.on('pageerror', (error) => errors.push(error))
-    await page.goto('/?debug=constellations&class=vanguard&seed=heavy-flesh')
-    const atlas = page.getByTestId('constellation-debug')
+    const atlas = await openAtlas(page, 'heavy-flesh', 'vanguard')
     await expect(atlas.locator('[data-star-id^="fat_zombie."]')).toHaveCount(25)
     await selectBuildStar(page, 'fat_zombie.root')
     const card = atlas.getByTestId('selected-star-card')
@@ -373,8 +411,7 @@ test('debug atlas never joins a player or sends gameplay requests', async ({ pag
         requests: string[] = []
     page.on('websocket', (socket) => sockets.push(socket.url()))
     page.on('request', (request) => requests.push(request.url()))
-    await page.goto('/?debug=constellations&class=cleric&seed=mastery-network')
-    await expect(page.getByTestId('constellation-debug')).toBeVisible()
+    await openAtlas(page, 'mastery-network')
     await page.getByTestId('debug-build-all').click()
     await selectBuildStar(page, 'prayer.root')
     await setBuildPanelsOpen(page, true)
@@ -386,5 +423,7 @@ test('debug atlas never joins a player or sends gameplay requests', async ({ pag
 test('ordinary entry remains the player sign-in page', async ({ page }) => {
     await page.goto('/?test=1')
     await expect(page.getByTestId('constellation-debug')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Войти', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Войти', exact: true })).toBeVisible({
+        timeout: pageMountTimeout,
+    })
 })

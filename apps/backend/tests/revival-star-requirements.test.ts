@@ -1,4 +1,8 @@
-import { type AbilityId, createMasteryLevels } from '@my-game-ratata/contracts'
+import {
+    type AbilityId,
+    ARTISAN_STARS,
+    createMasteryLevels,
+} from '@my-game-ratata/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { fullConstellationCatalog } from '../src/game/constellationNodes'
@@ -29,6 +33,10 @@ function context(
 }
 
 const authoredLevelGates = new Map([
+    [ARTISAN_STARS.hand, 1],
+    [ARTISAN_STARS.economy, 2],
+    [ARTISAN_STARS.oneStrike, 3],
+    [ARTISAN_STARS.endurance, 4],
     ['arrow.damage3', 6],
     ['arrow.economy2', 4],
     ['arrow.tempo2', 4],

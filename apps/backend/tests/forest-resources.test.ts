@@ -12,8 +12,10 @@ import { fixture } from './harvestTestHelpers'
 
 it('clears a stump with an axe, frees its whole footprint and replants using a fresh identity', () => {
     const f = fixture('tree', 1)
-    f.gather()
-    f.clock.now = 2000
+    for (let index = 0; index < 3; index++) {
+        f.gather()
+        f.clock.now += 2_000
+    }
     const clear = () =>
         f.resources.handle(
             f.actor,
@@ -26,7 +28,9 @@ it('clears a stump with an axe, frees its whole footprint and replants using a f
     expect(clear()).toEqual([])
     expect(f.resources.snapshot()[0]?.phase).toBe('stump')
     f.actor.equipment.weapon = createItemInstance('axe')
+    const energy = f.actor.energy
     expect(clear()[0]?.kind).toBe('resource_gather')
+    expect(f.actor.energy).toBe(energy - 5)
     expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(2)
     expect(f.resources.snapshot()[0]).toMatchObject({
         phase: 'removed',
@@ -78,7 +82,7 @@ it('small trees give two wood and one brushwood, no saplings or stump', () => {
     const small = { ...f.node, treeSize: 'small' as const }
     const resources = new AdventureResources([small])
     resources.update(0, () => f.navigation, [f.actor])
-    for (let index = 0; index < 2; index++) {
+    for (let index = 0; index < 6; index++) {
         resources.handle(
             f.actor,
             f.state,

@@ -34,14 +34,16 @@ export function repairWorker(
         return 500
     }
     const quote = repairSnapshot(actor)
+    const sponsored = quote.items.filter((item) => item.price === 0)
+    const items = sponsored.length === 0 ? quote.items : sponsored
     const result = executeWorkerAdventure(
         actor,
         room,
         {
             type: 'repair_items',
             npcId: smith.id,
-            instanceIds: quote.items.map((item) => item.instanceId),
-            expectedTotal: quote.total,
+            instanceIds: items.map((item) => item.instanceId),
+            expectedTotal: sponsored.length === 0 ? quote.total : 0,
             requestId: requestId(),
         },
         now

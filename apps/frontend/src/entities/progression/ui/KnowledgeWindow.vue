@@ -114,6 +114,9 @@ const descriptions: Record<ConstellationId, string> = {
     get theft() {
         return tGame('game.knowledge.theftExperience')
     },
+    get artisan() {
+        return tGame('game.knowledge.artisanExperience')
+    },
 }
 function distance(character: KnowledgeParticipant): number {
     return Math.hypot(

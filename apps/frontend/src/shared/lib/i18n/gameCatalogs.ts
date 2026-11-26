@@ -95,6 +95,7 @@ export const masteryMessages = withAuthoredRussian(
         prayer_grave: 'Ash',
         undead: 'Undead',
         fat_zombie: 'Heavy Flesh',
+        artisan: 'Artisan',
     } satisfies Record<ConstellationId, string>,
     (id) => MASTERY_NAMES[id]
 )

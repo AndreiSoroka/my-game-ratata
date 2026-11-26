@@ -5,9 +5,10 @@ export { artisanRecipes } from './productionWorkOrders'
 import {
     CITY_COMMODITIES,
     type CityState,
-    depositHerbs,
+    depositStockSupplies,
     periodMs,
     recordStockDelivery,
+    recordWarehouseDelivery,
     replenishStock,
     takeQuantity,
     transferQuantity,
@@ -18,6 +19,7 @@ import {
     type AdventureRecipeId,
     getWorldLocationDefinition,
     ITEM_DEFINITIONS,
+    type ItemId,
     type MarketClientMessage,
     type MarketRow,
     type MarketSnapshot,
@@ -47,10 +49,19 @@ export class CityEconomyService {
     private readonly cities = new Map<string, CityState>()
 
     public depositHerbs(actor: GameCharacter, now: number): void {
+        this.depositSupplies(actor, 'herbalist', now)
+    }
+
+    public depositSupplies(
+        actor: GameCharacter,
+        supplier: 'herbalist' | 'lumberjack',
+        now: number
+    ): boolean {
         const city = this.cities.get(actor.locationId)
-        if (city !== undefined) {
-            depositHerbs(actor.inventory, city, now)
-        }
+        return (
+            city !== undefined &&
+            depositStockSupplies(actor.inventory, city, supplier, now)
+        )
     }
 
     public questInventory(cityId: string): InventoryItemInstance[] | undefined {
@@ -59,23 +70,14 @@ export class CityEconomyService {
 
     public recordQuestDelivery(
         cityId: string,
-        itemId: import('@my-game-ratata/contracts').ItemId,
+        itemId: ItemId,
         quantity: number,
         now: number
     ): void {
         const city = this.cities.get(cityId)
-        if (
-            city === undefined ||
-            !CITY_COMMODITIES.some((row) => row.itemId === itemId)
-        ) {
-            return
+        if (city !== undefined) {
+            recordWarehouseDelivery(city, itemId, quantity, now)
         }
-        recordStockDelivery(
-            city,
-            itemId as import('@my-game-ratata/contracts').MarketItemId,
-            quantity,
-            now
-        )
     }
     public readonly customerOrders = new CustomerOrders(
         (id) => this.cities.get(id),

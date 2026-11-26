@@ -133,17 +133,27 @@ export function approach(
 export function approachCharacter(
     actor: GameCharacter,
     room: GameRoom,
-    target: GameCharacter
+    target: GameCharacter,
+    retainPath = false
 ): boolean {
     const radius = 36
     if (actor.locationId === target.locationId) {
-        const approach = findStandingApproach(actor, target, room, radius)
+        const approach = findStandingApproach(
+            actor,
+            target,
+            room,
+            radius,
+            retainPath
+        )
         if (approach.kind === 'arrived') {
             stop(actor)
             return true
         }
         if (approach.kind === 'approaching') {
             actor.setPath(approach.path)
+            return false
+        }
+        if (approach.kind === 'followingPath') {
             return false
         }
     }

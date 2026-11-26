@@ -1,3 +1,5 @@
+import { ARTISAN_LUMBER_RULES, ARTISAN_STARS } from '@my-game-ratata/contracts'
+
 import { ashExhaustionCapacity } from './ashExhaustion'
 import type { GameCharacter } from './character'
 import { bladeHealthMultiplier } from './constellationBladeBonuses'
@@ -37,5 +39,8 @@ export function effectiveMaxEnergy(actor: GameCharacter): number {
     const normal = opened.has('life.endurance')
         ? (capacity * ENDURANCE_ENERGY_PERCENT) / 100
         : capacity
-    return normal * ashExhaustionCapacity(actor)
+    const artisanBonus = opened.has(ARTISAN_STARS.endurance)
+        ? ARTISAN_LUMBER_RULES.energyBonus
+        : 0
+    return (normal + artisanBonus) * ashExhaustionCapacity(actor)
 }

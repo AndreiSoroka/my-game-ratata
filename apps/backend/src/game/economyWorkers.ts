@@ -6,17 +6,16 @@ import {
 
 import type { GameCharacter } from './character'
 import type { CharacterController } from './controllers'
-import { countInventoryItem } from './inventory'
 import type { GameRoom } from './room'
 import { canPerformSkillAction } from './skillProgression'
 import { recordWorkerActivity } from './workerActivityState'
 import { executeWorkerAdventure } from './workerCommands'
 import { deliveryKinds, workerDeliveryCount, WorkerFarm } from './workerFarm'
 import { WorkerGather } from './workerGather'
+import { WorkerLumberjack } from './workerLumberjack'
 import { approachCharacter, fleeWorker } from './workerNavigation'
 import { repairWorker } from './workerRepair'
 import { resourceWorkTarget } from './workerRequestData'
-import { recordWorkerProbeWork } from './workerRequestWork'
 import type { WorkerJob } from './workerSpawns'
 /** The controller chooses work; every harvest, sale, repair and planting uses ordinary commands. */
 export class EconomyWorkerController implements CharacterController {
@@ -25,12 +24,10 @@ export class EconomyWorkerController implements CharacterController {
     private initialized = false
     private readonly farming = new WorkerFarm()
     private requestIndex = 0
-    private plantSearchIndex = 0
+    private readonly lumberjack = new WorkerLumberjack()
+    private readonly gathering = new WorkerGather()
 
-    private readonly gathering: WorkerGather
-    public constructor(private readonly job: WorkerJob) {
-        this.gathering = new WorkerGather(job)
-    }
+    public constructor(private readonly job: WorkerJob) {}
 
     public update(actor: GameCharacter, room: GameRoom, now: number): void {
         const service = room.adventureForWorkers()
@@ -45,13 +42,16 @@ export class EconomyWorkerController implements CharacterController {
         if (this.interrupted(actor, room, now)) {
             return
         }
+        if (this.job === 'lumberjack') {
+            this.lumberjack.update(actor, room, now, () =>
+                this.repair(actor, room, now)
+            )
+            return
+        }
         if (this.deliver(actor, room, now)) {
             return
         }
         if (this.repair(actor, room, now)) {
-            return
-        }
-        if (this.job === 'lumberjack' && this.plant(actor, room, now)) {
             return
         }
         if (this.job === 'farmer') {
@@ -67,7 +67,6 @@ export class EconomyWorkerController implements CharacterController {
         now: number
     ): boolean {
         const kinds = deliveryKinds(this.job)
-        const carriesWood = countInventoryItem(actor.inventory, 'wood') > 0
         const merchant = room.getCharacter('npc_merchant_1')
         const market = room
             .adventureForWorkers()
@@ -80,10 +79,7 @@ export class EconomyWorkerController implements CharacterController {
                 (candidate) =>
                     candidate !== undefined &&
                     deliveryCount(candidate.itemId) > 0 &&
-                    candidate.stock < candidate.capacity &&
-                    (candidate.itemId !== 'brushwood' ||
-                        carriesWood ||
-                        actor.locationId === merchant?.locationId)
+                    candidate.stock < candidate.capacity
             )
         if (row === undefined || this.waitForBatch(actor, room)) {
             return false
@@ -159,45 +155,6 @@ export class EconomyWorkerController implements CharacterController {
         return true
     }
 
-    private plant(actor: GameCharacter, room: GameRoom, now: number): boolean {
-        if (countInventoryItem(actor.inventory, 'sapling') === 0) {
-            return false
-        }
-        const navigation = room.navigationFor(actor)
-        const center = navigation.worldToTile(actor.position)
-        // Try nearby sites through the same validator; failed planting never spends a seed.
-        for (let attempt = 0; attempt < 3; attempt += 1) {
-            const index = this.plantSearchIndex++ % 25
-            const tile = {
-                x: center.x + (index % 5) - 2,
-                y: center.y + Math.floor(index / 5) - 2,
-            }
-            if (navigation.isSolidTile(tile)) {
-                continue
-            }
-            const position = navigation.tileToWorld(tile)
-            const result = executeWorkerAdventure(
-                actor,
-                room,
-                { type: 'plant_tree', position },
-                now
-            )
-            if (result.accepted) {
-                recordWorkerActivity(
-                    actor,
-                    {
-                        reason: 'working',
-                        text: 'Посадил настоящий саженец на подходящем участке.',
-                        intent: 'work',
-                    },
-                    now
-                )
-                return true
-            }
-        }
-        return false
-    }
-
     private requestId(actor: GameCharacter): string {
         return `work-${actor.id}-${String(this.requestIndex++)}`
     }
@@ -225,7 +182,11 @@ export class EconomyWorkerController implements CharacterController {
         const target =
             this.job === 'farmer'
                 ? this.farming.target
-                : resourceWorkTarget(this.gathering.selected)
+                : resourceWorkTarget(
+                      this.job === 'lumberjack'
+                          ? this.lumberjack.selected
+                          : this.gathering.selected
+                  )
         return room.workerRequests.updateWorker(
             actor,
             this.job,
@@ -233,15 +194,11 @@ export class EconomyWorkerController implements CharacterController {
             now,
             target,
             (message) => {
+                this.lumberjack.clearWorksite()
                 this.gathering.selected = undefined
-                recordWorkerProbeWork(
-                    actor,
-                    room,
-                    message,
-                    this.job,
-                    now,
-                    this.gathering.nextWorkAt
-                )
+                if (this.job === 'miner' && message.type === 'gather') {
+                    this.gathering.recordProbe(actor, room, message.nodeId, now)
+                }
             }
         )
     }

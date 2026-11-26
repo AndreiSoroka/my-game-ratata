@@ -38,6 +38,7 @@ export function createConstellationState(): CharacterConstellations {
             prayer_grave: 0,
             undead: 0,
             fat_zombie: 0,
+            artisan: 0,
         },
         evidence: {},
         receipts: new Set(),

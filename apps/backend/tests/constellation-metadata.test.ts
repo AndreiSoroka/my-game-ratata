@@ -89,7 +89,7 @@ describe('earned constellation metadata', () => {
         const actor = abilityHero('vanguard')
         const snapshot = snapshotConstellations(actor)
         const roots = snapshot.nodes.filter((node) => node.parents.length === 0)
-        expect(roots).toHaveLength(11)
+        expect(roots).toHaveLength(12)
         for (const node of snapshot.nodes) {
             expect(node.id).toMatch(/^node-\d+$/)
             if (node.unlocked) {

@@ -1,4 +1,5 @@
 import {
+    ARTISAN_LUMBER_RULES,
     BACKGROUND_MASTERY_MULTIPLIER,
     CENTER_LOCATION_ID,
     FARM_GROW_MS,
@@ -32,7 +33,10 @@ export function knowledgeFactValues(): Readonly<Record<string, number>> {
         ...backgroundFacts(),
         ...treeYieldFacts('adult'),
         ...treeYieldFacts('small'),
+        'forestry.strikesPerLog': ARTISAN_LUMBER_RULES.baseStrikes,
         'forestry.axe.energy': axe.energy,
+        'forestry.axe.economyEnergy':
+            axe.energy * ARTISAN_LUMBER_RULES.energyMultiplier,
         'forestry.axe.durationMs': axe.durationMs,
         'forestry.axe.wear': axe.wear,
         'forestry.sword.energy': sword.energy,

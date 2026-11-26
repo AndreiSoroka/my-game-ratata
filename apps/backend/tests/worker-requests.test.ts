@@ -72,9 +72,7 @@ describe('ordinary worker verification trips', () => {
                     test.now
                 )
             ).not.toBeNull()
-            test.until(() =>
-                test.commands.some((entry) => entry.result.accepted)
-            )
+            test.until(() => test.current().stage === 'returning')
             expect(test.current().stage).toBe('returning')
             expect(test.worker.locationId).toBe(test.worksite.locationId)
             expect(test.reports).toHaveLength(1)
@@ -88,7 +86,7 @@ describe('ordinary worker verification trips', () => {
             ).not.toBeNull()
             test.until(() => test.current().stage === 'ready')
             expect(test.worker.locationId).toBe(CENTER_LOCATION_ID)
-            expect(test.commands).toHaveLength(1)
+            expect(test.commands).toHaveLength(job === 'lumberjack' ? 3 : 1)
             expect(test.commands[0]?.message.type).toBe(
                 job === 'farmer' ? 'farm_action' : 'gather'
             )
@@ -221,6 +219,9 @@ describe('worker trial failures stay distinct from hostile danger', () => {
         }
         expect(test.requests.allowsWork(test.worker.id, command)).toBe(false)
         expect(
+            test.requests.allowsWork(test.worker.id, 'worker_delivery')
+        ).toBe(false)
+        expect(
             test.room.requestAdventure(test.worker, command, test.now).accepted
         ).toBe(false)
         expect(test.current().stage).toBe('waiting')
@@ -242,7 +243,7 @@ describe('worker trial failures stay distinct from hostile danger', () => {
         expect(test.commands).toHaveLength(0)
         test.worker.equipment.weapon.durability = 100
         test.until(() => test.current().stage === 'ready')
-        expect(test.commands).toHaveLength(1)
+        expect(test.commands).toHaveLength(3)
     })
 
     it('does not publish an incident while its clerk is absent', () => {

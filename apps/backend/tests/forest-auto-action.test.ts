@@ -1,5 +1,7 @@
 import {
+    type AdventureClientMessage,
     type AdventureResourceNode,
+    ARTISAN_STARS,
     type CharacterAutoAction,
     INVENTORY_CAPACITY,
 } from '@my-game-ratata/contracts'
@@ -18,6 +20,9 @@ import { countInventoryItem, createItemInstance } from '../src/game/inventory'
 import { advanceCharacter } from '../src/game/movement'
 import { NavigationService } from '../src/game/navigation'
 import { plantingPreview } from '../src/game/plantingPreview'
+import type { GameRoom } from '../src/game/room'
+import { createScenarioRun } from '../src/game/scenarioState'
+import { gatherScenario } from '../src/game/scenarioWork'
 
 function fixture(remaining = 2, source: 'tree' | 'bush' | 'branches' = 'tree') {
     const node: AdventureResourceNode = {
@@ -83,15 +88,22 @@ describe('forest automatic work through shared simulation', () => {
         const f = fixture()
         expect(f.start()).toBe(true)
         f.tick(0)
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+        expect(f.actor.equipment.weapon?.durability).toBe(999)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
         f.tick(1999)
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+        expect(f.actor.equipment.weapon?.durability).toBe(999)
         f.tick(2000)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
+        f.tick(4000)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+        for (const now of [6000, 8000, 10000]) {
+            f.tick(now)
+        }
         expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(2)
         expect(countInventoryItem(f.actor.inventory, 'brushwood')).toBe(1)
         expect(f.read()?.phase).toBe('stump')
         expect(snapshotControl(f.actor).mode).toBe('none')
-        f.tick(6000)
+        f.tick(12000)
         expect(f.read()?.phase).toBe('stump')
     })
     it('releases the work movement lock on cancel without resetting cooldown', () => {
@@ -112,9 +124,11 @@ describe('forest automatic work through shared simulation', () => {
         expect(f.actor.position.x).toBeGreaterThan(x)
         expect(f.start(undefined, 100)).toBe(true)
         f.tick(100)
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
+        expect(f.actor.equipment.weapon?.durability).toBe(999)
         f.tick(2000)
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(2)
+        f.tick(4000)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
     })
     it.each([
         'damage',
@@ -152,21 +166,43 @@ describe('forest automatic work through shared simulation', () => {
         f.actor.tags.delete('offline')
         f.actor.locationId = 'map-2-2'
         f.tick(5000)
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(0)
     })
     it('does not treat ordinary tool wear as an equipment change', () => {
         const f = fixture(8)
         f.start()
         f.tick(0)
         f.tick(2000)
-        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(2)
+        f.tick(4000)
+        expect(countInventoryItem(f.actor.inventory, 'wood')).toBe(1)
         expect(snapshotControl(f.actor).mode).toBe('action')
+    })
+})
+
+describe('automatic work approach, tool and resource limits', () => {
+    it('stops on breakage of the actual bag tool, without drawing another one', () => {
+        const f = fixture()
+        const sword = createItemInstance('old_sword')
+        const axe = createItemInstance('axe')
+        const spare = createItemInstance('axe')
+        sword.durability = 0
+        axe.durability = 1
+        f.actor.equipment.weapon = sword
+        f.actor.progression.constellations.opened.add(ARTISAN_STARS.root)
+        f.actor.inventory.push(axe, spare)
+        expect(f.start()).toBe(true)
+        f.tick(0)
+        expect(axe.durability).toBe(0)
+        expect(snapshotControl(f.actor).mode).toBe('none')
+        f.tick(2000)
+        expect(spare.durability).toBe(1000)
+        expect(f.actor.equipment.weapon).toBe(sword)
     })
     it('approaches only the selected source using ordinary movement', () => {
         const f = fixture()
         f.actor.position = { x: 184, y: 320 }
         expect(f.start()).toBe(true)
-        for (let now = 0; now <= 3000; now += 50) {
+        for (let now = 0; now <= 7000; now += 50) {
             f.tick(now)
             advanceCharacter({
                 character: f.actor,
@@ -188,13 +224,56 @@ describe('forest automatic work through shared simulation', () => {
         expect(f.actor.energy).toBe(energy)
         expect(f.read()?.remaining).toBe(2)
         f.actor.inventory = []
-        f.actor.energy = 5
+        f.actor.energy = 10
         f.start()
         f.tick(0)
         f.tick(2000)
-        expect(f.read()?.remaining).toBe(1)
+        expect(f.read()?.remaining).toBe(2)
+        expect(f.actor.energy).toBe(0)
         expect(snapshotControl(f.actor).mode).toBe('none')
     })
+})
+
+it('waits between lumber strikes and only advances a scenario after receiving wood', () => {
+    const f = fixture()
+    const room = {
+        ...f.world,
+        scenarioEnvironment: () => ({ chests: [], items: [] }),
+        requestAdventure: (
+            actor: GameCharacter,
+            command: AdventureClientMessage,
+            now: number
+        ) => f.service.handleResult(actor, command, [], f.navigation, now),
+    } as unknown as GameRoom
+    const step = {
+        id: 'cut',
+        kind: 'gather',
+        resource: 'wood',
+        amount: 1,
+    } as const
+    const run = createScenarioRun(
+        f.actor,
+        f.actor.id,
+        {
+            id: 'cut-one-log',
+            name: 'Cut one log',
+            main: [step],
+            repeat: 1,
+            sequences: [],
+            reactions: [],
+        },
+        0
+    )
+    const tick = (now: number) =>
+        gatherScenario(f.actor, run, room, step, now).state
+    expect(tick(0)).toBe('progress')
+    expect(tick(1000)).toBe('waiting')
+    expect(tick(2000)).toBe('progress')
+    expect(tick(3999)).toBe('waiting')
+    expect(run.step.progress).toBe(0)
+    expect(tick(4000)).toBe('done')
+    expect(run.step.progress).toBe(1)
+    expect(f.actor.equipment.weapon?.durability).toBe(997)
 })
 
 describe('planting previews and one-shot approach', () => {

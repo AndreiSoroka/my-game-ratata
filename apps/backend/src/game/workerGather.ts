@@ -9,7 +9,6 @@ import { resourceApproach } from './resourcePlacement'
 import type { GameRoom } from './room'
 import { scenarioGatherCommand } from './scenarioWork'
 import { recordWorkerActivity } from './workerActivityState'
-import { WorkerBrushwood } from './workerBrushwood'
 import { executeWorkerAdventure } from './workerCommands'
 import { hasNoRoute } from './workerFarm'
 import { recordGatherPause } from './workerGatherActivity'
@@ -19,20 +18,17 @@ import {
     stop,
     WorkerFieldRoute,
 } from './workerNavigation'
-import type { WorkerJob } from './workerSpawns'
 
 export class WorkerGather {
     public selected: AdventureResourceNode | undefined
-    public readonly nextWorkAt = new Map<string, number>()
-    private readonly brushwood = new WorkerBrushwood()
+    private readonly nextWorkAt = new Map<string, number>()
     private readonly fieldRoute = new WorkerFieldRoute()
-    public constructor(private readonly job: WorkerJob) {}
     public update(actor: GameCharacter, room: GameRoom, now: number): void {
         const service = room.adventureForWorkers()
         this.selected ??= this.select(actor, room, now)
         const target = this.selected
         if (target === undefined) {
-            this.gatherBrushwood(actor, room, now)
+            stop(actor)
             return
         }
         const live = service
@@ -49,7 +45,7 @@ export class WorkerGather {
                 now
             )
             this.selected = undefined
-            this.gatherBrushwood(actor, room, now)
+            stop(actor)
             return
         }
         recordWorkerActivity(
@@ -83,7 +79,7 @@ export class WorkerGather {
                     now
                 )
                 this.selected = undefined
-                this.gatherBrushwood(actor, room, now)
+                stop(actor)
             }
             return
         }
@@ -94,14 +90,24 @@ export class WorkerGather {
             now
         )
         if (result.accepted) {
-            this.nextWorkAt.set(
-                target.kind,
-                now + (this.job === 'lumberjack' ? 600_000 : 1_200_000)
-            )
-        } else {
-            this.gatherBrushwood(actor, room, now)
+            this.nextWorkAt.set(target.kind, now + 1_200_000)
         }
         this.selected = undefined
+    }
+
+    public recordProbe(
+        actor: GameCharacter,
+        room: GameRoom,
+        nodeId: string,
+        now: number
+    ): void {
+        const node = room
+            .adventureForWorkers()
+            .resourceSnapshot(actor.locationId)
+            .find((source) => source.id === nodeId)
+        if (node !== undefined) {
+            this.nextWorkAt.set(node.kind, now + 1_200_000)
+        }
     }
 
     private approach(
@@ -138,8 +144,7 @@ export class WorkerGather {
         room: GameRoom,
         now: number
     ): AdventureResourceNode | undefined {
-        const kinds: Array<'wood' | 'stone' | 'scrap'> =
-            this.job === 'lumberjack' ? ['wood'] : ['stone', 'scrap']
+        const kinds: Array<'stone' | 'scrap'> = ['stone', 'scrap']
         const service = room.adventureForWorkers()
         const market = service.economy.snapshot(CENTER_LOCATION_ID, now)
         const wanted = kinds.filter(
@@ -159,7 +164,7 @@ export class WorkerGather {
         )
             .filter(
                 (node) =>
-                    wanted.includes(node.kind as 'wood' | 'stone' | 'scrap') &&
+                    wanted.includes(node.kind as 'stone' | 'scrap') &&
                     node.remaining > 0
             )
             .sort((a, b) => sourceCost(actor, a) - sourceCost(actor, b))
@@ -175,17 +180,5 @@ export class WorkerGather {
             )
         }
         return candidates[0]
-    }
-
-    private gatherBrushwood(
-        actor: GameCharacter,
-        room: GameRoom,
-        now: number
-    ): void {
-        if (this.job === 'lumberjack') {
-            this.brushwood.update(actor, room, now)
-        } else {
-            stop(actor)
-        }
     }
 }

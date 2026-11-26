@@ -12,7 +12,7 @@ import type { NavigationService } from './navigation'
 import { canPerformSkillAction } from './skillProgression'
 import { withWorldSound } from './worldSound'
 
-const pickupRadius = 24
+export const pickupRadius = 24
 
 export interface LooseWorldItem {
     id: string

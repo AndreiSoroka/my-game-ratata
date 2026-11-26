@@ -1,4 +1,5 @@
 import { arrowTemplatePositions } from './constellationArrowTemplate'
+import { artisanTemplatePositions } from './constellationArtisan'
 import { ashTemplatePositions } from './constellationAshStars'
 import { bladeTemplatePositions } from './constellationBladeTemplate'
 import type { SkyPoint } from './constellationGeometry'
@@ -123,6 +124,7 @@ export const constellationTemplatePositions = freezeTemplate({
     'undead.root': { x: -340, y: 0 },
     ...undeadTemplatePositions,
     ...fatZombieTemplatePositions,
+    ...artisanTemplatePositions,
 })
 
 function freezeTemplate(

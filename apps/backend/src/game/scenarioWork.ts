@@ -118,6 +118,12 @@ export function gatherScenario(
     }
     actor.clearPath()
     actor.setMoveInput({ x: 0, y: 0 })
+    if (
+        now < room.adventureForWorkers().workAvailableAt(actor) ||
+        actor.isActionLocked(now)
+    ) {
+        return { state: 'waiting' }
+    }
     if (now - run.step.lastActionAt < 500) {
         return retryOutcome(run)
     }

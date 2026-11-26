@@ -11,8 +11,25 @@ export const constellationIds = [
     'prayer_grave',
     'undead',
     'fat_zombie',
+    'artisan',
 ] as const
 export type ConstellationId = (typeof constellationIds)[number]
+
+export const ARTISAN_STARS = {
+    root: 'artisan.root',
+    hand: 'artisan.lumberjack_hand',
+    economy: 'artisan.lumberjack_economy',
+    oneStrike: 'artisan.lumberjack_one_strike',
+    endurance: 'artisan.lumberjack_endurance',
+} as const
+
+export const ARTISAN_LUMBER_RULES = {
+    baseStrikes: 3,
+    handStrikes: 2,
+    masterStrikes: 1,
+    energyMultiplier: 0.7,
+    energyBonus: 20,
+} as const
 
 /** A numeric observation, never a disguised authoritative value. Upper range bounds are exclusive. */
 export type ObservedValue =

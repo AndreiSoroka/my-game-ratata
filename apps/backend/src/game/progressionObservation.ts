@@ -1,4 +1,5 @@
 import {
+    ARTISAN_STARS,
     constellationIds,
     formatMasteryExperience,
     MASTERY_NAMES,
@@ -10,7 +11,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
-import { activeConstellationStars } from './constellations'
+import { activeConstellationStars, hasStar } from './constellations'
 import { snapshotConstellations } from './constellationSnapshot'
 import { snapshotDeity, snapshotOtherDeities } from './deities'
 import { readCachedConstellationLayout } from './personalConstellationSky'
@@ -46,7 +47,9 @@ export function snapshotProgression(
     return {
         masteries: constellationIds
             .filter(
-                (id) => id !== 'fat_zombie' || actor.archetype === 'fat_zombie'
+                (id) =>
+                    (id !== 'fat_zombie' || actor.archetype === 'fat_zombie') &&
+                    (id !== 'artisan' || hasStar(actor, ARTISAN_STARS.root))
             )
             .map((id) => {
                 const mastery = actor.progression.masteries[id]

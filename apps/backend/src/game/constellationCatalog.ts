@@ -1,5 +1,6 @@
 import type { ConstellationId } from '@my-game-ratata/contracts'
 
+import { artisanPath } from './constellationArtisan'
 import { bladeBasicStars } from './constellationBladeBasics'
 import { bladeJointStars } from './constellationBladeJoints'
 import { bladeTechniqueStars } from './constellationBladeTechniques'
@@ -94,6 +95,7 @@ export const constellationPaths = [
             'У Жирного зомби 800 HP. Ранящий удар отбрасывает выжившую цель. Каждое убийство живого врага открывает звезду.',
         color: '#a2b977',
     },
+    artisanPath,
 ] satisfies Array<{
     id: ConstellationId
     name: string
