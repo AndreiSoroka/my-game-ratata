@@ -3,6 +3,9 @@ import assert from 'node:assert/strict'
 import { CENTER_LOCATION_ID } from '@my-game-ratata/contracts'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { resolveCharacterDamage } from '../src/game/abilityDamage'
+import type { GameCharacter } from '../src/game/character'
+import { hasPendingCorpseReturn } from '../src/game/corpseReturns'
 import { readDungeonMapData } from '../src/game/dungeonMapData'
 import { effectiveMaxEnergy } from '../src/game/effectiveResources'
 import type { TiledMap } from '../src/game/navigationGrid'
@@ -19,7 +22,24 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 
-it('spawns a mortal fat zombie on the authored second floor and retires it for good', () => {
+function defeatZombie(
+    room: GameRoom,
+    actor: GameCharacter,
+    target: GameCharacter
+) {
+    room.publishEvents(
+        resolveCharacterDamage({
+            actor,
+            target,
+            amount: 1_000,
+            damageKind: 'arcane',
+            now: room.gameplayNow(),
+            respawnDelayMs: 1_000,
+        }).events
+    )
+}
+
+it('keeps the seeded zombie and its stars until its heart is taken', () => {
     vi.useFakeTimers()
     vi.setSystemTime(10_000)
     vi.stubGlobal('Bun', { env: {} })
@@ -82,11 +102,52 @@ it('spawns a mortal fat zombie on the authored second floor and retires it for g
 
         const witness = chestHero('nearby', zombie.position)
         witness.locationId = secondFloor
+        const stars = [...zombie.progression.constellations.opened].filter(
+            (id) => id.startsWith('fat_zombie.')
+        )
+        const position = { ...zombie.position }
         room.start()
-        zombie.applyDamage(zombie.hp, Date.now())
-        zombie.queueRespawn(Date.now(), 1_000)
+        defeatZombie(room, witness, zombie)
         expect(zombie.reviveUntil).toBe(0)
-        vi.advanceTimersByTime(1_100)
+        expect(zombiesOn(secondFloor)[0]).toMatchObject({
+            alive: false,
+            animation: { action: 'death' },
+        })
+        expect(room.raisableCorpseFor(witness, Date.now())).toBeUndefined()
+        expect(zombie.animationStartedAt).toBe(10_000)
+        expect(hasPendingCorpseReturn(zombie)).toBe(true)
+        vi.setSystemTime(69_900)
+        vi.advanceTimersByTime(50)
+        expect(zombie.alive).toBe(false)
+        expect(hasPendingCorpseReturn(zombie)).toBe(true)
+        vi.advanceTimersByTime(50)
+        expect(room.getCharacter(zombie.id)).toBe(zombie)
+        expect(zombie).toMatchObject({ alive: true, hp: 400, position })
+        expect(
+            [...zombie.progression.constellations.opened].filter((id) =>
+                id.startsWith('fat_zombie.')
+            )
+        ).toEqual(stars)
+
+        defeatZombie(room, witness, zombie)
+        const corpse = `corpse:${zombie.id}:2`
+        room.chestActions.handle(
+            witness,
+            { type: 'open_chest', chestId: corpse },
+            Date.now()
+        )
+        expect(room.chestActions.snapshot(witness, Date.now())?.items).toEqual([
+            expect.objectContaining({ itemId: 'zombie_heart' }),
+        ])
+        room.chestActions.handle(
+            witness,
+            { type: 'take_all_chest_items', chestId: corpse },
+            Date.now()
+        )
+        expect(witness.inventory).toHaveLength(1)
+        expect(witness.inventory[0]?.itemId).toBe('zombie_heart')
+        expect(zombiesOn(secondFloor)[0]?.alive).toBe(false)
+        vi.advanceTimersByTime(1_000)
         expect(room.getCharacter(zombie.id)).toBeUndefined()
         expect(zombiesOn(secondFloor)).toHaveLength(0)
         expect(room.raisableCorpseFor(witness, Date.now())).toBeUndefined()

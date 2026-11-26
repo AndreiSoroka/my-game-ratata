@@ -57,6 +57,7 @@ describe('skeleton rewards for resolved combat deaths', () => {
         expect(undeadExperience(actor)).toBe(start)
         expect(hit(actor, novice, 1500).events).toContainEqual({
             kind: 'death',
+            eventId: `death:${novice.id}:1`,
             actorId: actor.id,
             targetId: novice.id,
         })

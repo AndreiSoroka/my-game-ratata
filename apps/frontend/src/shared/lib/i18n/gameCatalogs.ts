@@ -129,6 +129,7 @@ export const itemMessages = withAuthoredRussian(
         simple_sword: 'Simple Sword',
         torch: 'Torch',
         lantern: 'Lantern',
+        zombie_heart: 'Zombie heart',
     } satisfies Record<ItemId, string>,
     (id) => russianItemNames[id] ?? ITEM_DEFINITIONS[id].name
 )
@@ -137,7 +138,7 @@ type DescribedItemId = Exclude<ItemId, 'boots' | 'food' | 'old_sword' | 'simple_
 export const itemDescriptions = withAuthoredRussian(
     {
         lich_heart: 'A heart sealed in ash. The bond lasts as long as it remains in its own chest.',
-        bone: 'A skeleton bone. Can serve as proof for a worker’s request.',
+        bone: 'Take the bone from the body within a minute to keep the skeleton down. It can serve as proof for a worker’s request.',
         axe: 'Chops trees with little wear. Can be used in combat.',
         stone_axe: 'An inexpensive axe. Chops wood, but wears out sooner than an iron axe.',
         pickaxe: 'A sturdy tool for mining stone.',
@@ -155,6 +156,7 @@ export const itemDescriptions = withAuthoredRussian(
         slime_heart: 'A heart from a hostile slime. Bring three to Mira for the Bell of Memory.',
         torch: 'Lights your path underground while equipped in the light slot.',
         lantern: 'Equip in the light slot. A lantern lights a wider area than a torch.',
+        zombie_heart: 'Take the heart from the body within a minute to keep the Fat Zombie down.',
     } satisfies Record<DescribedItemId, string>,
     (id) => ITEM_DEFINITIONS[id].description ?? ''
 )

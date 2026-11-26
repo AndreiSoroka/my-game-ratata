@@ -9,6 +9,7 @@ import { MASTERY_REWARDS } from '@my-game-ratata/contracts'
 import { activeBarrier } from './abilityState'
 import type { GameCharacter } from './character'
 import { constellationModifiers } from './constellationModifiers'
+import { defersDefeatCredit } from './corpseReturnTrophy'
 import { grantRetaliation, hasRetaliationRight } from './crimeRelations'
 import { combatDeathEvent, damageEvent } from './damageEvents'
 import { isPveOpponent } from './factions'
@@ -293,7 +294,7 @@ function finishDamageDeath(
     target.abilities.casting = null
     target.queueRespawn(now, input.respawnDelayMs)
     events.push(combatDeathEvent(actor, target, hostile))
-    if (hostile && !(target.mortal && target.archetype === 'skeleton')) {
+    if (hostile && !defersDefeatCredit(target)) {
         events.push(...rewardSkeletonKill(actor, target, now, input.random))
     }
 }

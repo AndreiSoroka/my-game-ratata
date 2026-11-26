@@ -6,6 +6,7 @@ import {
 } from '@my-game-ratata/contracts'
 import { afterEach, expect, it, vi } from 'vitest'
 
+import { resolveCharacterDamage } from '../src/game/abilityDamage'
 import type { CompanionWorld } from '../src/game/agentDecisions'
 import { GameCharacter } from '../src/game/character'
 import { shouldRetireCharacter } from '../src/game/characterLife'
@@ -270,12 +271,29 @@ it('casts a two-way city portal underground and lets a pursuing skeleton cross',
         expect(blade.level).toBe(10)
         expect(undead.level).toBe(12)
         expect(skeleton.maxHp).toBe(80)
-        skeleton.applyDamage(skeleton.hp, now + 2)
-        skeleton.queueRespawn(now + 2, 1_000)
+        const attacker = chestHero('Portal guard', skeleton.position)
+        room.publishEvents(
+            resolveCharacterDamage({
+                actor: attacker,
+                target: skeleton,
+                amount: 1_000,
+                damageKind: 'physical',
+                now: now + 2,
+                respawnDelayMs: 15_000,
+            }).events
+        )
         tickCharacterTimedState(skeleton, now + 100_000)
         expect(skeleton.alive).toBe(false)
         expect(skeleton.reviveUntil).toBe(0)
-        expect(shouldRetireCharacter(skeleton, now + 2)).toBe(true)
+        expect(shouldRetireCharacter(skeleton, now + 2)).toBe(false)
+        expect(
+            room.snapshot(now + 2, CENTER_LOCATION_ID).chests
+        ).toContainEqual(
+            expect.objectContaining({
+                id: `corpse:${skeleton.id}:1`,
+                itemCount: 2,
+            })
+        )
     } finally {
         room.stop()
     }

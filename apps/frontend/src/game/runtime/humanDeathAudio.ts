@@ -16,7 +16,7 @@ interface DeathView {
 const maxVoices = 2
 const maxReceipts = 256
 
-/** Plays a death cue from the last visible, living human snapshot of its victim. */
+/** Reuses the human death cue for eligible victims last seen alive. */
 export class HumanDeathAudio {
     private view: DeathView | undefined
     private readonly voices = new Map<string, SoundTrack>()
@@ -114,7 +114,7 @@ function deathGains(
 ): Map<string, number> {
     const gains = new Map<string, number>()
     for (const actor of actors) {
-        if (!isLivingHuman(actor) || !isVisible(actor.id)) continue
+        if (!hasDeathCue(actor) || !isVisible(actor.id)) continue
         const distance = Math.hypot(
             (actor.position.x - listener.position.x) / tileSize.tileWidth,
             (actor.position.y - listener.position.y) / tileSize.tileHeight
@@ -125,6 +125,10 @@ function deathGains(
     return gains
 }
 
-function isLivingHuman(actor: CharacterSnapshot): boolean {
-    return actor.alive && actor.archetype === 'human' && actor.creatureType === 'humanoid'
+function hasDeathCue(actor: CharacterSnapshot): boolean {
+    return (
+        actor.alive &&
+        ((actor.archetype === 'human' && actor.creatureType === 'humanoid') ||
+            (actor.archetype === 'fat_zombie' && actor.creatureType === 'undead'))
+    )
 }

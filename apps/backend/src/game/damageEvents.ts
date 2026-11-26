@@ -20,11 +20,27 @@ export function combatDeathEvent(
     }
     const event: CombatDeath = {
         kind: 'death',
+        eventId: deathReceipt(target),
         actorId: actor.id,
         targetId: target.id,
         ...(hostile ? {} : { [defeatCredit]: false }),
     }
     return event
+}
+
+function deathReceipt(target: GameCharacter): string {
+    return `death:${target.id}:${String(target.deathSequence)}`
+}
+
+export function isCurrentDeathEvent(
+    event: GameEventPayload,
+    target: GameCharacter
+): boolean {
+    return (
+        !target.alive &&
+        target.deathSequence > 0 &&
+        (event.eventId === undefined || event.eventId === deathReceipt(target))
+    )
 }
 
 export function creditsDefeat(event: CombatDeath): boolean {

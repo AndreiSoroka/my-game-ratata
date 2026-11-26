@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <title>Сердце зомби</title>
+  <path fill="#222021" d="M7 1h3v1h3v2h2v5h-1v3h-2v2H9v1H5v-1H3v-2H2V9H1V6h2V4h2V3h2z"/>
+  <path fill="#7b5045" d="M6 5h3V4h3v1h2v4h-1v3h-2v1H8v1H5v-1H4v-2H3V7h2V6h1z"/>
+  <path fill="#563c37" d="M11 6h3v3h-1v3h-2v1H8v1H5v-2h3v-1h2V9h1z"/>
+  <path fill="#ab7862" d="M5 6h3v1H6v1H5v2H4V7h1zM11 5h1v1h-1z"/>
+  <path fill="#4d7042" d="M8 2h2v3h2v1h-2v2H8v2H6V9h1V7h1z"/>
+  <path fill="#97b969" d="M8 2h1v3H8zM8 7h1v1H8zM6 9h1v1H6z"/>
+</svg>

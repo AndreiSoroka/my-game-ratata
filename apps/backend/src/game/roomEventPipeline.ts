@@ -3,7 +3,8 @@ import type { GameEventPayload } from '@my-game-ratata/contracts'
 import { archiveRoomConversations } from '../ai/memoryLifecycle'
 import type { AdventureService } from './adventure'
 import type { GameCharacter } from './character'
-import { creditsDefeat } from './damageEvents'
+import { defersDefeatCredit } from './corpseReturnTrophy'
+import { creditsDefeat, isCurrentDeathEvent } from './damageEvents'
 import { isPveOpponent } from './factions'
 import type { PartyService } from './parties'
 import { publishRoomEvents } from './roomEvents'
@@ -40,6 +41,13 @@ export class RoomEventPipeline {
     ) {}
 
     public publish(events: GameEventPayload[]): void {
+        events = events.filter((event) => {
+            if (event.kind !== 'death' || event.targetId === undefined) {
+                return true
+            }
+            const target = this.characters.get(event.targetId)
+            return target === undefined || isCurrentDeathEvent(event, target)
+        })
         if (events.length === 0) {
             return
         }
@@ -98,11 +106,17 @@ export class RoomEventPipeline {
     }
 
     private deferDefeat(event: GameEventPayload): boolean {
-        if (event.kind !== 'death' || event.targetId === undefined) {
+        if (event.targetId === undefined) {
             return false
         }
         const actor = this.characters.get(event.targetId)
-        if (actor?.mortal !== true || actor.archetype !== 'skeleton') {
+        if (actor === undefined) {
+            return false
+        }
+        if (event.kind === 'revive' && actor.alive) {
+            this.fallen.delete(actor)
+        }
+        if (event.kind !== 'death' || !defersDefeatCredit(actor)) {
             return false
         }
         if (this.fallen.get(actor)?.sequence !== actor.deathSequence) {

@@ -21,6 +21,7 @@ interface LifeContext {
     now: number
     onEvents: (events: GameEventPayload[]) => void
     delayRetirement?: (character: GameCharacter, now: number) => boolean
+    afterRevival?: () => void
     abilityContextFor?: (actor: GameCharacter, now: number) => AbilityContext
     beforeRetire?: (
         character: GameCharacter,
@@ -35,15 +36,17 @@ export function advanceRoomLives(context: LifeContext): void {
         if (character.abilities.casting === null) {
             continue
         }
-        onEvents(
-            advanceRevive(
-                character,
-                (id) => characters.get(id),
-                now,
-                undefined,
-                context.abilityContextFor?.(character, now)
-            )
+        const events = advanceRevive(
+            character,
+            (id) => characters.get(id),
+            now,
+            undefined,
+            context.abilityContextFor?.(character, now)
         )
+        if (events.some(({ kind }) => kind === 'revive')) {
+            context.afterRevival?.()
+        }
+        onEvents(events)
     }
     for (const character of characters.values()) {
         if (context.delayRetirement?.(character, now) !== true) {

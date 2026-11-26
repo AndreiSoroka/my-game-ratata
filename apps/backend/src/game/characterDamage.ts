@@ -6,6 +6,7 @@ import { cancelAshTame } from './ashTaming'
 import type { GameCharacter } from './character'
 import { notifyCharacterDeath } from './characterDeathObservers'
 import { clearCombatTransient } from './combatState'
+import { rememberCorpseAllegiance } from './corpseReturnTrophy'
 import { resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
 import { clearResourcePractice } from './resourcePractice'
@@ -31,6 +32,7 @@ export function applyCharacterDamage(
     if (character.hp <= 0) {
         resetMartyrStreak(character)
         clearResourcePractice(character)
+        rememberCorpseAllegiance(character)
         character.deathSequence += 1
         character.alive = false
         clearAshExhaustion(character)

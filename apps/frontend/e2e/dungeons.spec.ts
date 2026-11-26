@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 
 import {
     CENTER_LOCATION_ID,
-    type ChestContainerSnapshot,
     type GameEventPayload,
     REGION_NAME,
     type ServerMessage,
@@ -16,17 +15,21 @@ import {
     generateDungeonMap,
     generateDungeonRegion,
 } from '../../../scripts/generate-dungeons.mjs'
+import {
+    closeDungeonContainer,
+    cross,
+    currentDungeonContainer,
+    currentMap,
+    currentPassage,
+    type DungeonMap,
+    expectViewportFor,
+    mapObjects,
+    openDungeonContainer,
+    type Passage,
+    property,
+} from './dungeon-navigation'
 import { expectZombieShove, recordZombieDamage } from './fat-zombie-encounter'
 import { walkTo } from './world-navigation'
-
-interface Passage extends Vector2 {
-    properties: { name: string; value: unknown }[]
-    type: string
-}
-interface DungeonMap {
-    tileheight: number
-    layers: { name: string; objects?: Passage[] }[]
-}
 
 const branId = 'npc_veteran_1'
 const seed = process.env['GAME_WORLD_SEED'] ?? 'fortifications-browser-2026'
@@ -151,7 +154,7 @@ if (seed === 'dungeon-832')
         }
 
         await walkTo(page, chestApproach, 3)
-        const opened = await openSecretChest(page, chestId)
+        const opened = await openDungeonContainer(page, chestId)
         expect(opened.items).toHaveLength(3)
         const [taken, ...remaining] = opened.items
         await page.evaluate(
@@ -159,9 +162,11 @@ if (seed === 'dungeon-832')
                 window.__ratataTest!.send({ type: 'take_chest_item', chestId, itemInstanceId }),
             { chestId, itemInstanceId: taken!.instanceId }
         )
-        await expect.poll(async () => (await currentSecretChest(page))?.items).toEqual(remaining)
+        await expect
+            .poll(async () => (await currentDungeonContainer(page))?.items)
+            .toEqual(remaining)
         await expectLootInBag(page, taken!.instanceId)
-        await closeSecretChest(page, chestId)
+        await closeDungeonContainer(page, chestId)
 
         await cross(page, await currentPassage(page, CENTER_LOCATION_ID))
         await expectViewportFor(page, CENTER_LOCATION_ID)
@@ -187,7 +192,7 @@ if (seed === 'dungeon-832')
         await expectViewportFor(page, first.id)
         expect((await secretState(page, finalId)).revealed).toEqual(secrets.map(({ id }) => id))
         await walkTo(page, chestApproach, 3)
-        expect((await openSecretChest(page, chestId)).items).toEqual(remaining)
+        expect((await openDungeonContainer(page, chestId)).items).toEqual(remaining)
         await expectLootInBag(page, taken!.instanceId)
     })
 
@@ -225,37 +230,6 @@ function hearsDraft(page: Page) {
         const { snapshot } = window.__ratataTest!.getState()
         return snapshot && snapshot.dungeonDraft === true
     })
-}
-
-function currentSecretChest(page: Page) {
-    return page.evaluate(() => window.__ratataTest!.getState().snapshot?.chest)
-}
-
-async function openSecretChest(page: Page, chestId: string): Promise<ChestContainerSnapshot> {
-    const result = await page.evaluate(
-        (chestId) =>
-            window.__ratataTest!.act(
-                { type: 'open_chest', chestId },
-                { until: { type: 'chest', chestId } }
-            ),
-        chestId
-    )
-    expect(result.status, result.reason).toBe('condition_met')
-    const chest = await currentSecretChest(page)
-    assert(chest?.chestId === chestId, 'The discovered chest is open')
-    return chest
-}
-
-async function closeSecretChest(page: Page, chestId: string): Promise<void> {
-    const result = await page.evaluate(
-        (chestId) =>
-            window.__ratataTest!.act(
-                { type: 'close_chest', chestId },
-                { until: { type: 'chest', chestId: null } }
-            ),
-        chestId
-    )
-    expect(result.status, result.reason).toBe('condition_met')
 }
 
 async function expectLootInBag(page: Page, instanceId: string): Promise<void> {
@@ -322,65 +296,6 @@ async function expectBranInLocation(page: Page, locationId: string): Promise<voi
 
 function playerLocation(page: Page) {
     return page.evaluate(() => window.__ratataTest!.getState().location?.id)
-}
-
-async function expectViewportFor(page: Page, locationId: string): Promise<void> {
-    await expect
-        .poll(
-            () =>
-                page.evaluate(() => {
-                    const { connected, mapReady, snapshot } = window.__ratataTest!.getState()
-                    return {
-                        connected,
-                        mapReady,
-                        location: snapshot?.location?.id,
-                        viewport: snapshot?.viewBounds !== undefined,
-                    }
-                }),
-            { timeout: 15_000, message: `Receive a camera-filtered snapshot for ${locationId}` }
-        )
-        .toEqual({ connected: true, mapReady: true, location: locationId, viewport: true })
-    await expect(page.getByRole('alert').filter({ hasText: 'Invalid viewport hint' })).toHaveCount(
-        0
-    )
-}
-
-async function currentMap(page: Page): Promise<DungeonMap> {
-    await page.waitForFunction(() => {
-        const state = window.__ratataTest!.getState()
-        return state.mapReady && state.location?.map.asset.url
-    })
-    const assetPath = await page.evaluate(
-        () => window.__ratataTest!.getState().location!.map.asset.url
-    )
-    const base = process.env['E2E_BACKEND_PORT'] ?? '3500'
-    const response = await page.request.get(`http://127.0.0.1:${base}${assetPath}`)
-    expect(response.ok()).toBe(true)
-    return (await response.json()) as DungeonMap
-}
-
-function mapObjects(map: DungeonMap, layer: string): Passage[] {
-    return map.layers.find(({ name }) => name === layer)?.objects ?? []
-}
-
-function property(object: Passage, key: string): unknown {
-    return object.properties.find(({ name }) => name === key)?.value
-}
-
-async function currentPassage(page: Page, destination: string): Promise<Passage> {
-    const point = mapObjects(await currentMap(page), 'Dungeon passages').find(
-        (passage) => property(passage, 'destinationLocationId') === destination
-    )
-    expect(point, `Passage to ${destination}`).toBeDefined()
-    return point!
-}
-
-async function cross(page: Page, { x, y }: Vector2): Promise<void> {
-    const result = await page.evaluate(
-        (point) => window.__ratataTest!.navigate(point, { timeoutMs: 30_000, tolerance: 1 }),
-        { x, y }
-    )
-    expect(result, result.reason).toMatchObject({ status: 'location_changed' })
 }
 
 async function expectAwayFromThreshold(page: Page, passage: Passage): Promise<void> {

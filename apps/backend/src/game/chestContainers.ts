@@ -8,6 +8,7 @@ import type { GameCharacter } from './character'
 import { cancelCharacterControl } from './characterControl'
 import {
     chestCapacity,
+    chestHasLoot,
     chestOpened,
     chestOpenRefusal,
     chestPickup,
@@ -15,6 +16,7 @@ import {
     transferToChest,
     type WorldChest,
 } from './chestInteraction'
+import { CorpseReturns } from './corpseReturns'
 import type { CorpseWallet } from './corpseWallet'
 import { snapshotItem, transferInventoryItem } from './inventory'
 import { resetMartyrStreak } from './martyr'
@@ -30,7 +32,8 @@ export class ChestContainers {
         private readonly chests: Map<string, WorldChest>,
         private readonly navigation: NavigationService,
         private readonly locationId: string,
-        private readonly wallet?: CorpseWallet
+        private readonly wallet?: CorpseWallet,
+        private readonly corpseReturns = new CorpseReturns(chests, wallet)
     ) {}
 
     public register(chest: WorldChest): void {
@@ -62,6 +65,15 @@ export class ChestContainers {
         if (refusal !== undefined || chest === undefined) {
             this.close(actor.id)
             return chestRefusalNotice(actor.id, refusal ?? 'Сундук недоступен.')
+        }
+        const returning = this.corpseReturns.beforeInteraction(
+            chest.id,
+            actor.id,
+            now,
+            this.invalidate
+        )
+        if (returning !== undefined) {
+            return returning
         }
         if (message.type === 'open_chest') {
             cancelCharacterControl(actor)
@@ -168,7 +180,7 @@ export class ChestContainers {
         this.viewers.delete(actorId)
     }
 
-    public invalidate(chestId: string): void {
+    public readonly invalidate = (chestId: string): void => {
         for (const [actorId, id] of this.viewers) {
             if (id === chestId) {
                 this.close(actorId)
@@ -212,10 +224,7 @@ export class ChestContainers {
         chest: WorldChest,
         instanceId: string
     ): GameEventPayload[] {
-        const exists = chest.contents.some(
-            (item) => item.instanceId === instanceId
-        )
-        if (!exists) {
+        if (!chest.contents.some((item) => item.instanceId === instanceId)) {
             return chestRefusalNotice(actor.id, 'Этот предмет уже забрали.')
         }
         const item = transferInventoryItem(
@@ -226,6 +235,7 @@ export class ChestContainers {
         if (item === undefined) {
             return chestRefusalNotice(actor.id, 'В сумке нет свободного места.')
         }
+        this.corpseReturns.itemTaken(chest, item.instanceId)
         return [chestPickup(actor, chest, item)]
     }
 
@@ -252,11 +262,7 @@ export class ChestContainers {
     }
 
     private removeEmptyCorpse(chest: WorldChest): void {
-        if (
-            chest.kind !== 'corpse' ||
-            chest.contents.length > 0 ||
-            (chest.gold ?? 0) > 0
-        ) {
+        if (chest.kind !== 'corpse' || chestHasLoot(chest)) {
             return
         }
         this.invalidate(chest.id)
@@ -296,6 +302,7 @@ export class ChestContainers {
             if (item === undefined) {
                 continue
             }
+            this.corpseReturns.itemTaken(chest, item.instanceId)
             events.push(chestPickup(actor, chest, item))
         }
         if (chest.contents.length > 0) {

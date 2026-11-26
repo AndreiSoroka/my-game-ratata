@@ -121,7 +121,9 @@ function visibleLoot(
         .snapshotChests()
         .filter(
             (container) =>
-                container.kind === 'corpse' && !state.ignored.has(container.id)
+                container.kind === 'corpse' &&
+                !state.ignored.has(container.id) &&
+                !inventory.corpseAwaitingReturn(container.id)
         )
     return [
         ...items.map((item) => ({

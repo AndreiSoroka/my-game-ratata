@@ -74,7 +74,25 @@ it('prepares one clip and plays authoritative deaths with victim distance gain',
     ])
 })
 
-it('ignores hidden, absent, distant, already dead and nonhuman victims', () => {
+it('reuses the human cue for a Fat Zombie once per resolved death', () => {
+    const test = setup()
+    const zombie = actor('zombie', 80, { archetype: 'fat_zombie', creatureType: 'undead' })
+    test.observe([actor('me'), zombie])
+    test.death(zombie.id, epoch + 1, { eventId: 'zombie-death-1' })
+    test.tracks[0]?.stop()
+    test.death(zombie.id, epoch + 2, { eventId: 'zombie-death-1' })
+    expect(test.sounds.play).toHaveBeenCalledExactlyOnceWith('humanDeath', { volume: 0.25 })
+
+    test.observe([actor('me'), { ...zombie, alive: false }], epoch + 3)
+    test.death(zombie.id, epoch + 4, { eventId: 'already-dead' })
+    expect(test.sounds.play).toHaveBeenCalledTimes(1)
+
+    test.observe([actor('me'), zombie], epoch + 60_001)
+    test.death(zombie.id, epoch + 60_002, { eventId: 'zombie-death-2' })
+    expect(test.sounds.play).toHaveBeenCalledTimes(2)
+})
+
+it('ignores hidden, absent, distant, dead and unsupported victims', () => {
     const test = setup()
     const victims = [
         actor('lich', 16, { creatureType: 'undead' }),
@@ -82,7 +100,7 @@ it('ignores hidden, absent, distant, already dead and nonhuman victims', () => {
         actor('slime', 16, { archetype: 'slime', creatureType: 'ooze' }),
         actor('dummy', 16, { creatureType: 'construct' }),
         actor('corpse', 16, { alive: false }),
-        actor('hidden', 16),
+        actor('hidden', 16, { archetype: 'fat_zombie', creatureType: 'undead' }),
         actor('distant', 128),
     ]
     test.observe([actor('me'), ...victims], epoch, (id) => id !== 'hidden')

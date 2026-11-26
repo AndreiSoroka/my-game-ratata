@@ -17,6 +17,7 @@ import { mountEngine, startEngine, stepUntil } from './engineSupport'
 
 const actorId = 'hero'
 const prayerId = 'praying-neighbor'
+const fatZombieId = 'fat-zombie'
 const sparkFile = 'spark-flight.mp3'
 const magicFile = 'magic-cast.mp3'
 const prayerFile = 'prayer-whisper.mp3'
@@ -126,8 +127,10 @@ function exerciseWorldCues(
     const magicChannels = exerciseMagicChannels(audio, magic, observe, step)
     const ashCurse = exerciseAshCurse(audio, sparkFlight, prayer, observe)
 
+    const zombieDeathPlayedOnce = exerciseFatZombieDeathCue(audio, death)
+
     audio.playEventSound({ kind: 'death', targetId: actorId }, serverTime + 6200)
-    const deathVoice = death.instances[0]
+    const deathVoice = death.instances.find((track) => track.isPlaying)
     audio.invalidateWorld(true)
     const deathVoiceSurvivesInvalidation = deathVoice?.isPlaying
     setAudioMuted(true)
@@ -142,9 +145,19 @@ function exerciseWorldCues(
         prayerOneShot: tracks[1]?.loop === false,
         magicChannels,
         ashCurse,
+        zombieDeathPlayedOnce,
         deathVoiceSurvivesInvalidation,
         durations: [sparkFlight, magic, prayer, water, death].map((sound) => sound.data.duration),
     }
+}
+
+function exerciseFatZombieDeathCue(audio: GameAudio, death: Sound): boolean {
+    const event = { kind: 'death', targetId: fatZombieId, eventId: 'zombie-death-1' } as const
+    audio.playEventSound(event, serverTime + 6100)
+    const voice = death.instances.find((track) => track.isPlaying)
+    voice?.stop()
+    audio.playEventSound(event, serverTime + 6101)
+    return voice?.loop === false && death.playingCount() === 0
 }
 
 function exerciseSparkCues(audio: GameAudio, magic: Sound, sparkFlight: Sound) {
@@ -287,8 +300,14 @@ function shorelineSnapshot(at: number, magicChannel?: MagicChannelSnapshot, ashC
             ...(ashCasting && { ashCasting }),
         },
     })
+    const fatZombie = characterFixture(fatZombieId, {
+        position: { x: 144, y: 88 },
+        archetype: 'fat_zombie',
+        creatureType: 'undead',
+        visualId: 'fat_zombie',
+    })
     return {
-        ...worldFixture([local, neighbor], at),
+        ...worldFixture([local, neighbor, fatZombie], at),
         location: { id: CENTER_LOCATION_ID, biome: 'city' } as WorldLocation,
     }
 }

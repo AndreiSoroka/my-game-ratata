@@ -9,7 +9,7 @@ import { beginRevive } from '../src/game/characterLife'
 import { createItemInstance } from '../src/game/inventory'
 import { parseClientMessage } from '../src/game/messages'
 import { GameRoom } from '../src/game/room'
-import { joinChestRoom } from './chestTestHelpers'
+import { chestHero, joinChestRoom } from './chestTestHelpers'
 import { graveNavigation, roomLifeFixture } from './graveTestHelpers'
 
 afterEach(() => {
@@ -338,7 +338,7 @@ describe('socket-authorized abandon life command', () => {
     })
 })
 
-it('removes a slain grave child without reviving it or deleting either independent loot container', () => {
+it('retires a grave child after its bone is taken and keeps the two independent loot containers', () => {
     const f = roomLifeFixture()
     f.hero.inventory.push(createItemInstance('boots'))
     f.hero.applyDamage(f.hero.hp, now)
@@ -359,14 +359,35 @@ it('removes a slain grave child without reviving it or deleting either independe
         .snapshotChests()
         .filter((chest) => chest.kind === 'corpse')
     expect(corpses).toHaveLength(2)
+    const chestId = `corpse:${skeleton.id}:1`
+    const looter = chestHero('Bone collector', skeleton.position)
+    looter.locationId = skeleton.locationId
+    const pickupAt = now + 31_500
+    inventory.openChestById(looter, chestId, pickupAt)
+    const bone = inventory.containers
+        .snapshot(looter, pickupAt)
+        ?.items.find(({ itemId }) => itemId === 'bone')
+    if (bone === undefined) {
+        throw new Error('Expected bone in the grave child’s corpse')
+    }
+    inventory.containers.handle(
+        looter,
+        { type: 'take_chest_item', chestId, itemInstanceId: bone.instanceId },
+        pickupAt
+    )
     skeleton.tickTimedState(now + 46_000)
     expect(skeleton.alive).toBe(false)
     f.advance(now + 46_000)
     expect(f.characters.has(skeleton.id)).toBe(false)
     expect(f.controllers.has(skeleton.id)).toBe(false)
-    expect(
-        inventory.snapshotChests().filter((chest) => chest.kind === 'corpse')
-    ).toEqual(corpses)
+    const remaining = inventory
+        .snapshotChests()
+        .filter((chest) => chest.kind === 'corpse')
+    expect(remaining).toHaveLength(2)
+    expect(remaining).toContainEqual(corpses.find(({ id }) => id !== chestId))
+    expect(remaining).toContainEqual(
+        expect.objectContaining({ id: chestId, itemCount: 1 })
+    )
     expect(f.life.graves(f.hero.locationId)).toHaveLength(1)
     expect(f.characters.size).toBe(0)
 })

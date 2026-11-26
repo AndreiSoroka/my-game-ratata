@@ -54,7 +54,8 @@ export class WorldInventory {
             this.chests,
             navigation,
             locationId,
-            wallet
+            wallet,
+            this.deathLoot.returns
         )
     }
 
@@ -125,20 +126,23 @@ export class WorldInventory {
     }
 
     public dropLootForDeaths(
-        events: GameEventPayload[],
-        findCharacter: (id: string) => GameCharacter | undefined
+        ...args: Parameters<WorldDeathLoot['resolve']>
     ): GameEventPayload[] {
-        return this.deathLoot.resolve(events, findCharacter)
+        return this.deathLoot.resolve(...args)
     }
 
     public finalizeDeath(
-        actor: GameCharacter,
-        now: number,
-        abandoned = false,
-        options?: Parameters<WorldDeathLoot['finalize']>[3]
+        ...args: Parameters<WorldDeathLoot['finalize']>
     ): GameEventPayload[] {
-        return this.deathLoot.finalize(actor, now, abandoned, options)
+        return this.deathLoot.finalize(...args)
     }
+
+    public advanceCorpseReturns(now: number): GameEventPayload[] {
+        return this.deathLoot.returns.advance(now, this.containers.invalidate)
+    }
+
+    public readonly corpseAwaitingReturn = (chestId: string) =>
+        this.deathLoot.returns.hasPending(chestId)
 
     public openChestById(
         actor: GameCharacter,

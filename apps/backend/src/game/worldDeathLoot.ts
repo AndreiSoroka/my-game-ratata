@@ -3,28 +3,34 @@ import {
     containerBounds,
     type GameEventPayload,
     HOSTILE_TROPHY_ITEMS,
+    type ItemId,
     type Vector2,
 } from '@my-game-ratata/contracts'
 
 import { ashSummoner } from './ashSkeletonState'
 import type { GameCharacter } from './character'
 import { canAbandonLife, shouldRetireCharacter } from './characterLife'
-import type { WorldChest } from './chestInteraction'
+import { chestHasLoot, type WorldChest } from './chestInteraction'
+import { CorpseReturns } from './corpseReturns'
+import { corpseReturnTrophy } from './corpseReturnTrophy'
 import type { CorpseWallet } from './corpseWallet'
-import { canAwardDefeatTrophy } from './damageEvents'
-import { createItemInstance } from './inventory'
+import { canAwardDefeatTrophy, isCurrentDeathEvent } from './damageEvents'
+import { createItemInstance, type InventoryItemInstance } from './inventory'
 import { withWorldSound } from './worldSound'
 
 /** Corpses outlive rendered characters; resolved receipts outlive emptied corpses. */
 export class WorldDeathLoot {
     private readonly resolved = new Set<string>()
     private readonly remains = new Map<string, WorldChest>()
+    public readonly returns: CorpseReturns
 
     public constructor(
         private readonly locationId: string,
         private readonly containers: Map<string, WorldChest>,
         private readonly wallet?: CorpseWallet
-    ) {}
+    ) {
+        this.returns = new CorpseReturns(containers, wallet)
+    }
 
     public resolve(
         events: GameEventPayload[],
@@ -35,9 +41,17 @@ export class WorldDeathLoot {
                 return []
             }
             const target = find(event.targetId)
-            return target === undefined || target.mortal
+            if (target === undefined || !isCurrentDeathEvent(event, target)) {
+                return []
+            }
+            const returnTrophy = corpseReturnTrophy(target)
+            return target.mortal && returnTrophy === undefined
                 ? []
-                : this.transfer(target)
+                : this.transfer(
+                      target,
+                      returnTrophy === undefined,
+                      returnTrophy
+                  )
         })
     }
 
@@ -48,10 +62,25 @@ export class WorldDeathLoot {
         abandoned = false,
         options: { ashRemains?: boolean } = {}
     ): GameEventPayload[] {
-        return shouldRetireCharacter(target, now) ||
-            (abandoned && canAbandonLife(target))
-            ? this.transfer(target, options.ashRemains !== false)
-            : []
+        if (
+            !shouldRetireCharacter(target, now) &&
+            !(abandoned && canAbandonLife(target))
+        ) {
+            return []
+        }
+        const allowAshRemains = options.ashRemains !== false
+        const defeated = this.returns.consumeFinalDefeat(target)
+        if (defeated !== undefined) {
+            if (allowAshRemains && canLeaveAshRemains(target)) {
+                this.recordAshRemains(
+                    defeated.chest,
+                    target,
+                    Math.max(now, defeated.prayerUntil)
+                )
+            }
+            return []
+        }
+        return this.transfer(target, allowAshRemains)
     }
 
     public seedRemains(id: string, position: Vector2): void {
@@ -117,7 +146,8 @@ export class WorldDeathLoot {
 
     private transfer(
         target: GameCharacter,
-        allowAshRemains = true
+        allowAshRemains: boolean,
+        returnTrophy?: ItemId
     ): GameEventPayload[] {
         const id = `corpse:${target.id}:${String(target.deathSequence)}`
         if (
@@ -133,16 +163,23 @@ export class WorldDeathLoot {
             ...target.inventory,
             ...Object.values(target.equipment),
         ]
-        const trophy = canAwardDefeatTrophy(target)
-            ? trophyFor(target)
-            : undefined
+        const trophyId =
+            returnTrophy ??
+            (canAwardDefeatTrophy(target) ? trophyFor(target) : undefined)
+        const trophy =
+            trophyId === undefined ? undefined : createItemInstance(trophyId)
         if (trophy !== undefined) {
-            contents.push(createItemInstance(trophy))
+            contents.push(trophy)
         }
         const gold = this.wallet?.drainGold(target.id) ?? 0
-        target.inventory = []
-        target.equipment = {}
-        return this.storeCorpse(target, id, contents, gold, allowAshRemains)
+        return this.storeCorpse(
+            target,
+            id,
+            contents,
+            gold,
+            allowAshRemains,
+            returnTrophy === undefined ? undefined : trophy
+        )
     }
 
     private storeCorpse(
@@ -150,20 +187,9 @@ export class WorldDeathLoot {
         id: string,
         contents: WorldChest['contents'],
         gold: number,
-        allowAshRemains: boolean
+        allowAshRemains: boolean,
+        returnTrophy?: InventoryItemInstance
     ): GameEventPayload[] {
-        const ashRemains =
-            allowAshRemains && canLeaveAshRemains(target)
-                ? {
-                      readyAt: target.reviveUntil,
-                      expiresAt:
-                          target.reviveUntil + ASH_RITE_RULES.remainsDurationMs,
-                      death: { actor: target, sequence: target.deathSequence },
-                  }
-                : undefined
-        if (contents.length === 0 && gold === 0 && ashRemains === undefined) {
-            return []
-        }
         const chest: WorldChest = {
             id,
             kind: 'corpse',
@@ -177,12 +203,20 @@ export class WorldDeathLoot {
                 visualId: target.visualId,
                 facing: target.facing,
             },
-            ...(ashRemains === undefined ? {} : { ashRemains }),
         }
-        if (ashRemains !== undefined) {
-            this.remains.set(id, chest)
+        if (returnTrophy !== undefined) {
+            this.returns.register(
+                target,
+                chest,
+                returnTrophy.instanceId,
+                target.equipment
+            )
+        } else if (allowAshRemains && canLeaveAshRemains(target)) {
+            this.recordAshRemains(chest, target, target.reviveUntil)
         }
-        if (contents.length === 0 && gold === 0) {
+        target.inventory = []
+        target.equipment = {}
+        if (!chestHasLoot(chest)) {
             return []
         }
         this.containers.set(id, chest)
@@ -195,6 +229,19 @@ export class WorldDeathLoot {
                 { sourceBounds: containerBounds(chest.position) }
             ),
         ]
+    }
+
+    private recordAshRemains(
+        chest: WorldChest,
+        actor: GameCharacter,
+        readyAt: number
+    ): void {
+        chest.ashRemains = {
+            readyAt,
+            expiresAt: readyAt + ASH_RITE_RULES.remainsDurationMs,
+            death: { actor, sequence: actor.deathSequence },
+        }
+        this.remains.set(chest.id, chest)
     }
 }
 

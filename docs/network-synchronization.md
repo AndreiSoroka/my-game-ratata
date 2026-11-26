@@ -1,6 +1,6 @@
 # Network synchronization
 
-Client and server use protocol **0.18.0** and must be updated together. Reload old
+Client and server use protocol **0.19.0** and must be updated together. Reload old
 clients after restarting the server. The transport remains WebSocket over HTTP
 or HTTPS, with negotiated per-message compression; HTTP/3 is not required.
 

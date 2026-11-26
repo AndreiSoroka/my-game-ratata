@@ -125,6 +125,10 @@ export function chestCapacity(chest: WorldChest): number | undefined {
         : undefined
 }
 
+export function chestHasLoot(chest: WorldChest): boolean {
+    return chest.contents.length > 0 || (chest.gold ?? 0) > 0
+}
+
 export function transferToChest(
     actor: GameCharacter,
     chest: WorldChest,

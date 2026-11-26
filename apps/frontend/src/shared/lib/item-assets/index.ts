@@ -35,6 +35,7 @@ export const itemAssetCatalog: Record<ItemId, ItemAssetDefinition> = {
         label: ITEM_DEFINITIONS.slime_heart.name,
         src: '/game/assets/items/slime-heart.svg',
     },
+    zombie_heart: nativeItemAsset('zombie_heart'),
 }
 
 export const itemAssetList = Object.values(itemAssetCatalog)

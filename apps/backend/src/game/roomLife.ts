@@ -95,8 +95,10 @@ export class RoomLife {
         now: number,
         abilityContextFor: (actor: GameCharacter, at: number) => AbilityContext
     ): void {
+        this.advanceCorpseReturns(now)
         advanceRoomLives({
             ...this.context(now),
+            afterRevival: () => this.advanceCorpseReturns(now),
             delayRetirement: (actor, at) => this.lichReturns.advance(actor, at),
             abilityContextFor: (actor, at) => ({
                 ...abilityContextFor(actor, at),
@@ -133,6 +135,15 @@ export class RoomLife {
                 this.controllers.delete(id)
             },
         })
+    }
+
+    private advanceCorpseReturns(now: number): void {
+        for (const location of this.world().locations.values()) {
+            const events = location.inventory.advanceCorpseReturns(now)
+            if (events.length > 0) {
+                this.onEvents(events)
+            }
+        }
     }
 
     private context(now: number) {

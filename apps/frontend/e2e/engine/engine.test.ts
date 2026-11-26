@@ -283,6 +283,7 @@ test('plays Spark, Ash curse, prayer and death cues and the shoreline loop', asy
             sharedSampleRate: 1,
             flightCount: 1,
         },
+        zombieDeathPlayedOnce: true,
         deathVoiceSurvivesInvalidation: true,
         durations: [
             expect.closeTo(0.2, 2),

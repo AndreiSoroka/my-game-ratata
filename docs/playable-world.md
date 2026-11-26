@@ -96,14 +96,16 @@ Some floors hide extra rooms behind ordinary-looking masonry. Listen for a
 quiet draft as you walk nearby or stand right against the wall. Melee strikes,
 arrows and damaging spells can open a passage. A secret room may hide another
 wall. Two skeletons guard a shared chest in the last room. Opened passages,
-remaining loot and defeated dungeon skeletons persist for the world session,
-including when you leave a floor or refresh the browser.
+remaining loot and permanent defeats persist for the world session, including
+when you leave a floor or refresh the browser.
 
 Fat zombies can appear in spacious rooms from the second floor onward.
 They have ten times a dungeon skeleton's health and their slow melee hit
 pushes surviving targets away. Each starts with part of the Heavy Flesh
-constellation unlocked. A killing blow against a living enemy opens one
-more star. Defeated fat zombies stay dead for the world session.
+constellation unlocked. A killing blow against a living enemy opens one more
+star. Fat zombies leave a Zombie heart in their bodies, and hostile skeletons
+leave a Bone. Loot the trophy within a minute to keep that enemy down for the
+world session. Otherwise, it rises where it fell with half its maximum health.
 
 General merchants in Novogorod sell torches for 3
 gold and lanterns for 10. Equip one in the inventory's Light slot. Torches

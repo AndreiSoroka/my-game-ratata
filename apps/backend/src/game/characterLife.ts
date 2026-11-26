@@ -15,6 +15,7 @@ import {
     nextPrayerReceipt,
 } from './abilityState'
 import type { GameCharacter } from './character'
+import { corpseReturnFinalized, defersCorpseRetirement } from './corpseReturns'
 import { resolveMiracle } from './deities'
 import { createCharacterConfig } from './heroClasses'
 import { distance } from './math'
@@ -35,11 +36,14 @@ export function shouldRetireCharacter(
     now: number
 ): boolean {
     return (
-        character.mortal &&
         !character.alive &&
         !character.tags.has('state.retired') &&
-        (!character.revivable ||
-            (character.reviveUntil > 0 && now >= character.reviveUntil))
+        !defersCorpseRetirement(character, now) &&
+        (corpseReturnFinalized(character, now) ||
+            (character.mortal &&
+                (!character.revivable ||
+                    (character.reviveUntil > 0 &&
+                        now >= character.reviveUntil))))
     )
 }
 

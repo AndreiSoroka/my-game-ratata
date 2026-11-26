@@ -100,4 +100,28 @@ describe('authoritative hit presentation', () => {
             })
         }
     })
+
+    it.each(['fat_zombie', 'skeleton'] as const)(
+        'holds the fallen %s pose for as long as the server shows it dead',
+        (id) => {
+            const snapshot = {
+                ...fighter(false),
+                animation: { action: 'death', startedAt: 1000 } as const,
+            }
+            const frame = (now: number) => characterFrame(characterCatalog[id], snapshot, now)
+            expect(frame(1000)).toMatchObject({ action: 'death', row: 12, frame: 0 })
+            expect(frame(1540)).toMatchObject({ action: 'death', row: 12, frame: 3 })
+            expect(frame(60_999)).toMatchObject({ action: 'death', row: 12, frame: 4 })
+            const risen = {
+                ...snapshot,
+                alive: true,
+                animation: { action: 'idle', startedAt: 61_000 } as const,
+            }
+            expect(characterFrame(characterCatalog[id], risen, 61_000)).toMatchObject({
+                action: 'idle',
+                row: 1,
+                frame: 0,
+            })
+        }
+    )
 })

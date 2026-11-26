@@ -1,5 +1,6 @@
 import type { ItemInstanceSnapshot } from './index'
 import { PORTABLE_LIGHT_ITEMS } from './portableLights'
+import { TROPHY_ITEM_DEFINITIONS } from './questTrophies'
 
 export const INVENTORY_CAPACITY = 50
 
@@ -25,6 +26,7 @@ export const itemIds = [
     'brushwood',
     'torch',
     'lantern',
+    'zombie_heart',
 ] as const
 
 export type ItemId = (typeof itemIds)[number]
@@ -72,19 +74,13 @@ export interface ItemDefinition {
 
 export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
     ...PORTABLE_LIGHT_ITEMS,
+    ...TROPHY_ITEM_DEFINITIONS,
     lich_heart: {
         id: 'lich_heart',
         name: 'Сердце лича',
         maxStack: 1,
         description:
             'Сердце в пепельной печати. Связь держится, пока оно лежит в своём сундуке.',
-    },
-    bone: {
-        id: 'bone',
-        name: 'Кость',
-        maxStack: 1,
-        description:
-            'Кость скелета. Подойдёт как доказательство для обращения работника.',
     },
     axe: {
         id: 'axe',
@@ -188,12 +184,6 @@ export const ITEM_DEFINITIONS: Record<ItemId, ItemDefinition> = {
         name: 'Древесина',
         maxStack: 1,
         description: 'Заготовка для ремесла. Занимает отдельную ячейку.',
-    },
-    slime_heart: {
-        id: 'slime_heart',
-        name: 'Слизневое сердце',
-        description:
-            'Сердце враждебного слизня. Принеси три Мире для колокола памяти.',
     },
     boots: {
         equipmentSlots: ['boots'],

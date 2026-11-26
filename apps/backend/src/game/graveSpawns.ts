@@ -12,6 +12,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { hasPendingCorpseReturn } from './corpseReturns'
 import { GraveGuardians } from './graveGuardians'
 import { finalGravePosition } from './gravePlacement'
 import type { GraveCombatTarget, GraveDamageResult } from './graveRules'
@@ -256,9 +257,9 @@ export class GraveSpawns {
             const child = context.characters.get(id)
             if (
                 child?.alive === true ||
-                (source.reserveRevival &&
-                    child !== undefined &&
-                    now < child.reviveUntil)
+                (child !== undefined &&
+                    (hasPendingCorpseReturn(child) ||
+                        (source.reserveRevival && now < child.reviveUntil)))
             ) {
                 living++
             } else if (
