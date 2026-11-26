@@ -35,7 +35,7 @@ Game updates use negotiated WebSocket compression and only include world objects
 inside each camera's view plus 15% on every side. Inventory, quests, party and
 dialogue data remain available independently of the camera. Slow connections skip
 obsolete snapshots while their send queue drains; action results remain reliable.
-Protocol 0.17.0 sends only changed fields and periodically refreshes the full state.
+Snapshots send only changed fields and periodically refreshes the full state.
 Characters continue confirmed movement for at most 200 ms during delivery gaps.
 See [network synchronization](docs/network-synchronization.md) for recovery,
 measurements and the `GAME_SNAPSHOT_DELTAS=0` rollback flag.

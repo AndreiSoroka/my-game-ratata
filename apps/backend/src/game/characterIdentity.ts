@@ -64,9 +64,5 @@ export function createCharacterReputation(
 export function defaultVisualIdFor(
     archetype: CharacterArchetype
 ): CharacterVisualId {
-    if (archetype === 'skeleton' || archetype === 'slime') {
-        return archetype
-    }
-
-    return 'player'
+    return archetype === 'human' ? 'player' : archetype
 }

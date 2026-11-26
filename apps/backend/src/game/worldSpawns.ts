@@ -6,6 +6,7 @@ import {
 } from '@my-game-ratata/contracts'
 
 import type { GameCharacter } from './character'
+import { createDungeonFatZombies } from './dungeonFatZombies'
 import { createDungeonSkeletons } from './dungeonSkeletons'
 import { graveChildTile, slimeHabitatTile } from './encounterPlacement'
 import type { NavigationService } from './navigation'
@@ -26,10 +27,15 @@ export interface LocationEnemy extends SpawnedCharacter {
 
 export function createLocationEnemies(
     navigation: NavigationService,
-    location: WorldLocationDefinition & Pick<WorldLocation, 'dungeonSize'>
+    location: WorldLocationDefinition &
+        Pick<WorldLocation, 'dungeonSize' | 'floor'>,
+    worldSeed = 'authored-test-world'
 ): LocationEnemy[] {
     if (location.dungeonSize !== undefined) {
-        return createDungeonSkeletons(navigation, location.dungeonSize)
+        return [
+            ...createDungeonSkeletons(navigation, location.dungeonSize),
+            ...createDungeonFatZombies(navigation, location.floor, worldSeed),
+        ]
     }
     const difficulty = encounterDifficulty(location.dangerLevel)
     const result: LocationEnemy[] = []

@@ -87,6 +87,13 @@ export const constellationPaths = [
             'Нежескелет поднимается на десяти HP. Магия скрепляет его кости, а победы закаляют тело и учат усваивать опыт павших.',
         color: '#9bc4aa',
     },
+    {
+        id: 'fat_zombie',
+        name: 'Тяжёлая плоть',
+        description:
+            'У Жирного зомби 800 HP. Ранящий удар отбрасывает выжившую цель. Каждое убийство живого врага открывает звезду.',
+        color: '#a2b977',
+    },
 ] satisfies Array<{
     id: ConstellationId
     name: string

@@ -252,12 +252,12 @@ export function magicBlocksMovement(
 export function limitMovementByChains(
     actor: GameCharacter,
     end: Vector2,
-    now: number
+    now: number,
+    start = actor.position
 ): Vector2 {
     if ((magicCombatFor(actor)?.channelsIn(actor.locationId).size ?? 0) === 0) {
         return end
     }
-    const start = actor.position
     const steps = Math.ceil(distance(start, end) / 2)
     for (let index = 1; index <= steps; index += 1) {
         const ratio = index / steps

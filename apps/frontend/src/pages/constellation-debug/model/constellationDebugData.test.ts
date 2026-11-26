@@ -105,10 +105,12 @@ describe('standalone constellation debug data', () => {
         root?.effects?.push('Changed debug effect')
         child?.parents.push('foreign.root')
         if (root !== undefined) root.name = 'Changed debug root'
-        if (first.layout !== undefined) {
-            first.layout.bounds.x += 100
-            first.layout.regions.prayer.width += 100
+        const prayerRegion = first.layout?.regions.prayer
+        if (first.layout === undefined || prayerRegion === undefined) {
+            throw new Error('Expected the prayer layout')
         }
+        first.layout.bounds.x += 100
+        prayerRegion.width += 100
         first.paths.splice(0, 1)
         first.edges.splice(0, 1)
         first.nodes.splice(0, 1)

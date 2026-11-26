@@ -12,7 +12,7 @@ import { sparkBlocksTravel } from './combatMovement'
 import { available } from './crimeRules'
 import type { DungeonPassage } from './dungeonMapData'
 import { magicBlocksMovement } from './magicState'
-import { distance } from './math'
+import { circleEntryFraction, distance } from './math'
 import { cancelMovementMode } from './movementActions'
 import type { NavigationService, TileCoordinate } from './navigation'
 import { regionalRoute } from './regionalNavigation'
@@ -54,7 +54,12 @@ export function crossedDungeonPassage(
     let first: DungeonPassage | undefined
     let earliest = Infinity
     for (const passage of navigation.grid.dungeonPassages ?? []) {
-        const entry = triggerEntry(before, after, passage)
+        const entry = circleEntryFraction(
+            before,
+            after,
+            passage.position,
+            passage.triggerRadius
+        )
         if (
             entry !== undefined &&
             entry < earliest &&
@@ -65,27 +70,6 @@ export function crossedDungeonPassage(
         }
     }
     return first
-}
-
-/** Earliest entry into the circle along actual collision-resolved movement. */
-function triggerEntry(
-    from: Vector2,
-    to: Vector2,
-    { position, triggerRadius }: DungeonPassage
-): number | undefined {
-    const dx = to.x - from.x
-    const dy = to.y - from.y
-    const x = from.x - position.x
-    const y = from.y - position.y
-    const a = dx * dx + dy * dy
-    const b = x * dx + y * dy
-    const c = x * x + y * y - triggerRadius * triggerRadius
-    const discriminant = b * b - a * c
-    if (a === 0 || c <= 0 || b >= 0 || discriminant < 0) {
-        return undefined
-    }
-    const entry = (-b - Math.sqrt(discriminant)) / a
-    return entry <= 1 ? entry : undefined
 }
 
 export function dungeonPassageApproach(

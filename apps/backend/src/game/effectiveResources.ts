@@ -4,6 +4,7 @@ import { bladeHealthMultiplier } from './constellationBladeBonuses'
 import { ENDURANCE_ENERGY_PERCENT } from './constellationBonuses'
 import { activeConstellationStars, hasStar } from './constellations'
 import { undeadEnergyBonus, undeadHealthBonus } from './constellationUndead'
+import { fatZombieBonuses } from './fatZombieModifiers'
 import { undeadImprintBonus } from './undeadSurvivalState'
 
 /** Base configuration stays intact; the identity's learned trait determines its current capacity. */
@@ -28,7 +29,10 @@ export function effectiveMaxMana(actor: GameCharacter): number {
 
 export function effectiveMaxEnergy(actor: GameCharacter): number {
     const opened = activeConstellationStars(actor)
-    const base = actor.config.resources.maxEnergy + undeadEnergyBonus(opened)
+    const base =
+        actor.config.resources.maxEnergy +
+        undeadEnergyBonus(opened) +
+        fatZombieBonuses(actor).energyCapacity
     const capacity = base + undeadImprintBonus(actor, 'energy', opened)
     const normal = opened.has('life.endurance')
         ? (capacity * ENDURANCE_ENERGY_PERCENT) / 100

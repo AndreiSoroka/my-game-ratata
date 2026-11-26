@@ -10,6 +10,7 @@ export const constellationIds = [
     'prayer_lantern',
     'prayer_grave',
     'undead',
+    'fat_zombie',
 ] as const
 export type ConstellationId = (typeof constellationIds)[number]
 
@@ -82,7 +83,7 @@ export interface ConstellationLayoutSnapshot {
     /** Opaque node identity used for the owner’s initial viewport; it grants no unlock. */
     centerNodeId?: string
     bounds: ConstellationRegion
-    regions: Record<ConstellationId, ConstellationRegion>
+    regions: Partial<Record<ConstellationId, ConstellationRegion>>
     minimumNodeSpacing: number
 }
 

@@ -28,7 +28,7 @@ import type {
     CharacterControlSnapshot,
     CharacterRelationship,
 } from './control'
-import type { CreatureType } from './creatures'
+import type { CharacterArchetype, CreatureType } from './creatures'
 export * from './control'
 import type { AutomationCommand } from './scenarios'
 export * from './creatures'
@@ -120,13 +120,12 @@ export interface Vector2 {
 
 export type CharacterFacing = 'up' | 'down' | 'left' | 'right'
 
-export type CharacterArchetype = 'human' | 'skeleton' | 'slime'
-
 export type CharacterControllerKind = 'network_player' | 'mob1' | 'scripted'
 
 export type CharacterFactionId = 'monsters' | 'peaceful'
 
 export const characterVisualIds = [
+    'fat_zombie',
     'female_mage',
     'female_player',
     'male_mage',

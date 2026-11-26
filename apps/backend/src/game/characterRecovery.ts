@@ -9,6 +9,7 @@ import { regen } from './characterState'
 import { refreshCombatState } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
 import { effectiveMaxEnergy, effectiveMaxMana } from './effectiveResources'
+import { fatZombieBonuses } from './fatZombieModifiers'
 import { magicManaRegenSuppressed } from './magicState'
 import { recordMartyrRecovery, resetMartyrStreak } from './martyr'
 import { zeroVector } from './math'
@@ -154,12 +155,13 @@ export function regenerateCharacter(
         maxMana - beforeMana
     )
     const beforeHp = character.hp
+    const bonuses = fatZombieBonuses(character)
     character.hp = regen(
         character.hp,
         character.maxHp,
         moving
-            ? character.config.hpRegenMovePerSec
-            : character.config.hpRegenIdlePerSec,
+            ? character.config.hpRegenMovePerSec + bonuses.movingHpRegen
+            : character.config.hpRegenIdlePerSec + bonuses.idleHpRegen,
         deltaMs
     )
     const events = recordVitalityRecovery(
@@ -203,15 +205,17 @@ export function characterEnergyRegenRate(
 ): EnergyRecoveryRate {
     const resources = character.config.resources
     const bonuses = constellationModifiers(character)
+    const zombie = fatZombieBonuses(character)
     if (moving) {
         const rate =
-            resources.energyRegenMove *
+            (resources.energyRegenMove + zombie.movingEnergyRegen) *
             (walking ? bonuses.walkingEnergyRegenMultiplier : 1)
         return () => rate * undeadEnergyRecoveryMultiplier(character)
     }
     const { restUntil } = character.progression.constellations.lifeEnergy
     const idleRate =
-        resources.energyRegenIdle * bonuses.idleEnergyRegenMultiplier
+        (resources.energyRegenIdle + zombie.idleEnergyRegen) *
+        bonuses.idleEnergyRegenMultiplier
     const restRate = resources.energyRegenIdle * bonuses.restEnergyRegenBonus
     return (now, deltaMs) =>
         deltaMs > 0

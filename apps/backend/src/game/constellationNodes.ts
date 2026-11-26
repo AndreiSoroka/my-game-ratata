@@ -1,6 +1,7 @@
 import {
     ABILITY_DEFINITIONS,
     type AbilityId,
+    type CharacterArchetype,
     type ConstellationId,
     ROAD_PRAYER_RULES,
 } from '@my-game-ratata/contracts'
@@ -17,6 +18,7 @@ import { withPrayerLore } from './constellationPrayerLore'
 import { revivalStars } from './constellationRevivalStars'
 import { roadPrayerStars } from './constellationRoadPrayerStars'
 import { undeadStars } from './constellationUndead'
+import { fatZombieStars } from './fatZombieStars'
 
 const rootAbilities: Partial<Record<ConstellationId, AbilityId>> = {
     arrow: 'shot',
@@ -32,6 +34,7 @@ const rootNames: Partial<Record<ConstellationId, string>> = {
     prayer_lantern: 'Молитва ясности',
     prayer_grave: 'Молитва праха',
     undead: 'Нежескелет',
+    fat_zombie: 'Мёртвая туша',
 }
 
 const roots: ConstellationStar[] = constellationPaths.map((path) => {
@@ -169,7 +172,10 @@ const joints = [
 
 /** Complete authored graph. Owner snapshots disclose only earned metadata and the immediate frontier. */
 const authoredNodes = [
-    ...roots.filter((node) => node.constellationId !== 'undead'),
+    ...roots.filter(
+        ({ constellationId }) =>
+            constellationId !== 'undead' && constellationId !== 'fat_zombie'
+    ),
     ...constellationStars,
     ...explicitAbilities,
     ...joints,
@@ -180,11 +186,23 @@ const authoredNodes = [
     ...roots.filter((node) => node.constellationId === 'undead'),
     ...undeadStars,
     ...ashStars,
+    ...roots.filter(({ constellationId }) => constellationId === 'fat_zombie'),
+    ...fatZombieStars,
 ]
 export const fullConstellationCatalog: readonly ConstellationStar[] =
     Object.freeze(
         authoredNodes.map((node) => freezeStar(withPrayerLore({ ...node })))
     )
+
+const ordinaryConstellationCatalog = fullConstellationCatalog.filter(
+    ({ constellationId }) => constellationId !== 'fat_zombie'
+)
+
+export function constellationCatalogFor(archetype: CharacterArchetype) {
+    return archetype === 'fat_zombie'
+        ? fullConstellationCatalog
+        : ordinaryConstellationCatalog
+}
 
 function freezeStar(node: ConstellationStar): Readonly<ConstellationStar> {
     Object.freeze(node.parents)

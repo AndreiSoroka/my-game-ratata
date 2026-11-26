@@ -71,6 +71,14 @@ export function describeConstellationUnlock(
         conditions.push(
             `Открыты все предшественники: ${parents.map((id) => `«${fullConstellationCatalog.find((entry) => entry.id === id)?.name ?? id}»`).join(', ')}.`
         )
+    if (node.constellationId === 'fat_zombie') {
+        conditions.push(
+            node.acquisition === 'root'
+                ? 'Открывается у Жирного зомби при появлении и входит в стартовый набор звёзд.'
+                : 'Одна случайная доступная звезда открывается за каждое убийство живого противника. Часть звёзд открывается при появлении зомби в подземелье.'
+        )
+        return { conditions, chanceBoosts: [] }
+    }
     if (node.ability)
         conditions.push(`Изучена способность «${ABILITY_DEFINITIONS[node.ability].name}».`)
     conditions.push(...acquisitionConditions(nodeId, node.acquisition, heroClass))

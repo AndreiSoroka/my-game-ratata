@@ -99,6 +99,12 @@ wall. Two skeletons guard a shared chest in the last room. Opened passages,
 remaining loot and defeated dungeon skeletons persist for the world session,
 including when you leave a floor or refresh the browser.
 
+Fat zombies can appear in spacious rooms from the second floor onward.
+They have ten times a dungeon skeleton's health and their slow melee hit
+pushes surviving targets away. Each starts with part of the Heavy Flesh
+constellation unlocked. A killing blow against a living enemy opens one
+more star. Defeated fat zombies stay dead for the world session.
+
 General merchants in Novogorod sell torches for 3
 gold and lanterns for 10. Equip one in the inventory's Light slot. Torches
 illuminate four tiles and lanterns six. Wall torches light pockets of the dungeon,

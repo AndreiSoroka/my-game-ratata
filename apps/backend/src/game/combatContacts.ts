@@ -22,6 +22,7 @@ import {
     type ContactDefense,
     defendContact,
 } from './combatDefense'
+import { resolveFatZombieMeleeHit } from './combatHitDisplacement'
 import { rewardCharacterHit } from './combatMastery'
 import { resolveWallContact } from './combatSecretWalls'
 import { damageGrave } from './graveCombat'
@@ -186,7 +187,8 @@ function resolveLandedContact(
                 random,
                 prayerAuraEffects(actor, now).advantage,
                 immune
-            )
+            ),
+            ...resolveFatZombieMeleeHit(context, attack, target)
         )
     }
     if (result.impactDamage + result.absorbed > 0) {

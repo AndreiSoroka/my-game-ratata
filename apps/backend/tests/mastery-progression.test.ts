@@ -28,7 +28,7 @@ import {
     captureMasteryFactors,
 } from '../src/game/skillProgression'
 import { abilityHero } from './abilityTestHelpers'
-import { catalogueWithoutUndeadExpansion as fullConstellationCatalog } from './constellationCatalogueFixture'
+import { catalogueWithoutUndeadExpansion as historicalCatalogue } from './constellationCatalogueFixture'
 
 const xp = parseMasteryExperience
 
@@ -425,7 +425,7 @@ describe('private mastery observation', () => {
 
 describe('all required star conditions', () => {
     it('assigns explicit acquisition methods and gates to the complete fixed catalogue', () => {
-        expect(fullConstellationCatalog).toHaveLength(245)
+        expect(historicalCatalogue).toHaveLength(245)
         expect(minimumConstellationLevel('prayer_grave.tame')).toBe(4)
         expect(minimumConstellationLevel('prayer_grave.exhaustion1')).toBe(3)
         expect(minimumConstellationLevel('prayer_grave.exhaustion2')).toBe(5)
@@ -442,6 +442,23 @@ describe('all required star conditions', () => {
         expect(minimumConstellationLevel('life.endurance')).toBe(3)
         expect(minimumConstellationLevel('life.rest')).toBe(3)
         expect(minimumConstellationLevel('life.work')).toBe(3)
+    })
+    it('assigns enemy-only stars to events without an XP level requirement', () => {
+        const nodes = expandedConstellationCatalog.filter(
+            ({ constellationId }) => constellationId === 'fat_zombie'
+        )
+        expect(nodes).toHaveLength(25)
+        expect(nodes.find(({ id }) => id === 'fat_zombie.root')).toMatchObject({
+            acquisition: 'root',
+            minimumLevel: 0,
+            parents: [],
+        })
+        for (const { id, acquisition } of nodes.filter(
+            ({ kind }) => kind !== 'root'
+        )) {
+            expect(acquisition, id).toBe('event')
+            expect(minimumConstellationLevel(id), id).toBe(0)
+        }
     })
     it('keeps credits when parents exist but level is too low, without consuming RNG', () => {
         const actor = abilityHero('cleric')

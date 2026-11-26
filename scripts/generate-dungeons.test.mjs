@@ -49,6 +49,7 @@ function connectedFloor(map, start) {
 
 const maximumRooms = { small: 5, medium: 7, large: 9 }
 const maximumSpawns = { small: 2, medium: 3, large: 4 }
+const maximumFatZombies = { small: 1, medium: 2, large: 3 }
 
 test('the unchanged surface placement leads to one to five floors with independent connected room layouts', () => {
     const quantities = new Set()
@@ -56,6 +57,11 @@ test('the unchanged surface placement leads to one to five floors with independe
     const variants = new Set()
     const depths = new Set()
     const counts = { small: new Set(), medium: new Set(), large: new Set() }
+    const zombieCounts = {
+        small: new Set(),
+        medium: new Set(),
+        large: new Set(),
+    }
     const seeds = [
         ...Array.from({ length: 40 }, (_, index) => `dungeon-sweep-${index}`),
         'exit-north-18',
@@ -89,6 +95,7 @@ test('the unchanged surface placement leads to one to five floors with independe
             const maps = floors.map((floor) => {
                 const map = generateDungeonMap(floor, seed, REGION_NAME)
                 counts[floor.size].add(checkOrdinaryFloor(map, floor))
+                zombieCounts[floor.size].add(checkFatZombieSpawns(map, floor))
                 if (!index)
                     assert.deepEqual(
                         generateDungeonMap(floor, seed, REGION_NAME),
@@ -107,6 +114,10 @@ test('the unchanged surface placement leads to one to five floors with independe
         assert.deepEqual(
             [...range].sort(),
             Array.from({ length: maximumRooms[size] }, (_, i) => i + 1)
+        )
+        assert.deepEqual(
+            [...zombieCounts[size]].sort(),
+            Array.from({ length: maximumFatZombies[size] + 1 }, (_, i) => i)
         )
     }
 })
@@ -171,15 +182,16 @@ function checkOrdinaryFloor(map, floor) {
                 safeFromStairs(light, property(light, 'radius'))
         )
     )
-    const spawns = layer(map, 'Dungeon spawns').objects
+    const skeletons = layer(map, 'Dungeon spawns').objects.filter(
+        ({ type }) => type === 'skeleton'
+    )
     assert.equal(
-        spawns.length,
+        skeletons.length,
         Math.min(maximumSpawns[floor.size], rooms.length - landings.size)
     )
     assert.ok(
-        spawns.every(
+        skeletons.every(
             (spawn) =>
-                spawn.type === 'skeleton' &&
                 reachable.has(cellAt(map, spawn.x, spawn.y)) &&
                 safeFromStairs(spawn, 6 * 16)
         )
@@ -190,6 +202,63 @@ function checkOrdinaryFloor(map, floor) {
     }
     return rooms.length
 }
+
+function checkFatZombieSpawns(map, floor) {
+    const spawns = layer(map, 'Dungeon spawns').objects
+    const zombies = spawns.filter(({ type }) => type === 'fat_zombie')
+    const skeletons = spawns.filter(({ type }) => type === 'skeleton')
+    assert.equal(spawns.length, zombies.length + skeletons.length)
+    assert.ok(
+        zombies.length <=
+            (floor.floor === 1 ? 0 : maximumFatZombies[floor.size])
+    )
+    const rooms = layer(map, 'Dungeon rooms').objects
+    const stairs = layer(map, 'Dungeon passages').objects.map((passage) => ({
+        x: property(passage, 'arrivalX'),
+        y: property(passage, 'arrivalY'),
+    }))
+    const secretDoor = layer(map, 'Dungeon secrets')?.objects[0]
+    const collision = layer(map, 'Collision').data
+    const occupiedRooms = new Set()
+    for (const [index, { x, y }] of zombies.entries()) {
+        const room = rooms.find(
+            (room) =>
+                x >= room.x + 16 &&
+                x < room.x + room.width - 16 &&
+                y >= room.y + 16 &&
+                y < room.y + room.height - 16
+        )
+        assert.ok(room && !occupiedRooms.has(room))
+        occupiedRooms.add(room)
+        assert.equal(collision[cellAt(map, x, y)], 0)
+        assert.ok(
+            stairs.every((stair) => Math.hypot(x - stair.x, y - stair.y) > 96)
+        )
+        assert.ok(
+            [...skeletons, ...zombies.slice(0, index)].every(
+                (actor) => Math.hypot(x - actor.x, y - actor.y) > 32
+            )
+        )
+        if (secretDoor)
+            assert.ok(Math.hypot(x - secretDoor.x, y - secretDoor.y) > 48)
+    }
+    return zombies.length
+}
+
+test('second floors can have fat zombies, with no fallback into a cramped room', () => {
+    for (const [seed, expected] of [
+        ['dungeon-9', 1],
+        ['dungeon-832', 0],
+    ]) {
+        const [dungeon] = generateDungeonRegion(
+            seed,
+            WORLD_LOCATION_DEFINITIONS
+        )
+        const floor = generateDungeonFloors(dungeon)[1]
+        const map = generateDungeonMap(floor, seed, REGION_NAME)
+        assert.equal(checkFatZombieSpawns(map, floor), expected)
+    }
+})
 
 function checkStair(map, passage, reachable, firstFloor) {
     const up = property(passage, 'direction') === 'up'

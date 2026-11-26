@@ -12,6 +12,7 @@ import { resolveCharacterStats } from './characterStats'
 import { combatHitQuality } from './combatHitQuality'
 import { clearCombatTransient } from './combatState'
 import { constellationModifiers } from './constellationModifiers'
+import { fatZombieBonuses } from './fatZombieModifiers'
 import {
     type PrayerAuraEffects,
     prayerAuraEffects,
@@ -153,7 +154,9 @@ export function applyAttackStun(
         attackStunDuration(actor, attack, random) +
         (heavy ? boneStrikeStunBonus(actor, target, now) : 0)
     const duration = Math.round(
-        baseDuration * constellationModifiers(target).stunDurationMultiplier
+        baseDuration *
+            constellationModifiers(target).stunDurationMultiplier *
+            (1 - fatZombieBonuses(target).stunReduction)
     )
     target.stunUntil = now + duration
     target.combat.stunImmuneUntil =

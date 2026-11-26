@@ -257,6 +257,7 @@ function resolveWorldAttack(
         actor: character,
         graves: context.life.graveRules,
         secrets: location.secrets,
+        portals: world.portals,
         now,
         respawnDelayMsFor: resolveRespawnDelayMs,
         targets,

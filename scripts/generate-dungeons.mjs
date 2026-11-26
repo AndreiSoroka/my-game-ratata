@@ -3,6 +3,7 @@ import {
     createSecretLayerObjects,
     secretReserveRows,
 } from './generate-dungeons-secrets.mjs'
+import { fatZombieSpawnPoints } from './generate-dungeons-zombies.mjs'
 import { pavingGid } from './generate-ground.mjs'
 
 const tileSize = 16
@@ -718,6 +719,22 @@ export function generateDungeonMap(definition, seed, regionName) {
         point,
         prop,
     })
+    const fatZombies = fatZombieSpawnPoints({
+        floor: floorNumber,
+        size,
+        rooms,
+        grid,
+        passages: entrances.map(({ x, arrivalY }) => ({
+            x: tileCenter(x + 0.5),
+            y: tileCenter(arrivalY),
+        })),
+        skeletons: spawns,
+        secretEntry: secrets[0],
+        tileSize,
+        roll: seededRoll(`${stream}:fat-zombie-spawns`),
+    }).map(({ x, y }, index) =>
+        point(70 + index, 'Жирный зомби', 'fat_zombie', x, y)
+    )
     const tileLayer = (
         layerId,
         name,
@@ -769,7 +786,7 @@ export function generateDungeonMap(definition, seed, regionName) {
                     height: room.height * tileSize,
                 }))
             ),
-            objectLayer(9, 'Dungeon spawns', spawns),
+            objectLayer(9, 'Dungeon spawns', [...spawns, ...fatZombies]),
             ...(secrets.length === 0
                 ? []
                 : [objectLayer(10, 'Dungeon secrets', secrets)]),

@@ -65,6 +65,7 @@ export function describeOtherEffectChance(
     if (special !== undefined) return special()
     if (
         node.constellationId === 'undead' ||
+        node.constellationId === 'fat_zombie' ||
         (node.constellationId === 'arrow' && node.results?.length)
     )
         return withChanceFormulas(

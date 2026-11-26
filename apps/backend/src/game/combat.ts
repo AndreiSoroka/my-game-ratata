@@ -10,6 +10,7 @@ import { ashTargetCastInProgress } from './abilityState'
 import type { GameCharacter } from './character'
 import { canObserveRoomCharacter } from './characterSight'
 import type { PendingAttackHit } from './characterState'
+import type { CityPortals } from './cityPortals'
 import {
     arrowAttackGeometry,
     arrowPhaseEvent,
@@ -40,6 +41,7 @@ export interface AttackContext {
     target?: WorldCombatTarget | undefined
     graves?: GraveCombatContext | undefined
     secrets?: DungeonSecrets | undefined
+    portals?: Pick<CityPortals, 'snapshot'> | undefined
     now: number
     respawnDelayMsFor: (target: GameCharacter) => number
     targets: readonly GameCharacter[]

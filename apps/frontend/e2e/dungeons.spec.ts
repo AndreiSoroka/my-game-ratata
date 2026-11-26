@@ -16,10 +16,12 @@ import {
     generateDungeonMap,
     generateDungeonRegion,
 } from '../../../scripts/generate-dungeons.mjs'
+import { expectZombieShove, recordZombieDamage } from './fat-zombie-encounter'
 import { walkTo } from './world-navigation'
 
 interface Passage extends Vector2 {
     properties: { name: string; value: unknown }[]
+    type: string
 }
 interface DungeonMap {
     tileheight: number
@@ -187,6 +189,35 @@ if (seed === 'dungeon-832')
         await walkTo(page, chestApproach, 3)
         expect((await openSecretChest(page, chestId)).items).toEqual(remaining)
         await expectLootInBag(page, taken!.instanceId)
+    })
+
+if (seed === 'dungeon-9')
+    test('meets a Fat Zombie on floor two and is shoved only after its windup', async ({
+        page,
+    }) => {
+        test.setTimeout(120_000)
+        const cityDungeon = dungeons.find(
+            ({ surfaceLocationId }) => surfaceLocationId === CENTER_LOCATION_ID
+        )!
+        const [entrance, depth] = generateDungeonFloors(cityDungeon)
+        assert(entrance && depth, 'The seeded tower has at least two floors')
+        const authored = generateDungeonMap(depth, seed, REGION_NAME) as DungeonMap
+        const spawns = mapObjects(authored, 'Dungeon spawns').filter(
+            ({ type }) => type === 'fat_zombie'
+        )
+        expect(spawns).toHaveLength(1)
+        const zombieId = `mob_fat_zombie_1_${depth.id}_1`
+        const contacts = recordZombieDamage(page, zombieId)
+
+        await page.goto('/?test=1')
+        await page.waitForFunction(() => Boolean(window.__ratataTest))
+        await page.evaluate(() => window.__ratataTest!.join('Fat Zombie explorer', 'vanguard'))
+        for (const { id } of [entrance, depth]) {
+            await cross(page, await currentPassage(page, id))
+            await expectViewportFor(page, id)
+        }
+        const { x, y } = spawns[0]!
+        await expectZombieShove(page, zombieId, { x, y }, contacts)
     })
 
 function hearsDraft(page: Page) {

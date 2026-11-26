@@ -36,7 +36,8 @@ export function spawnRoomCharacters(
     companions: CompanionService,
     npcSpeechSeed?: string,
     npcIdentitySeed?: string,
-    cities?: CityWorldState
+    cities?: CityWorldState,
+    worldSeed?: string
 ): GraveRegistration[] {
     const speechSeed = resolveNpcSpeechSeed(npcSpeechSeed)
     const identitySeed = resolveNpcIdentitySeed(npcIdentitySeed)
@@ -45,7 +46,8 @@ export function spawnRoomCharacters(
         const suffix = locationId === centerLocationId ? '' : `_${locationId}`
         const enemies = createLocationEnemies(
             location.navigation,
-            location.description
+            location.description,
+            worldSeed
         )
         const necromancer = spawnNecromancer(location)
         for (const source of location.navigation.grid.encounters?.graves ??

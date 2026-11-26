@@ -28,6 +28,28 @@ test.describe('Storybook character gallery visuals', () => {
         await expect(page.locator('canvas')).toHaveScreenshot('characters-all-frames.png')
     })
 
+    test('renders Fat Zombie animations and both side facings', async ({ page }) => {
+        test.setTimeout(60_000)
+        const errors = await recordWebGLErrors(page)
+        for (const [action, direction] of [
+            ['idle', 'down'],
+            ['walk', 'up'],
+            ['attack', 'down'],
+            ['attack', 'right'],
+            ['attack', 'left'],
+            ['attack', 'up'],
+            ['damaged', 'down'],
+            ['death', 'down'],
+        ]) {
+            await openStoryCanvas(
+                page,
+                'characters-characters--all-frames',
+                `character:fat_zombie;action:${action};direction:${direction};zoom:2;showFrameGrid:false`
+            )
+        }
+        expect(errors).toEqual([])
+    })
+
     test('renders the last of 25 rapid Controls changes', async ({ page }) => {
         test.setTimeout(60_000)
         const errors = await recordWebGLErrors(page)

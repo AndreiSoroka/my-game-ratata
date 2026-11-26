@@ -8,12 +8,16 @@ import {
 
 import type { GameCharacter } from './character'
 import { effectiveAbility } from './effectiveParameters'
+import { effectiveOrdinaryAttackZones } from './fatZombieModifiers'
 
 export function buildAttackZones(
-    actor: Pick<GameCharacter, 'config' | 'position' | 'facing' | 'id'>,
+    actor: Pick<
+        GameCharacter,
+        'archetype' | 'config' | 'position' | 'facing' | 'id' | 'progression'
+    >,
     tileSize: number
 ): AttackZone[] {
-    return actor.config.attackZones.map((zone) => {
+    return effectiveOrdinaryAttackZones(actor).map((zone) => {
         const rotated = rotateZone(zone, actor.facing)
         const minX = actor.position.x + rotated.minX * tileSize
         const minY = actor.position.y + rotated.minY * tileSize

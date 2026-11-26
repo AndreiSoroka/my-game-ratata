@@ -15,6 +15,28 @@ export function distance(a: Vector2, b: Vector2): number {
     return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
+/** First entry along a segment whose start is outside the circle. */
+export function circleEntryFraction(
+    from: Vector2,
+    to: Vector2,
+    center: Vector2,
+    radius: number
+): number | undefined {
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const x = from.x - center.x
+    const y = from.y - center.y
+    const a = dx * dx + dy * dy
+    const b = x * dx + y * dy
+    const c = x * x + y * y - radius * radius
+    const discriminant = b * b - a * c
+    if (a === 0 || c <= 0 || b >= 0 || discriminant < 0) {
+        return undefined
+    }
+    const entry = (-b - Math.sqrt(discriminant)) / a
+    return entry <= 1 ? entry : undefined
+}
+
 export function normalize(input: Vector2): Vector2 {
     const length = Math.hypot(input.x, input.y)
 

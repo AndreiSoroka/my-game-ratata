@@ -64,7 +64,8 @@ export function initializeRoomCharacters(environment: SpawnEnvironment) {
         companions,
         speechSeed,
         identitySeed,
-        adventure.cities
+        adventure.cities,
+        options.worldMaps?.seed ?? options.worldSeed
     )
     const spawnedAt = environment.now()
     for (const character of characters.values()) {

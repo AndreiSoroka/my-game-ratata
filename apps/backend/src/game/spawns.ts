@@ -86,7 +86,7 @@ export function createSlime(
     }
 }
 
-function mobSeed(id: string, base: number): number {
+export function mobSeed(id: string, base: number): number {
     let seed = base
     for (const char of id) {
         seed = Math.imul(seed ^ char.charCodeAt(0), 16_777_619) >>> 0

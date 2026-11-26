@@ -5,18 +5,35 @@ import { generateConstellationLayout } from '../src/game/constellationLayout'
 import type { RealizedConstellationLayout } from '../src/game/constellationLayoutTypes'
 import { fullConstellationCatalog as expandedConstellationCatalog } from '../src/game/constellationNodes'
 import { constellationTemplatePositions } from '../src/game/constellationTemplates'
-import { catalogueWithoutUndeadExpansion as fullConstellationCatalog } from './constellationCatalogueFixture'
+import { catalogueWithoutUndeadExpansion as historicalCatalogue } from './constellationCatalogueFixture'
 import { auditPersonalSky } from './personalSkyAudit'
 
 const centers = ['blade', 'magic', 'prayer', 'arrow', 'undead'] as const
 
 describe('personal planar skies', () => {
-    it('keeps the full catalogue and certified components', () => {
-        expect(fullConstellationCatalog).toHaveLength(245)
+    it('keeps the historical catalogue and certifies the expanded components', () => {
+        expect(historicalCatalogue).toHaveLength(245)
         expect(
-            fullConstellationCatalog.flatMap((node) => node.parents)
+            historicalCatalogue.flatMap((node) => node.parents)
         ).toHaveLength(261)
-        expect(skyComponents(fullConstellationCatalog)).toHaveLength(11)
+        expect(skyComponents(historicalCatalogue)).toHaveLength(11)
+
+        expect(expandedConstellationCatalog).toHaveLength(300)
+        expect(
+            expandedConstellationCatalog.flatMap((node) => node.parents)
+        ).toHaveLength(319)
+        const components = skyComponents(expandedConstellationCatalog)
+        expect(components).toHaveLength(12)
+        const zombieIds = expandedConstellationCatalog
+            .filter((node) => node.constellationId === 'fat_zombie')
+            .map(({ id }) => id)
+        expect(zombieIds).toHaveLength(25)
+        expect(
+            new Set(
+                components.find(({ ids }) => ids.includes('fat_zombie.root'))
+                    ?.ids
+            )
+        ).toEqual(new Set(zombieIds))
     })
 
     it('packs all 39 Undead stars in one connected component', () => {
@@ -92,7 +109,7 @@ describe('personal planar skies', () => {
     })
 
     it('certifies a deterministic fallback for all starting constellations with zero random attempts', () => {
-        for (const center of centers) {
+        for (const center of [...centers, 'fat_zombie'] as const) {
             const sky = generateConstellationLayout(
                 expandedConstellationCatalog,
                 'forced-fallback',

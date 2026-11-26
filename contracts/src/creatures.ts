@@ -1,4 +1,4 @@
-import type { CharacterArchetype } from './index'
+export type CharacterArchetype = 'human' | 'skeleton' | 'slime' | 'fat_zombie'
 
 /** D&D 5e creature categories; behavior and allegiances are independent data. */
 export const creatureTypes = [
@@ -41,6 +41,7 @@ export const archetypeCreatureTypes: Record<CharacterArchetype, CreatureType> =
     {
         human: 'humanoid',
         skeleton: 'undead',
+        fat_zombie: 'undead',
         slime: 'ooze',
     }
 

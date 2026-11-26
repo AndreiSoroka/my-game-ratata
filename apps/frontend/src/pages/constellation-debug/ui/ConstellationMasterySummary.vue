@@ -43,22 +43,26 @@ const rewards = computed(() =>
 const reward = computed(
     () =>
         rewards.value.find((entry) => entry.id === selectedRewards.value[props.path]) ??
-        rewards.value[0]!
+        rewards.value.at(0)
 )
 const conflict = computed(() => masteryConflict(levels.value, props.path))
 const backgroundMultiplier = computed(() =>
     backgroundMasteryMultiplier(props.heroClass, props.path)
 )
 const rate = computed(() =>
-    backgroundMasteryRewardMicros(
-        reward.value.experience,
-        conflict.value,
-        props.heroClass,
-        props.path
-    )
+    reward.value
+        ? backgroundMasteryRewardMicros(
+              reward.value.experience,
+              conflict.value,
+              props.heroClass,
+              props.path
+          )
+        : 0n
 )
 const threshold = computed(() => masteryThreshold(level.value))
-const repetitions = computed(() => (threshold.value + rate.value - 1n) / rate.value)
+const repetitions = computed(() =>
+    rate.value > 0n ? (threshold.value + rate.value - 1n) / rate.value : 0n
+)
 const pending = computed(
     () => level.value - paidConstellationStars(props.activeIds, props.path, props.heroClass)
 )
@@ -75,7 +79,7 @@ const percent = (value: number) =>
         @toggle.self="panels.mastery = ($event.currentTarget as HTMLDetailsElement).open"
     >
         <summary @keydown.stop @keyup.stop><UiFrame variant="panel" />Развитие созвездия</summary>
-        <div class="mastery-content">
+        <div v-if="reward" class="mastery-content">
             <h2>
                 {{ MASTERY_NAMES[path] }} · нужен уровень
                 <strong data-testid="debug-mastery-level">{{ level }}</strong>
@@ -124,6 +128,12 @@ const percent = (value: number) =>
             <p class="mastery-note">
                 Расчёт следующего уровня сохраняет остальные созвездия и предполагает доступное
                 действие.
+            </p>
+        </div>
+        <div v-else class="mastery-content">
+            <h2>{{ MASTERY_NAMES[path] }}</h2>
+            <p v-if="path === 'fat_zombie'">
+                Каждое убийство живого противника открывает одну доступную звезду.
             </p>
         </div>
     </details>

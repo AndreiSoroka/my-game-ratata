@@ -12,6 +12,7 @@ import { constellationModifiers } from './constellationModifiers'
 import { grantRetaliation, hasRetaliationRight } from './crimeRelations'
 import { combatDeathEvent, damageEvent } from './damageEvents'
 import { isPveOpponent } from './factions'
+import { fatZombieBonuses } from './fatZombieModifiers'
 import { wearHitEquipment } from './itemDurability'
 import { cancelMagicChannel } from './magicState'
 import { recordMartyrHostileDamage, resetMartyrStreak } from './martyr'
@@ -121,8 +122,15 @@ function scaleIncomingDamage(
         ? undeadDamageMultiplier(actor, target, damageKind, now) *
           graveLoanDamageMultiplier(target, damageKind, now)
         : 1
+    const resistance =
+        damageKind === 'physical'
+            ? fatZombieBonuses(target).physicalResistance
+            : 0
     const amount =
-        input.amount * auraEffects.damageTakenMultiplier * undeadMultiplier
+        input.amount *
+        auraEffects.damageTakenMultiplier *
+        undeadMultiplier *
+        (1 - resistance)
     return {
         ...input,
         amount:

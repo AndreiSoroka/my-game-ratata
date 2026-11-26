@@ -31,6 +31,8 @@ The generated dungeons use the original floor, masonry and stair tiles from **16
 
 The three above-ground tower designs and both wall-torch sprites are original pixel-style SVG artwork drawn for «Ратата». The two stair sprites used between floors are original pixel art in `assets/Novogorod/dungeon-stairs.png`. Their tile definitions live alongside the other Novogorod tilesets.
 
+The Fat Zombie uses the pack's `big_zombie` idle and run art for its side view. The front and back views, shove, recoil and death frames were drawn for «Ратата» with the original palette and green flame. The adapted sheet lives in `apps/frontend/public/game/assets/characters/fat_zombie.png`.
+
 ## Existing artwork
 
 The restored project already contains Mystic Woods environment and character artwork. This change retains those files and uses the existing Mystic Woods grass, complete trees and furniture, wooden floor, and connected wooden fence posts. Kenney's CC0 license applies only to the added Tiny Town assets; it does not replace the terms of the existing asset packs.

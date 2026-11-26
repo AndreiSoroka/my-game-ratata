@@ -12,8 +12,8 @@ import {
 } from './constellationCatalog'
 import { constellationEnglishText } from './constellationEnglishText'
 import {
+    constellationCatalogFor,
     constellationWireId,
-    fullConstellationCatalog,
 } from './constellationNodes'
 import { minimumConstellationLevel } from './constellationRequirements'
 import { observedConstellationCardEffectRows } from './constellationResultDisclosure'
@@ -33,12 +33,11 @@ export function snapshotConstellations(
             'Prepare the personal constellation layout before private observation'
         )
     }
+    const catalog = constellationCatalogFor(actor.archetype)
     const learned = new Set(
-        fullConstellationCatalog
-            .filter((node) => unlocked(actor, node))
-            .map((node) => node.id)
+        catalog.filter((node) => unlocked(actor, node)).map((node) => node.id)
     )
-    const visible = fullConstellationCatalog.filter(
+    const visible = catalog.filter(
         (node) =>
             node.kind === 'root' ||
             learned.has(node.id) ||
@@ -57,12 +56,17 @@ export function snapshotConstellations(
                       ),
                   }),
         },
-        paths: constellationPaths.map(({ id, name, description, color }) => ({
-            id,
-            color,
-            unlocked: learned.has(`${id}.root`),
-            ...(learned.has(`${id}.root`) ? { name, description } : {}),
-        })),
+        paths: constellationPaths
+            .filter(
+                ({ id }) =>
+                    id !== 'fat_zombie' || actor.archetype === 'fat_zombie'
+            )
+            .map(({ id, name, description, color }) => ({
+                id,
+                color,
+                unlocked: learned.has(`${id}.root`),
+                ...(learned.has(`${id}.root`) ? { name, description } : {}),
+            })),
         nodes: visible.map((node) => observeNode(actor, node, learned, sky)),
         edges: visible.flatMap((node) =>
             node.parents

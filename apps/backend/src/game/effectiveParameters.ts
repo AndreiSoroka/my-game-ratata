@@ -21,6 +21,10 @@ import { resolveCharacterStats } from './characterStats'
 import { ashParameters, constellationModifiers } from './constellationModifiers'
 import { resolveArrowParameters } from './effectiveArrowParameters'
 import { effectiveMaxMana } from './effectiveResources'
+import {
+    effectiveOrdinaryAttackZones,
+    fatZombieBonuses,
+} from './fatZombieModifiers'
 import { hasEquippedSword } from './skillProgression'
 import { boneStrikePower, boneStrikeWindupBonus } from './undeadCombat'
 
@@ -157,7 +161,8 @@ export function effectiveCharacterStats(actor: GameCharacter) {
 
 export function effectiveAttackCooldown(actor: GameCharacter): number {
     return (
-        actor.config.combat.attackCooldownMs *
+        (actor.config.combat.attackCooldownMs -
+            fatZombieBonuses(actor).cycleReductionMs) *
         (hasEquippedSword(actor)
             ? constellationModifiers(actor).swordTempoMultiplier
             : 1)
@@ -166,7 +171,8 @@ export function effectiveAttackCooldown(actor: GameCharacter): number {
 
 export function effectiveAttackEnergyCost(actor: GameCharacter): number {
     return Math.ceil(
-        actor.config.resources.attackEnergyCost *
+        (actor.config.resources.attackEnergyCost -
+            fatZombieBonuses(actor).energyDiscount) *
             (hasEquippedSword(actor)
                 ? constellationModifiers(actor).swordEnergyMultiplier
                 : 1) -
@@ -176,7 +182,10 @@ export function effectiveAttackEnergyCost(actor: GameCharacter): number {
 
 export function effectiveMoveSpeed(actor: GameCharacter): number {
     const modifiers = constellationModifiers(actor)
-    return actor.config.moveSpeed * modifiers.moveSpeedMultiplier
+    return (
+        (actor.config.moveSpeed + fatZombieBonuses(actor).moveSpeed) *
+        modifiers.moveSpeedMultiplier
+    )
 }
 
 export function roadPrayerDashRemainingMs(
@@ -231,7 +240,7 @@ export function ordinaryAttackRadius(
 ): number {
     return Math.max(
         0,
-        ...actor.config.attackZones.map(
+        ...effectiveOrdinaryAttackZones(actor).map(
             (zone) =>
                 Math.hypot(
                     Math.max(Math.abs(zone.minX), Math.abs(zone.maxX)),
@@ -249,8 +258,11 @@ export function effectiveAttackPhases(
         ? constellationModifiers(actor).swordTempoMultiplier
         : 1
     const scale = underpowered ? 2 : 1
+    const bonuses = fatZombieBonuses(actor)
     const windupMs = Math.round(
-        actor.config.combat.attackWindupMs * tempo * scale
+        (actor.config.combat.attackWindupMs - bonuses.windupReductionMs) *
+            tempo *
+            scale
     )
     return {
         cycleMs: Math.round(effectiveAttackCooldown(actor) * scale),
@@ -259,6 +271,11 @@ export function effectiveAttackPhases(
             hasEquippedSword(actor) &&
             constellationModifiers(actor).bladeFluidStance
                 ? windupMs
-                : Math.round(actor.config.combat.attackLockMs * tempo * scale),
+                : Math.round(
+                      (actor.config.combat.attackLockMs -
+                          bonuses.movementLockReductionMs) *
+                          tempo *
+                          scale
+                  ),
     }
 }

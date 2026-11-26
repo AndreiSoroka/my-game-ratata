@@ -135,6 +135,10 @@ export const knowledgeMessages = {
         'Опыт за кражу предмета и за тихий промах по NPC с доступным предметом. Откройте взаимодействие клавишей F в тихом ходе.',
         'Earn experience for stealing an item or failing unnoticed against an NPC carrying a stealable item. Press F to interact while sneaking.',
     ],
+    fatZombieExperience: [
+        'Новую звезду открывает убийство живого противника.',
+        'Defeating a living enemy unlocks a star.',
+    ],
     undeadExperience: [
         'Опыт за победы над противниками и наследие павших.',
         'Experience for victories and the legacy of the fallen.',

@@ -28,6 +28,7 @@ export const MASTERY_NAMES: Readonly<Record<ConstellationId, string>> =
         prayer_lantern: 'Ясность',
         prayer_grave: 'Прах',
         undead: 'Нежить',
+        fat_zombie: 'Тяжёлая плоть',
     })
 
 export const MASTERY_REWARDS = Object.freeze({
@@ -110,6 +111,7 @@ const pathRewards: Record<ConstellationId, readonly MasteryRewardId[]> = {
     prayer_lantern: ['resourceRecovery'],
     prayer_grave: ['healing', 'resurrection', 'ashRaise', 'ashBrand'],
     undead: [],
+    fat_zombie: [],
 }
 export function masteryRewardsForConstellation(id: ConstellationId) {
     return pathRewards[id].map((reward) => ({

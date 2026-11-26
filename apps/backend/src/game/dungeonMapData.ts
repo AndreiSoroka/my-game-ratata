@@ -17,17 +17,10 @@ export interface DungeonPassage {
 export function readDungeonMapData(
     map: TiledMap,
     mapId: string
-): Pick<MapGrid, 'dungeonPassages' | 'dungeonSkeletons'> {
+): Pick<MapGrid, 'dungeonPassages' | 'dungeonSkeletons' | 'dungeonFatZombies'> {
     const passages = objects(map, 'Dungeon passages').map((object) =>
         readDungeonPassage(object, map, mapId)
     )
-    const skeletons = objects(map, 'Dungeon spawns').map((object) => {
-        const point = { x: object.x, y: object.y }
-        if (object.type !== 'skeleton' || !inside(point, map)) {
-            throw new Error(`Invalid dungeon skeleton on ${mapId}`)
-        }
-        return point
-    })
     if (
         passages.length > 2 ||
         new Set(passages.map(({ id }) => id)).size !== passages.length ||
@@ -37,9 +30,56 @@ export function readDungeonMapData(
         throw new Error(`Invalid dungeon passage set on ${mapId}`)
     }
     return {
+        ...readDungeonSpawns(map, mapId),
         ...(passages.length === 0 ? {} : { dungeonPassages: passages }),
-        ...(skeletons.length === 0 ? {} : { dungeonSkeletons: skeletons }),
     }
+}
+
+function readDungeonSpawns(
+    map: TiledMap,
+    mapId: string
+): Pick<MapGrid, 'dungeonSkeletons' | 'dungeonFatZombies'> {
+    const skeletons: Vector2[] = []
+    const fatZombies: Vector2[] = []
+    const spawnTiles = new Set<number>()
+    const deepDungeon = allowsFatZombies(map)
+    for (const object of objects(map, 'Dungeon spawns')) {
+        const position = { x: object.x, y: object.y }
+        const group =
+            object.type === 'skeleton'
+                ? skeletons
+                : object.type === 'fat_zombie' && deepDungeon
+                  ? fatZombies
+                  : undefined
+        if (group === undefined || !inside(position, map)) {
+            throw new Error(`Invalid dungeon enemy on ${mapId}`)
+        }
+        const tile =
+            Math.floor(position.x / map.tilewidth) +
+            Math.floor(position.y / map.tileheight) * map.width
+        if (spawnTiles.has(tile)) {
+            throw new Error(`Duplicate dungeon spawn tile on ${mapId}`)
+        }
+        spawnTiles.add(tile)
+        group.push(position)
+    }
+    return {
+        ...(skeletons.length === 0 ? {} : { dungeonSkeletons: skeletons }),
+        ...(fatZombies.length === 0 ? {} : { dungeonFatZombies: fatZombies }),
+    }
+}
+
+function allowsFatZombies(map: TiledMap): boolean {
+    const floor = map.properties?.find(
+        ({ name }) => name === 'dungeonFloor'
+    )?.value
+    return (
+        typeof floor === 'number' &&
+        Number.isInteger(floor) &&
+        floor >= 2 &&
+        floor <= 5 &&
+        map.properties?.find(({ name }) => name === 'dungeon')?.value === true
+    )
 }
 
 function readDungeonPassage(

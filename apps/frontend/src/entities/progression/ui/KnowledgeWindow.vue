@@ -99,6 +99,9 @@ const descriptions: Record<ConstellationId, string> = {
     get undead() {
         return tGame('game.knowledge.undeadExperience')
     },
+    get fat_zombie() {
+        return tGame('game.knowledge.fatZombieExperience')
+    },
     get arrow() {
         return tGame('game.knowledge.arrowExperience')
     },

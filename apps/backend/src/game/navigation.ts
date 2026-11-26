@@ -42,6 +42,7 @@ export interface MapGrid {
     encounters?: AuthoredEncounters
     dungeonPassages?: readonly DungeonPassage[]
     dungeonSkeletons?: readonly Vector2[]
+    dungeonFatZombies?: readonly Vector2[]
     training?: TrainingMapData
     /** Terrain and walls, excluding authored harvestable obstacles. */
     baseSolid?: boolean[]

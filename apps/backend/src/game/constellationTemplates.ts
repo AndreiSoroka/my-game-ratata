@@ -3,6 +3,7 @@ import { ashTemplatePositions } from './constellationAshStars'
 import { bladeTemplatePositions } from './constellationBladeTemplate'
 import type { SkyPoint } from './constellationGeometry'
 import { undeadTemplatePositions } from './constellationUndeadTemplate'
+import { fatZombieTemplatePositions } from './fatZombieStars'
 
 /** Irregular, certified planar component shapes. Related constellations already include their joint. */
 export const constellationTemplatePositions = freezeTemplate({
@@ -121,6 +122,7 @@ export const constellationTemplatePositions = freezeTemplate({
     ...ashTemplatePositions,
     'undead.root': { x: -340, y: 0 },
     ...undeadTemplatePositions,
+    ...fatZombieTemplatePositions,
 })
 
 function freezeTemplate(

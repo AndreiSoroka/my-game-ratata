@@ -181,6 +181,7 @@ export function canReceiveMastery(
 ): boolean {
     return (
         actor.alive &&
+        actor.archetype !== 'fat_zombie' &&
         actor.trainingTarget === undefined &&
         !actor.tags.has('offline') &&
         !actor.tags.has('state.retired') &&

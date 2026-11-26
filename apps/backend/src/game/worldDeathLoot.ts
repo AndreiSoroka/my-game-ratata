@@ -209,6 +209,7 @@ function trophyFor(target: GameCharacter) {
 
 function canLeaveAshRemains(target: GameCharacter): boolean {
     return (
+        target.archetype !== 'fat_zombie' &&
         target.controllerKind !== 'network_player' &&
         target.soul.controlSource !== 'human' &&
         target.trainingTarget === undefined &&

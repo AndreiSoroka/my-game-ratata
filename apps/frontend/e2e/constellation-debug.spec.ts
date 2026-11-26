@@ -345,6 +345,29 @@ test('atlas notices pause while reading and refresh on another failed attempt', 
     await expect(feedback).toHaveCount(0)
 })
 
+test('Heavy Flesh displays all 25 stars and both prerequisites of the final shove', async ({
+    page,
+}) => {
+    const errors: Error[] = []
+    page.on('pageerror', (error) => errors.push(error))
+    await page.goto('/?debug=constellations&class=vanguard&seed=heavy-flesh')
+    const atlas = page.getByTestId('constellation-debug')
+    await expect(atlas.locator('[data-star-id^="fat_zombie."]')).toHaveCount(25)
+    await selectBuildStar(page, 'fat_zombie.root')
+    const card = atlas.getByTestId('selected-star-card')
+    await expect(card.getByRole('heading')).toHaveText('Мёртвая туша')
+    const mastery = atlas.getByTestId('debug-mastery-summary')
+    await mastery.locator(':scope > summary').click()
+    await expect(mastery.getByText('Каждое убийство живого противника')).toBeVisible()
+    await selectBuildStar(page, 'fat_zombie.push6')
+    await expect(card.getByRole('heading')).toHaveText('Громоздкий напор')
+    const prerequisites = atlas.getByTestId('debug-unlock-conditions')
+    await expect(prerequisites).toContainText('Таран')
+    await expect(prerequisites).toContainText('Широкий хват')
+    await expect(atlas.getByTestId('debug-build-summary')).toContainText('ещё на 0,2 клетки')
+    expect(errors).toEqual([])
+})
+
 test('debug atlas never joins a player or sends gameplay requests', async ({ page }) => {
     const sockets: string[] = [],
         requests: string[] = []

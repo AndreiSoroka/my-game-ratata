@@ -41,6 +41,8 @@ export function resolveCounterAttack(
         {
             id: actor.id,
             config: actor.config,
+            archetype: actor.archetype,
+            progression: actor.progression,
             position: actor.position,
             facing,
         },

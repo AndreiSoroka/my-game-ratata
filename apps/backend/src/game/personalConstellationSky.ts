@@ -8,7 +8,7 @@ import type {
 
 import type { GameCharacter } from './character'
 import { generateConstellationLayout } from './constellationLayout'
-import { fullConstellationCatalog } from './constellationNodes'
+import { constellationCatalogFor } from './constellationNodes'
 
 type RealizedLayout = ReturnType<typeof generateConstellationLayout>
 type Immutable<T> = { readonly [Key in keyof T]: Immutable<T[Key]> }
@@ -30,14 +30,15 @@ export class PersonalConstellationSky {
     }
 
     public prepare(): CachedConstellationLayout {
-        const version = catalogVersion()
+        const catalog = constellationCatalogFor(this.#background.archetype)
+        const version = catalogVersion(catalog)
         if (this.#catalogVersion !== version) {
             this.#layout = undefined
             this.#catalogVersion = version
         }
         this.#layout ??= freezeLayout(
             generateConstellationLayout(
-                fullConstellationCatalog,
+                catalog,
                 this.#seed,
                 startingConstellation(this.#background)
             )
@@ -54,6 +55,9 @@ function startingConstellation({
     archetype,
     heroClass,
 }: SkyBackground): ConstellationId {
+    if (archetype === 'fat_zombie') {
+        return 'fat_zombie'
+    }
     if (archetype === 'skeleton') {
         return 'undead'
     }
@@ -91,11 +95,11 @@ export function readCachedConstellationLayout(
     return actor.constellationSky.read()
 }
 
-function catalogVersion(): string {
+function catalogVersion(
+    catalog: ReturnType<typeof constellationCatalogFor>
+): string {
     return (
         'readable-connected-skies-v3|' +
-        fullConstellationCatalog
-            .map((node) => `${node.id}:${node.parents.join(',')}`)
-            .join('|')
+        catalog.map((node) => `${node.id}:${node.parents.join(',')}`).join('|')
     )
 }

@@ -124,6 +124,8 @@ function inAttackReach(
     const pose = {
         id: actor.id,
         config: actor.config,
+        archetype: actor.archetype,
+        progression: actor.progression,
         position: origin,
         facing,
     }

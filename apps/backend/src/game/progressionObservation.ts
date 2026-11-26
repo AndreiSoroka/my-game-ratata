@@ -44,23 +44,29 @@ export function snapshotProgression(
         }
     }
     return {
-        masteries: constellationIds.map((id) => {
-            const mastery = actor.progression.masteries[id]
-            return {
-                id,
-                name: MASTERY_NAMES[id],
-                level: mastery.level,
-                experience: formatMasteryExperience(mastery.experience),
-                experienceToNext: formatMasteryExperience(
-                    masteryThreshold(mastery.level)
-                ),
-                totalExperience: formatMasteryExperience(
-                    masteryTotalExperience(mastery.level) + mastery.experience
-                ),
-                pendingOpenings: actor.progression.constellations.credits[id],
-                conflictMultiplier: factors[id],
-            }
-        }),
+        masteries: constellationIds
+            .filter(
+                (id) => id !== 'fat_zombie' || actor.archetype === 'fat_zombie'
+            )
+            .map((id) => {
+                const mastery = actor.progression.masteries[id]
+                return {
+                    id,
+                    name: MASTERY_NAMES[id],
+                    level: mastery.level,
+                    experience: formatMasteryExperience(mastery.experience),
+                    experienceToNext: formatMasteryExperience(
+                        masteryThreshold(mastery.level)
+                    ),
+                    totalExperience: formatMasteryExperience(
+                        masteryTotalExperience(mastery.level) +
+                            mastery.experience
+                    ),
+                    pendingOpenings:
+                        actor.progression.constellations.credits[id],
+                    conflictMultiplier: factors[id],
+                }
+            }),
         deity,
         ...(includePrivate
             ? {
@@ -99,7 +105,7 @@ export function publicProgression(
             changesInMs: null,
         },
         masteries: progression.masteries
-            .filter((mastery) => mastery.id !== 'theft')
+            .filter(({ id }) => id !== 'theft' && id !== 'fat_zombie')
             .map((mastery) => ({
                 ...mastery,
                 experience: '0',
