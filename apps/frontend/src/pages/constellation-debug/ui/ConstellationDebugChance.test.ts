@@ -3,13 +3,12 @@ import { expect, it } from 'vitest'
 
 import { ConstellationStarCard } from '@/entities/constellations'
 
-import { buildConstellationDebugSnapshot } from '../model/constellationDebugData'
+import { fullConstellationCatalog } from '../../../../../backend/src/game/constellationNodes'
 import { describeConstellationEffectChance } from '../model/constellationEffectChance'
 import ConstellationDebugChance from './ConstellationDebugChance.vue'
 
 it('only shows the closed chance disclosure for random effects across all catalog stars', () => {
-    const sky = buildConstellationDebugSnapshot({ heroClass: 'cleric', seed: 'chance-ui-test' })
-    for (const node of sky.nodes) {
+    for (const node of fullConstellationCatalog) {
         const chance = describeConstellationEffectChance(node.id)
         const view = mount(ConstellationDebugChance, { props: { nodeId: node.id } })
         expect(view.find('[data-testid="debug-effect-chance"]').exists()).toBe(
@@ -93,10 +92,14 @@ it('keeps the build result for a prayer modifier while omitting its guaranteed c
     view.unmount()
 })
 it('keeps probability explanations out of the ordinary spell card', () => {
-    const node = buildConstellationDebugSnapshot({
-        heroClass: 'cleric',
-        seed: 'card-privacy',
-    }).nodes.find((node) => node.id === 'prayer.revive')!
+    const star = fullConstellationCatalog.find((node) => node.id === 'prayer.revive')!
+    const node = {
+        ...star,
+        effects: [...(star.results ?? []), ...(star.effects ?? [])],
+        unlocked: true,
+        x: 0,
+        y: 0,
+    }
     const view = mount(ConstellationStarCard, { props: { node } })
     expect(view.text()).not.toContain('Шанс срабатывания эффекта')
     expect(view.text()).not.toContain('Повышают шанс открытия')

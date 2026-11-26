@@ -4,15 +4,16 @@ import { describe, expect, it } from 'vitest'
 import { exchangeFixture } from '@/game/testing/socialFixtures'
 
 import { adventureFixture, worldFixture } from '../../../game/testing/characterFixture'
-import { developmentCharacterFixture } from '../../../game/testing/developmentFixture'
 import { masteriesFixture } from '../../../game/testing/masteryFixture'
+import { faithKnownStatusFixture } from '../../../game/testing/playerStatusFixture'
 import { createOutcomeSounds } from './outcomeSounds'
 
 function hero(levels: Partial<Record<ConstellationId, number>>, id = 'hero'): CharacterSnapshot {
-    const character = developmentCharacterFixture('arcanist')
+    const character = faithKnownStatusFixture()
     return {
         ...character,
         id,
+        heroClass: 'arcanist',
         progression: { ...character.progression!, masteries: masteriesFixture(levels) },
     }
 }

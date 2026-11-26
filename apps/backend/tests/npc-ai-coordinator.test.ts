@@ -33,7 +33,9 @@ afterEach(async () => {
 
 it('physically visits the merchant, learns earned stock, returns and privately reports after action receipts', async () => {
     const recorded = recordedNpcAiProvider(merchantErrandDecision)
-    const { room } = openNpcAiRoom(recorded.provider)
+    const { room } = openNpcAiRoom(recorded.provider, ['companion'], {
+        cityOnly: true,
+    })
     rooms.push(room)
     const alice = joinScenarioRoom(room, 'Alice')
     const bob = joinScenarioRoom(room, 'Bob')
@@ -125,7 +127,9 @@ it('renews control while a slow model is thinking and rejects conflicting bridge
                 resolve = done
             })
     )
-    const { room } = openNpcAiRoom(recorded.provider)
+    const { room } = openNpcAiRoom(recorded.provider, ['companion'], {
+        cityOnly: true,
+    })
     rooms.push(room)
     const player = joinScenarioRoom(room, 'Patient')
     const kaplya = existingNpc(room)

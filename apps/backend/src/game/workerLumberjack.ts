@@ -47,6 +47,12 @@ export class WorkerLumberjack {
         now: number,
         repair: () => boolean
     ): void {
+        if (
+            actor.isActionLocked(now) ||
+            now < room.adventureForWorkers().workAvailableAt(actor)
+        ) {
+            return
+        }
         const demand = timberDemand(actor, room, now)
         if (demand === undefined) {
             waitForSupply(
@@ -55,12 +61,6 @@ export class WorkerLumberjack {
                 'unavailable',
                 'Городской склад недоступен.'
             )
-            return
-        }
-        if (
-            now < room.adventureForWorkers().workAvailableAt(actor) ||
-            actor.isActionLocked(now)
-        ) {
             return
         }
         if (demand.needed > 0) {

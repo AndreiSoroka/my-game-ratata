@@ -20,9 +20,9 @@ afterEach(async () => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
 })
-function setup() {
+function setup(options: { cityOnly?: boolean } = {}) {
     const provider = controlledNpcProvider()
-    const f = npcRuntimeFixture(provider.decide)
+    const f = npcRuntimeFixture(provider.decide, options)
     fixtures.push(f)
     return { ...f, provider }
 }
@@ -42,7 +42,7 @@ async function acceptOrder(
 }
 
 it('consumes a waiting anchor only after accepting a new guide task and restores prior follow on completion', async () => {
-    const f = setup()
+    const f = setup({ cityOnly: true })
     await acceptOrder(f, 'follow')
     await acceptOrder(f, 'wait')
     const oldAnchor = { ...f.actor.position }

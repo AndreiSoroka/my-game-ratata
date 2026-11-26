@@ -140,7 +140,7 @@ it.each<AgentDecision>([
 
 it('corrects an in-flight continuation when an exchange starts before commit', async () => {
     const provider = controlledNpcProvider()
-    const f = npcRuntimeFixture(provider.decide)
+    const f = npcRuntimeFixture(provider.decide, { cityOnly: true })
     fixtures.push(f)
     const target = nearbyScenarioPoint(f.room, f.actor)
     f.talk('Дойди до точки и расскажи, что дальше.')

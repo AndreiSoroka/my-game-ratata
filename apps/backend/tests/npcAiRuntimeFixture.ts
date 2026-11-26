@@ -6,6 +6,7 @@ import { NpcAiDiagnostics } from '../src/ai/diagnostics'
 import type { NpcAiContext, NpcAiProvider, NpcAiReply } from '../src/ai/types'
 import { distance } from '../src/game/math'
 import { GameRoom } from '../src/game/room'
+import { createCityTestRoom } from './cityRoomFixture'
 import { joinScenarioRoom } from './scenarioRoomHelpers'
 
 export const kaplyaId = 'npc_magic_slime_1'
@@ -42,6 +43,7 @@ export function npcRuntimeFixture(
         maxCallsPerHour?: number
         timeoutMs?: number
         includeMira?: boolean
+        cityOnly?: boolean
     } = {}
 ) {
     const actorId = limits.actorId ?? kaplyaId
@@ -73,9 +75,13 @@ export function npcRuntimeFixture(
         },
         true
     )
-    const room = new GameRoom(undefined, {
+    const options = {
         ai: { config, provider: { decide }, clock: Date.now, diagnostics },
-    })
+    }
+    const room =
+        limits.cityOnly === true
+            ? createCityTestRoom(undefined, options)
+            : new GameRoom(undefined, options)
     room.start()
     const alice = joinScenarioRoom(room, 'AI runtime Alice')
     const actor = room.getCharacter(actorId)

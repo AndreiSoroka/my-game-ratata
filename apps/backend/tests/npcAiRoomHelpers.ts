@@ -13,6 +13,7 @@ import type {
 import type { GameCharacter } from '../src/game/character'
 import { loadNavigationService } from '../src/game/navigation'
 import { GameRoom } from '../src/game/room'
+import { createCityTestRoom } from './cityRoomFixture'
 import type { joinScenarioRoom } from './scenarioRoomHelpers'
 
 export function npcAiReply(
@@ -49,7 +50,8 @@ export function recordedNpcAiProvider(
 
 export function openNpcAiRoom(
     provider: NpcAiProvider,
-    roles: NpcAiRole[] = ['companion']
+    roles: NpcAiRole[] = ['companion'],
+    { cityOnly = false }: { cityOnly?: boolean } = {}
 ) {
     const config = parseNpcAiConfig(
         {
@@ -65,7 +67,7 @@ export function openNpcAiRoom(
         true
     )
     const diagnostics: string[] = []
-    const room = new GameRoom(loadNavigationService(), {
+    const options = {
         ai: {
             config,
             provider,
@@ -77,7 +79,11 @@ export function openNpcAiRoom(
                 },
             }),
         },
-    })
+    }
+    const navigation = loadNavigationService()
+    const room = cityOnly
+        ? createCityTestRoom(navigation, options)
+        : new GameRoom(navigation, options)
     room.start()
     return { room, config, diagnostics }
 }

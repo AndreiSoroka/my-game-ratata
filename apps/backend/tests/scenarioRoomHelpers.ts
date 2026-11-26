@@ -12,18 +12,34 @@ import type { GameRoomOptions } from '../src/ai/roomAi'
 import type { GameCharacter } from '../src/game/character'
 import { GameRoom } from '../src/game/room'
 import type { RoomSocket } from '../src/game/roomMessaging'
+import { createCityTestRoom } from './cityRoomFixture'
 
 export function openScenarioRoom(ai?: GameRoomOptions['ai']) {
+    return startScenarioRoom(
+        () => new GameRoom(undefined, ai === undefined ? {} : { ai })
+    )
+}
+
+export function openCityScenarioRoom(ai?: GameRoomOptions['ai']) {
+    return startScenarioRoom(() =>
+        createCityTestRoom(undefined, ai === undefined ? {} : { ai })
+    )
+}
+
+function startScenarioRoom(createRoom: () => GameRoom) {
     vi.stubGlobal('Bun', { env: {} })
     vi.useFakeTimers()
     vi.setSystemTime(1000)
-    const room = new GameRoom(undefined, ai === undefined ? {} : { ai })
+    const room = createRoom()
     room.start()
     return room
 }
 
-export function openCompanionScenarioRoom(): GameRoom {
-    return openScenarioRoom({
+export function openCompanionScenarioRoom(
+    scope: 'region' | 'city' = 'region'
+): GameRoom {
+    const openRoom = scope === 'city' ? openCityScenarioRoom : openScenarioRoom
+    return openRoom({
         config: parseNpcAiConfig(
             {
                 proactive: false,

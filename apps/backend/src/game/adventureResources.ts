@@ -16,6 +16,12 @@ import {
     adventureRecipes,
     createAdventureResourceNodes,
 } from './adventureResourceData'
+import {
+    bestResourceSnapshot,
+    type ResourcePriority,
+    type ResourceTieBreak,
+    snapshotResources,
+} from './adventureResourceSelection'
 import { resetMartyrStreak } from './martyr'
 export {
     adventureMaterialLabels,
@@ -83,12 +89,15 @@ export class AdventureResources {
         this.harvesting.update(now, navigationFor, characters, occupants)
     }
 
-    public snapshot(locationId?: string): AdventureResourceNode[] {
-        return structuredClone(
-            locationId === undefined
-                ? this.nodes
-                : this.nodes.filter((node) => node.locationId === locationId)
-        )
+    public snapshot(locationId?: string, nodeId?: string) {
+        return snapshotResources(this.nodes, locationId, nodeId)
+    }
+
+    public selectSnapshot(
+        priority: ResourcePriority,
+        tieBreak: ResourceTieBreak
+    ): AdventureResourceNode | undefined {
+        return bestResourceSnapshot(this.nodes, priority, tieBreak)
     }
 
     public snapshotFarms(locationId: string, now: number): FarmPlotSnapshot[] {

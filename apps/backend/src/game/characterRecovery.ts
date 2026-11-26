@@ -145,7 +145,7 @@ export function regenerateCharacter(
     character.mana = regen(
         character.mana,
         maxMana,
-        manaRecoveryRate(character, moving, now),
+        character.mana < maxMana ? manaRecoveryRate(character, moving, now) : 0,
         deltaMs
     )
     consumeResourceRecovery(

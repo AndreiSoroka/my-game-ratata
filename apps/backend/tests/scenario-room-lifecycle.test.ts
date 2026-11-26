@@ -4,7 +4,7 @@ import { countInventoryItem } from '../src/game/inventory'
 import {
     joinScenarioRoom,
     nearbyScenarioPoint,
-    openScenarioRoom,
+    openCityScenarioRoom,
     roomScenario,
     savedScenarioMarker,
     waitForScenario,
@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe('ordinary resurrection preserves scenario progress', () => {
     it('continues after a shared prayer without repeating a successful gathering step', () => {
-        const room = openScenarioRoom(),
+        const room = openCityScenarioRoom(),
             owner = joinScenarioRoom(room, 'Returning Gatherer')
         const nodes = room
             .adventureForWorkers()
@@ -91,7 +91,7 @@ describe('ordinary resurrection preserves scenario progress', () => {
 
 describe('ordinary socket scenario identity lifecycle', () => {
     it('saves numbered markers, walks a real scenario after disconnect and reconnects the same running identity', () => {
-        const room = openScenarioRoom(),
+        const room = openCityScenarioRoom(),
             first = joinScenarioRoom(room, 'Returning Walker')
         first.send({ type: 'marker_create', name: 'Home' })
         const home = savedScenarioMarker(first)
@@ -161,7 +161,7 @@ describe('ordinary socket scenario identity lifecycle', () => {
     })
 
     it('forgets the retired identity library and never gives it to the same nickname in a new life', () => {
-        const room = openScenarioRoom(),
+        const room = openCityScenarioRoom(),
             first = joinScenarioRoom(room, 'New Life')
         first.send({ type: 'marker_create', name: 'Old identity' })
         first.save(

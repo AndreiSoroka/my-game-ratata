@@ -25,35 +25,38 @@ afterEach(async () => {
 
 it('retains the same AI route and arrival receipt across a long consensual exchange pause', async () => {
     let first = true
-    const f = npcRuntimeFixture((context) => {
-        if (first) {
-            first = false
-            return Promise.resolve(
-                npcReply(
-                    { type: 'move_to', target },
-                    {
-                        taskAcceptance: 'accept',
-                        done: false,
-                    }
+    const f = npcRuntimeFixture(
+        (context) => {
+            if (first) {
+                first = false
+                return Promise.resolve(
+                    npcReply(
+                        { type: 'move_to', target },
+                        {
+                            taskAcceptance: 'accept',
+                            done: false,
+                        }
+                    )
                 )
+            }
+            const exchange = context.observation.social?.exchange
+            return Promise.resolve(
+                exchange?.status === 'invited'
+                    ? npcReply(
+                          {
+                              type: 'exchange_answer',
+                              exchangeId: exchange.id,
+                              accept: true,
+                          },
+                          {
+                              taskAcceptance: 'none',
+                          }
+                      )
+                    : npcReply(null, { taskAcceptance: 'none' })
             )
-        }
-        const exchange = context.observation.social?.exchange
-        return Promise.resolve(
-            exchange?.status === 'invited'
-                ? npcReply(
-                      {
-                          type: 'exchange_answer',
-                          exchangeId: exchange.id,
-                          accept: true,
-                      },
-                      {
-                          taskAcceptance: 'none',
-                      }
-                  )
-                : npcReply(null, { taskAcceptance: 'none' })
-        )
-    })
+        },
+        { cityOnly: true }
+    )
     fixture = f
     const target = nearbyScenarioPoint(f.room, f.actor)
     f.talk('Сходи к указанной точке и вернись с ответом.')
@@ -83,7 +86,7 @@ it('retains the same AI route and arrival receipt across a long consensual excha
 
 it('delivers an NPC invitation to the player and wakes the NPC on acceptance', async () => {
     const provider = controlledNpcProvider()
-    const f = npcRuntimeFixture(provider.decide)
+    const f = npcRuntimeFixture(provider.decide, { cityOnly: true })
     fixture = f
     f.alice.send({
         type: 'whisper',

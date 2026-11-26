@@ -36,6 +36,33 @@ it('makes two-log trips on foot and transfers only existing goods without a sale
     ).toBe(false)
 })
 
+it('keeps the authored regional order for equally close timber sources', () => {
+    const later = {
+        ...source('tree'),
+        id: 'western-tree',
+        locationId: 'map-1-2',
+    }
+    const earlier = {
+        ...source('tree'),
+        id: 'northern-tree',
+        locationId: 'map-2-1',
+    }
+    const test = economyWorkerFixture([later, earlier])
+    test.run(100)
+    expect(readWorkerActivity(test.worker)?.worksite).toMatchObject({
+        sourceId: earlier.id,
+        locationId: earlier.locationId,
+    })
+    const snapshot = required(
+        test.service.resourceSnapshot(earlier.locationId, earlier.id)[0]
+    )
+    snapshot.remaining = 0
+    expect(
+        test.service.resourceSnapshot(earlier.locationId, earlier.id)[0]
+            ?.remaining
+    ).toBe(8)
+})
+
 it('keeps supplies on the worker when dead, too far, blocked by a request, or with no merchant', () => {
     const dead = economyWorkerFixture([source('tree')])
     dead.worker.alive = false

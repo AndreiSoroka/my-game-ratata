@@ -117,6 +117,9 @@ export function advanceRoomSimulation(context: SimulationContext): void {
         )
     }
     for (const character of characters.values()) {
+        if (character.abilities.casting === null) {
+            continue
+        }
         context.onEvents(
             validatePrayerChannel(
                 character,

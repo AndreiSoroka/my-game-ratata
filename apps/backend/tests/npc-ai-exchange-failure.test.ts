@@ -25,7 +25,10 @@ afterEach(async () => {
 
 async function openExchange() {
     const provider = controlledNpcProvider()
-    const f = npcRuntimeFixture(provider.decide, { timeoutMs: 1000 })
+    const f = npcRuntimeFixture(provider.decide, {
+        timeoutMs: 1000,
+        cityOnly: true,
+    })
     fixtures.push(f)
     f.alice.send({ type: 'exchange_invite', targetId: f.actor.id })
     await f.advance()
@@ -113,7 +116,10 @@ it('stopping the room closes an active exchange and aborts its outstanding model
 
 it('repeated trade dialogue failures release the exchange while retaining a previously accepted errand', async () => {
     const provider = controlledNpcProvider()
-    const f = npcRuntimeFixture(provider.decide, { timeoutMs: 1000 })
+    const f = npcRuntimeFixture(provider.decide, {
+        timeoutMs: 1000,
+        cityOnly: true,
+    })
     fixtures.push(f)
     const target = nearbyScenarioPoint(f.room, f.actor)
     const request = 'Дойди до указанной точки.'

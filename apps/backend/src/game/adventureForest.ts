@@ -1,6 +1,10 @@
 import type { GatherOperation, Vector2 } from '@my-game-ratata/contracts'
 
 import type { AdventureResources } from './adventureResources'
+import type {
+    ResourcePriority,
+    ResourceTieBreak,
+} from './adventureResourceSelection'
 import type { PlayerAdventure } from './adventureState'
 import type { GameCharacter } from './character'
 import type { NavigationService } from './navigation'
@@ -11,8 +15,12 @@ export function createAdventureForest(
     stateFor: (actor: GameCharacter) => PlayerAdventure
 ) {
     return {
-        resourceSnapshot: (locationId: string) =>
-            resources().snapshot(locationId),
+        resourceSnapshot: (locationId: string, nodeId?: string) =>
+            resources().snapshot(locationId, nodeId),
+        selectResourceSnapshot: (
+            priority: ResourcePriority,
+            tieBreak: ResourceTieBreak
+        ) => resources().selectSnapshot(priority, tieBreak),
         farmSnapshot: (locationId: string, now: number) =>
             resources().snapshotFarms(locationId, now),
         inspectGather: (

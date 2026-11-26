@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { parseNpcAiConfig } from '../src/ai/config'
+import type { GameRoomOptions } from '../src/ai/roomAi'
 import { NavigationService } from '../src/game/navigation'
-import { GameRoom } from '../src/game/room'
+import type { GameRoom } from '../src/game/room'
 import { NPC_HUM } from '../src/game/roomNpcReplySpeech'
+import * as workerSpawns from '../src/game/workerSpawns'
+import { createCityTestRoom } from './cityRoomFixture'
 import { controlledNpcProvider, npcReply } from './npcAiRuntimeFixture'
 import { joinScenarioRoom } from './scenarioRoomHelpers'
 
@@ -36,6 +39,28 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 
+function warningRoom(options: GameRoomOptions): GameRoom {
+    const workers = vi
+        .spyOn(workerSpawns, 'createEconomyWorkers')
+        .mockReturnValue([])
+    try {
+        return createCityTestRoom(
+            new NavigationService({
+                id: 'warning-probe',
+                width: 40,
+                height: 72,
+                tileWidth: 16,
+                tileHeight: 16,
+                solid: Array<boolean>(40 * 72).fill(false),
+                solidLayerNames: [],
+            }),
+            options
+        )
+    } finally {
+        workers.mockRestore()
+    }
+}
+
 function fixture(model = true) {
     const provider = controlledNpcProvider()
     const config = parseNpcAiConfig(
@@ -45,18 +70,7 @@ function fixture(model = true) {
         },
         model
     )
-    const room = new GameRoom(
-        new NavigationService({
-            id: 'warning-probe',
-            width: 40,
-            height: 72,
-            tileWidth: 16,
-            tileHeight: 16,
-            solid: Array<boolean>(40 * 72).fill(false),
-            solidLayerNames: [],
-        }),
-        { ai: { config, provider } }
-    )
+    const room = warningRoom({ ai: { config, provider } })
     fixtures.push(room)
     const npc = room.getCharacter(leiaId)
     if (npc === undefined) {

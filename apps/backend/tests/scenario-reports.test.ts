@@ -23,7 +23,7 @@ afterEach(() => {
 })
 
 async function setup() {
-    const room = openCompanionScenarioRoom()
+    const room = openCompanionScenarioRoom('city')
     rooms.push(room)
     const owner = joinScenarioRoom(room, 'Report owner')
     const helper = await enlistScenarioCompanion(room, owner)

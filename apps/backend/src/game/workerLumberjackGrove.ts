@@ -22,6 +22,9 @@ import { hasNoRoute } from './workerFarm'
 import { sourceCost, stop, WorkerFieldRoute } from './workerNavigation'
 
 const retryDelay = 5_000
+const locationOrder = new Map(
+    WORLD_LOCATION_DEFINITIONS.map(({ id }, index) => [id, index])
+)
 type GroveWork = 'working' | 'no_source' | 'bag_full'
 
 export class WorkerLumberjackGrove {
@@ -53,9 +56,7 @@ export class WorkerLumberjackGrove {
             wait(actor, now, 'unavailable', 'Ищу доступный лесной участок.')
             return 'no_source'
         }
-        const live = service
-            .resourceSnapshot(target.locationId)
-            .find((node) => node.id === target.id)
+        const live = service.resourceSnapshot(target.locationId, target.id)[0]
         if (live === undefined || live.remaining <= 0) {
             this.clearWorksite()
             return 'working'
@@ -202,17 +203,19 @@ export class WorkerLumberjackGrove {
             }
         }
         const service = room.adventureForWorkers()
-        return WORLD_LOCATION_DEFINITIONS.flatMap((location) =>
-            service.resourceSnapshot(location.id)
+        return service.selectResourceSnapshot(
+            (node) =>
+                locationOrder.has(node.locationId) &&
+                node.kind === 'wood' &&
+                node.remaining > 0 &&
+                (node.phase === 'ready' || node.phase === undefined) &&
+                !this.unreachable.has(node.id)
+                    ? sourceCost(actor, node)
+                    : Infinity,
+            (first, second) =>
+                (locationOrder.get(first.locationId) ?? Infinity) -
+                (locationOrder.get(second.locationId) ?? Infinity)
         )
-            .filter(
-                (node) =>
-                    node.kind === 'wood' &&
-                    node.remaining > 0 &&
-                    (node.phase === 'ready' || node.phase === undefined) &&
-                    !this.unreachable.has(node.id)
-            )
-            .sort((a, b) => sourceCost(actor, a) - sourceCost(actor, b))[0]
     }
 
     public plant(actor: GameCharacter, room: GameRoom, now: number): boolean {

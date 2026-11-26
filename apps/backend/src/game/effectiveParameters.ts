@@ -18,6 +18,8 @@ import {
 
 import type { GameCharacter } from './character'
 import { resolveCharacterStats } from './characterStats'
+import { activeConstellationStars } from './constellationActivity'
+import { constellationMoveSpeedMultiplier } from './constellationBonuses'
 import { ashParameters, constellationModifiers } from './constellationModifiers'
 import { resolveArrowParameters } from './effectiveArrowParameters'
 import { effectiveMaxMana } from './effectiveResources'
@@ -181,10 +183,9 @@ export function effectiveAttackEnergyCost(actor: GameCharacter): number {
 }
 
 export function effectiveMoveSpeed(actor: GameCharacter): number {
-    const modifiers = constellationModifiers(actor)
     return (
         (actor.config.moveSpeed + fatZombieBonuses(actor).moveSpeed) *
-        modifiers.moveSpeedMultiplier
+        constellationMoveSpeedMultiplier(activeConstellationStars(actor))
     )
 }
 

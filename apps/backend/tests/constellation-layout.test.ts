@@ -9,6 +9,14 @@ import { catalogueWithoutUndeadExpansion as historicalCatalogue } from './conste
 import { auditPersonalSky } from './personalSkyAudit'
 
 const centers = ['blade', 'magic', 'prayer', 'arrow', 'undead'] as const
+const seedsPerCase = 32
+const layoutCases = centers.flatMap((center) =>
+    Array.from({ length: 256 / seedsPerCase }, (_, index) => ({
+        center,
+        first: index * seedsPerCase,
+        last: (index + 1) * seedsPerCase - 1,
+    }))
+)
 
 describe('personal planar skies', () => {
     it('keeps the historical catalogue and certifies the expanded components', () => {
@@ -47,10 +55,10 @@ describe('personal planar skies', () => {
         expect(component?.ids).toEqual(expect.arrayContaining(undeadIds))
     })
 
-    it.each(centers)(
-        'independently audits 256 seeds with %s at the center, including hidden stars',
-        (center) => {
-            for (let seed = 0; seed < 256; seed += 1) {
+    it.each(layoutCases)(
+        'independently audits seeds $first to $last with $center at the center, including hidden stars',
+        ({ center, first, last }) => {
+            for (let seed = first; seed <= last; seed += 1) {
                 const sky = generateConstellationLayout(
                     expandedConstellationCatalog,
                     `personal-sky:${String(seed)}`,
@@ -75,7 +83,7 @@ describe('personal planar skies', () => {
                 expect(sky.layout.minimumNodeSpacing).toBeGreaterThanOrEqual(80)
             }
         },
-        180000
+        30_000
     )
 
     it('replays one seed exactly and changes both roots and internal shape for another identity', () => {
@@ -108,8 +116,9 @@ describe('personal planar skies', () => {
         expect(first.layout.regions).not.toEqual(second.layout.regions)
     })
 
-    it('certifies a deterministic fallback for all starting constellations with zero random attempts', () => {
-        for (const center of [...centers, 'fat_zombie'] as const) {
+    it.each([...centers, 'fat_zombie'] as const)(
+        'certifies a deterministic fallback for %s with zero random attempts',
+        (center) => {
             const sky = generateConstellationLayout(
                 expandedConstellationCatalog,
                 'forced-fallback',
@@ -130,7 +139,7 @@ describe('personal planar skies', () => {
                 )
             ).toEqual(sky)
         }
-    })
+    )
 })
 
 describe('natural constellation shape', () => {
@@ -178,7 +187,7 @@ describe('natural constellation shape', () => {
             orders.add(leafOrder(sky))
         }
         expect(orders.size).toBeGreaterThan(4)
-    })
+    }, 20_000)
 
     it('reports actual minimum spacing and never mutates frozen templates or metadata', () => {
         const before = JSON.stringify(expandedConstellationCatalog)

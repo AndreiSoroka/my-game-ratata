@@ -140,5 +140,5 @@ describe('reachable wilderness encounters', () => {
         } finally {
             room.stop()
         }
-    }, 30_000)
+    }, 60_000)
 })

@@ -12,6 +12,12 @@ import { resolveUndeadBonuses } from './constellationUndead'
 
 export const ENDURANCE_ENERGY_PERCENT = 110
 
+export function constellationMoveSpeedMultiplier(
+    activeIds: ReadonlySet<string>
+): number {
+    return activeIds.has('life.move') ? 1.05 : 1
+}
+
 /** Pure bonuses shared by authoritative characters and isolated atlas builds. */
 export function resolveConstellationBonuses(
     activeIds: ReadonlySet<string>,
@@ -43,7 +49,7 @@ export function resolveConstellationBonuses(
             spellManaMultipliers[rank('magic.spell_economy', 3)] ?? 1,
         manaRestMultiplier:
             manaRestMultipliers[rank('magic.mana_rest', 3)] ?? 1,
-        moveSpeedMultiplier: 1 + 0.05 * learned('life.move'),
+        moveSpeedMultiplier: constellationMoveSpeedMultiplier(activeIds),
         dashEnergyMultiplier: 1 - 0.1 * learned('life.dash'),
         foodHealingBonus: 15 * learned('life.ration'),
         walkingBootWearMultiplier: 1 - 0.25 * learned('life.tread'),

@@ -112,6 +112,7 @@ export class AdventureService {
         (actor) => this.stateFor(actor.id)
     )
     public readonly resourceSnapshot = this.forest.resourceSnapshot
+    public readonly selectResourceSnapshot = this.forest.selectResourceSnapshot
     public readonly inspectGather = this.forest.inspectGather
     public readonly previewPlant = this.forest.previewPlant
     public readonly workAvailableAt = this.forest.workAvailableAt
