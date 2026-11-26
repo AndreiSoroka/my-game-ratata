@@ -16,11 +16,11 @@ it('picks up loose brushwood along the timber route and adds nearby branches to 
         x: 300,
         y: 300,
     })
-    test.run(19_000)
-    expect(test.row('wood').stock).toBe(8)
+    test.run(65_000)
+    expect(test.row('wood').stock).toBe(14)
     expect(test.row('brushwood')).toMatchObject({
-        stock: 9,
-        deliveredLast10Minutes: 3,
+        stock: 10,
+        deliveredLast10Minutes: 4,
     })
     expect(test.remaining('branches')).toBe(0)
     expect(countInventoryItem(test.worker.inventory, 'brushwood')).toBe(0)

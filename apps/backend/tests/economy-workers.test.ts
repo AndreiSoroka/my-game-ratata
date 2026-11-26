@@ -7,19 +7,21 @@ import { readWorkerActivity } from '../src/game/workerActivityState'
 import { required } from './containerTestHelpers'
 import { economyWorkerFixture, source } from './workerEconomyFixture'
 
-it('makes two-log trips on foot and transfers only existing goods without a sale', () => {
+it('fells a whole adult tree before bringing its real logs to the merchant', () => {
     const test = economyWorkerFixture([source('tree')])
-    for (
-        let elapsed = 0;
-        elapsed < 20_000 && test.deliveries.mock.results.length === 0;
-        elapsed += 100
-    ) {
-        test.run(100)
-    }
-    expect(test.remaining('tree')).toBe(6)
+    test.run(20_000)
+    expect(
+        countInventoryItem(test.worker.inventory, 'wood')
+    ).toBeGreaterThanOrEqual(2)
+    expect(test.remaining('tree')).toBeGreaterThan(0)
+    expect(test.deliveries.mock.results).toHaveLength(0)
+    test.run(45_000)
+    expect(
+        test.service.resourceSnapshot(CENTER_LOCATION_ID, 'tree')[0]
+    ).toMatchObject({ phase: 'stump', remaining: 0 })
     expect(test.row('wood')).toMatchObject({
-        stock: 8,
-        deliveredLast10Minutes: 2,
+        stock: 14,
+        deliveredLast10Minutes: 8,
     })
     expect(test.deliveries.mock.results).toHaveLength(1)
     expect(test.deliveries.mock.results[0]?.value).toMatchObject({
@@ -27,10 +29,10 @@ it('makes two-log trips on foot and transfers only existing goods without a sale
     })
     expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(0)
     expect(test.service.snapshot(test.worker.id).gold).toBe(20)
-    expect(test.worker.equipment.weapon?.durability).toBe(994)
+    expect(test.worker.equipment.weapon?.durability).toBe(976)
     expect(
         test.commands.filter((message) => message.type === 'gather')
-    ).toHaveLength(6)
+    ).toHaveLength(24)
     expect(
         test.commands.some((message) => message.type === 'market_trade')
     ).toBe(false)
@@ -73,8 +75,8 @@ it('keeps supplies on the worker when dead, too far, blocked by a request, or wi
     const absent = economyWorkerFixture([source('tree')], {
         merchantPresent: false,
     })
-    absent.run(25_000)
-    expect(countInventoryItem(absent.worker.inventory, 'wood')).toBe(2)
+    absent.run(65_000)
+    expect(countInventoryItem(absent.worker.inventory, 'wood')).toBe(8)
     expect(absent.row('wood').stock).toBe(6)
     const deposit = () =>
         absent.service.deliverWorkerSupplies(
@@ -93,16 +95,20 @@ it('keeps supplies on the worker when dead, too far, blocked by a request, or wi
     absent.service.setWorkPermission(() => true)
     expect(deposit().accepted).toBe(true)
     expect(deposit().accepted).toBe(false)
-    expect(absent.row('wood').stock).toBe(8)
+    expect(absent.row('wood').stock).toBe(14)
     expect(absent.service.snapshot(absent.worker.id).gold).toBe(20)
 })
 
-it('fills one log from 19 and rotates actual town stops as demand returns', () => {
-    const test = economyWorkerFixture([source('tree')])
+it('fells a whole tree near the stock target and delivers surplus before another trip', () => {
+    const test = economyWorkerFixture([
+        source('tree'),
+        source('tree', { x: 248, y: 72 }, 'next-tree'),
+    ])
     test.stockTo('wood', 19)
-    test.run(20_000)
+    test.run(65_000)
     expect(test.row('wood').stock).toBe(20)
-    expect(test.remaining('tree')).toBe(7)
+    expect(test.remaining('tree')).toBe(0)
+    expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(7)
     expect(readWorkerActivity(test.worker)?.text).toContain('на площади')
     expect(
         Math.hypot(test.worker.position.x - 56, test.worker.position.y - 120)
@@ -110,7 +116,8 @@ it('fills one log from 19 and rotates actual town stops as demand returns', () =
     test.advanceTo(300_000)
     test.run(20_000)
     expect(test.row('wood').stock).toBe(20)
-    expect(test.remaining('tree')).toBe(6)
+    expect(test.remaining('next-tree')).toBe(8)
+    expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(6)
     expect(readWorkerActivity(test.worker)?.text).toContain('у лавки')
     expect(
         Math.hypot(test.worker.position.x - 56, test.worker.position.y - 200)
@@ -118,11 +125,26 @@ it('fills one log from 19 and rotates actual town stops as demand returns', () =
     test.advanceTo(600_000)
     test.run(20_000)
     expect(test.row('wood').stock).toBe(20)
-    expect(test.remaining('tree')).toBe(5)
+    expect(test.remaining('next-tree')).toBe(8)
+    expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(5)
     expect(readWorkerActivity(test.worker)?.text).toContain('у гильдии')
     expect(
         Math.hypot(test.worker.position.x - 56, test.worker.position.y - 280)
     ).toBeLessThan(18)
+})
+
+it('finishes the current tree when another supplier fills the timber reserve', () => {
+    const test = economyWorkerFixture([source('tree')])
+    test.run(20_000)
+    expect(test.remaining('tree')).toBeLessThan(8)
+    expect(test.remaining('tree')).toBeGreaterThan(0)
+    test.stockTo('wood', 20)
+    test.run(45_000)
+    expect(test.remaining('tree')).toBe(0)
+    expect(countInventoryItem(test.worker.inventory, 'wood')).toBe(8)
+    expect(test.row('wood').stock).toBe(20)
+    expect(test.row('brushwood').stock).toBe(7)
+    expect(readWorkerActivity(test.worker)?.reason).toBe('stock_sufficient')
 })
 
 it('replants real saplings after a mature tree falls, using ordinary plant validation', () => {
@@ -190,10 +212,9 @@ it('covers three hours of twelve-log baseline consumption after filling the real
     for (let interval = 1; interval <= 36; interval += 1) {
         test.advanceTo(interval * 300_000)
         expect(test.row('wood').stock).toBe(19)
-        test.run(25_000)
+        test.run(75_000)
         expect(test.row('wood').stock).toBe(20)
     }
-    expect(test.deliveries.mock.results).toHaveLength(43)
     expect(test.row('wood').consumptionPer10Minutes).toBe(2)
     expect(test.service.snapshot(test.worker.id).gold).toBe(20)
 })

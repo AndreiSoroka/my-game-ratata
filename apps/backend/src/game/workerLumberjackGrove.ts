@@ -25,7 +25,7 @@ const retryDelay = 5_000
 const locationOrder = new Map(
     WORLD_LOCATION_DEFINITIONS.map(({ id }, index) => [id, index])
 )
-type GroveWork = 'working' | 'no_source' | 'bag_full'
+type GroveWork = 'working' | 'felled' | 'no_source' | 'bag_full'
 
 export class WorkerLumberjackGrove {
     public selected: AdventureResourceNode | undefined
@@ -79,25 +79,46 @@ export class WorkerLumberjackGrove {
         if (!this.approach(actor, room, live, now)) {
             return 'working'
         }
-        if (live.source !== undefined) {
-            const check = service.inspectGather(
-                actor,
-                live.id,
-                'harvest',
-                now,
-                room.navigationFor(actor)
-            )
+        return this.chop(actor, room, live, now)
+    }
+
+    private chop(
+        actor: GameCharacter,
+        room: GameRoom,
+        node: AdventureResourceNode,
+        now: number
+    ): GroveWork {
+        if (node.source !== undefined) {
+            const check = room
+                .adventureForWorkers()
+                .inspectGather(
+                    actor,
+                    node.id,
+                    'harvest',
+                    now,
+                    room.navigationFor(actor)
+                )
             if (check.status !== 'ready') {
-                return this.handleInspection(actor, live, check, now)
+                return this.handleInspection(actor, node, check, now)
             }
         }
         const result = executeWorkerAdventure(
             actor,
             room,
-            { type: 'gather', nodeId: live.id },
+            { type: 'gather', nodeId: node.id },
             now
         )
-        return result.accepted ? 'working' : 'no_source'
+        if (!result.accepted) {
+            return 'no_source'
+        }
+        const felled =
+            node.source === 'tree' &&
+            node.remaining === 1 &&
+            result.events.some(
+                (event) =>
+                    event.kind === 'resource_gather' && event.itemId === 'wood'
+            )
+        return felled ? 'felled' : 'working'
     }
 
     private handleInspection(

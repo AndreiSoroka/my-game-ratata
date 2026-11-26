@@ -16,8 +16,6 @@ import { WorkerLumberjackRest } from './workerLumberjackRest'
 import { approachCharacter, stop, WorkerFieldRoute } from './workerNavigation'
 import { supplyMerchantId } from './workerSupplies'
 
-const loadSize = 2
-
 interface TimberDemand {
     cityId: string
     needed: number
@@ -73,7 +71,7 @@ export class WorkerLumberjack {
         ) {
             return
         }
-        if (demand.needed === 0) {
+        if (demand.needed === 0 && this.selected === undefined) {
             this.restInTown(actor, room, demand.cityId, now)
             return
         }
@@ -86,10 +84,12 @@ export class WorkerLumberjack {
         now: number,
         demand: TimberDemand
     ): void {
-        if (this.grove.gather(actor, room, now) === 'working') {
+        const progress = this.grove.gather(actor, room, now)
+        if (progress === 'working') {
             this.workingTrip = true
         } else {
             this.returning =
+                progress === 'felled' ||
                 demand.carried > 0 ||
                 (this.workingTrip && hasBrushwood(actor, demand.brushwood))
         }
@@ -101,14 +101,12 @@ export class WorkerLumberjack {
         now: number,
         demand: TimberDemand
     ): boolean {
-        if (
-            this.returning ||
-            (demand.needed > 0 && this.selected !== undefined)
-        ) {
+        if (this.returning || this.selected !== undefined) {
             pickUpWorkerBrushwood(actor, room, demand.brushwood, now)
         }
         const brushwood = hasBrushwood(actor, demand.brushwood)
-        this.returning ||= this.shouldReturn(demand, brushwood)
+        this.returning ||=
+            this.selected === undefined && this.shouldDeliver(demand, brushwood)
         if (!this.returning) {
             return false
         }
@@ -124,9 +122,9 @@ export class WorkerLumberjack {
         return true
     }
 
-    private shouldReturn(demand: TimberDemand, brushwood: boolean): boolean {
+    private shouldDeliver(demand: TimberDemand, brushwood: boolean): boolean {
         return demand.needed > 0
-            ? demand.carried >= Math.min(loadSize, demand.needed)
+            ? demand.carried > 0
             : this.workingTrip && brushwood
     }
 
