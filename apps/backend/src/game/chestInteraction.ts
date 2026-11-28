@@ -4,7 +4,6 @@ import {
     chestInteractionDistance,
     containerBounds,
     type ContainerKind,
-    FARM_SUPPLY_CHESTS,
     type GameEventPayload,
     type Vector2,
     type WorldChestSnapshot,
@@ -15,7 +14,6 @@ import type { GameCharacter } from './character'
 import { breakHeartSeal } from './heartSeals'
 import {
     canAddInventoryItems,
-    createItemInstance,
     type InventoryItemInstance,
     itemQuantity,
     transferInventoryItem,
@@ -24,15 +22,12 @@ import {
 import { resetMartyrStreak } from './martyr'
 import { clamp, distance } from './math'
 import type { NavigationService } from './navigation'
-import { overlaps } from './resourcePlacement'
 import { availableInventoryQuantity } from './rewardReservations'
 import { canPerformSkillAction } from './skillProgression'
-import {
-    dropPosition,
-    generateChestContents,
-    generateFarmSupplyContents,
-} from './worldInventoryHelpers'
+import { dropPosition } from './worldInventoryHelpers'
 import { withWorldSound } from './worldSound'
+
+export { createWorldChests } from './worldChestPlacement'
 
 export function chestOpenRefusal(
     actor: GameCharacter,
@@ -228,83 +223,4 @@ export function findNearestChest(
         }))
         .filter((candidate) => candidate.distance <= CHEST_INTERACTION_RANGE)
         .sort((a, b) => a.distance - b.distance)[0]?.chest
-}
-
-export function createWorldChests(
-    navigation: NavigationService,
-    locationId = navigation.grid.id,
-    random: () => number = Math.random
-): Map<string, WorldChest> {
-    const chests = new Map<string, WorldChest>()
-    const authoredContainers = navigation.grid.containers ?? []
-    const farmChests = FARM_SUPPLY_CHESTS.filter(
-        (chest) => chest.locationId === locationId
-    )
-    const occupied = [
-        ...authoredContainers.map((container) => container.bounds),
-        ...farmChests.map((chest) => containerBounds(chest.position)),
-    ]
-    const large = navigation.grid.width >= 64 && navigation.grid.height >= 64
-    const tiles = large
-        ? [
-              { x: 50, y: 43 },
-              { x: 20, y: 20 },
-              { x: 74, y: 20 },
-              { x: 20, y: 60 },
-              { x: 74, y: 60 },
-          ]
-        : [{ x: 6, y: 4 }]
-    for (const [index, preferred] of tiles.entries()) {
-        const tile = navigation.findWalkableTileNear(preferred, (candidate) => {
-            const bounds = containerBounds(navigation.tileToWorld(candidate))
-            return (
-                navigation
-                    .cellsInBounds(bounds)
-                    .every((cell) => navigation.grid.solid[cell] !== true) &&
-                !occupied.some((area) => overlaps(area, bounds)) &&
-                navigation.walkableNeighbors(candidate).length > 0
-            )
-        })
-        if (tile === undefined) {
-            continue
-        }
-        const id = `chest_forest_${String(index + 1)}`
-        const position = navigation.tileToWorld(tile)
-        occupied.push(containerBounds(position))
-        chests.set(id, {
-            contents: generateChestContents(large && index === 0, random),
-            id,
-            opened: false,
-            position,
-        })
-    }
-    for (const definition of farmChests) {
-        chests.set(definition.id, {
-            contents: generateFarmSupplyContents(random),
-            id: definition.id,
-            position: { ...definition.position },
-            opened: false,
-        })
-    }
-    for (const definition of authoredContainers) {
-        const { bounds, contents, ...metadata } = definition
-        if (chests.has(definition.id)) {
-            throw new Error(`Duplicate container: ${definition.id}`)
-        }
-        chests.set(definition.id, {
-            ...metadata,
-            bounds: { ...bounds },
-            position: {
-                x: bounds.x + bounds.width / 2,
-                y: bounds.y + bounds.height / 2,
-            },
-            contents: contents.flatMap(({ itemId, quantity }) =>
-                Array.from({ length: quantity }, () =>
-                    createItemInstance(itemId)
-                )
-            ),
-            opened: false,
-        })
-    }
-    return chests
 }
