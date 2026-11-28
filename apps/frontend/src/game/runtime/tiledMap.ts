@@ -53,6 +53,7 @@ export interface RenderedTiledMap {
     buildings: MapBuilding[]
     depthProps: MapDepthProp[]
     dungeonLights?: DungeonLight[]
+    facadeDoorIds: ReadonlySet<string>
     applyDungeonReveals?: (reveals: readonly DungeonRevealSnapshot[]) => boolean
     harvestGraphics: HarvestGraphics
     footsteps: FootstepMap
@@ -110,6 +111,7 @@ export async function loadRenderedTiledMap(
         ),
         bitmap,
         buildings,
+        facadeDoorIds: readFacadeDoorIds(map),
         depthProps: readDepthProps(
             map.layers.find((layer) => layer.name === 'Depth props')?.objects ?? [],
             (canvas, tiles, columns) => renderDepthProp(canvas, tiles, columns, map, tilesets)
@@ -123,6 +125,21 @@ export async function loadRenderedTiledMap(
         worldHeight: map.height * map.tileheight,
         worldWidth: map.width * map.tilewidth,
     }
+}
+
+function readFacadeDoorIds(map: TiledMap): ReadonlySet<string> {
+    const interactions = map.layers.find(
+        (layer) => layer.type === 'objectgroup' && layer.name === 'World interactions'
+    )
+    const ids = new Set<string>()
+    for (const object of interactions?.objects ?? []) {
+        if (object.type !== 'door') continue
+        const appearance = object.properties?.find((property) => property.name === 'doorAppearance')
+        if (appearance?.value !== 'facade') continue
+        const id = object.properties?.find((property) => property.name === 'interactionId')?.value
+        if (typeof id === 'string') ids.add(id)
+    }
+    return ids
 }
 
 function readTerrain(map: TiledMap, bitmap: HTMLCanvasElement, tilesets: LoadedTileset[]) {

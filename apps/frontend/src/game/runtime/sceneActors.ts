@@ -1,12 +1,13 @@
-import type {
-    CharacterSnapshot,
-    GameEventPayload,
-    ItemId,
-    ProjectilePath,
-    TrainingAreaDefinition,
-    Vector2,
-    WorldObjectBounds,
-    WorldSnapshot,
+import {
+    type CharacterSnapshot,
+    DOOR_INTERACTION_RANGE,
+    type GameEventPayload,
+    type ItemId,
+    type ProjectilePath,
+    type TrainingAreaDefinition,
+    type Vector2,
+    type WorldObjectBounds,
+    type WorldSnapshot,
 } from '@my-game-ratata/contracts'
 import { BoundingBox, Engine, type ImageSource, type SpriteSheet } from 'excalibur'
 
@@ -143,7 +144,7 @@ export class SceneActors {
         this.depthProps.dispose()
         this.clearTargetHighlights()
         this.routeWaypoints.clear()
-        this.interactionObjects.setMap(map.visibility)
+        this.interactionObjects.setMap(map.visibility, map.facadeDoorIds)
         this.trainingAreas = map.training.areas
         this.mapVisibility?.resourceInterest?.clear()
         this.mapVisibility = map.visibility
@@ -170,7 +171,7 @@ export class SceneActors {
         this.buildingViews.update(player?.position)
         this.magicViews.sync(snapshot, this.isPositionVisible)
         this.interactionObjects.update(snapshot, player, this.isPositionVisible, (point) =>
-            this.isInteractionVisible(point, undefined, Infinity)
+            this.isInteractionVisible(point, undefined, DOOR_INTERACTION_RANGE)
         )
 
         this.characters.sync(

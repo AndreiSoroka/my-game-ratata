@@ -4,7 +4,15 @@ import { doorwayGid, pavingGid, woodenFloorGid } from './generate-ground.mjs'
 const town = 512
 const furnishings = 198
 
-export function doorInteraction(id, locationId, key, name, [x, y], state) {
+export function doorInteraction(
+    id,
+    locationId,
+    key,
+    name,
+    [x, y],
+    state,
+    appearance
+) {
     return {
         id,
         name,
@@ -22,6 +30,15 @@ export function doorInteraction(id, locationId, key, name, [x, y], state) {
                 value: `${locationId}:door:${key}`,
             },
             { name: 'doorState', type: 'string', value: state },
+            ...(appearance === undefined
+                ? []
+                : [
+                      {
+                          name: 'doorAppearance',
+                          type: 'string',
+                          value: appearance,
+                      },
+                  ]),
         ],
     }
 }

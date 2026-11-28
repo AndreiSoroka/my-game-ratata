@@ -522,7 +522,8 @@ export function generateWorldMap(definition, options = {}) {
                 'hamlet',
                 'Дверь дома',
                 lockedDoor,
-                'locked'
+                'locked',
+                'facade'
             )
         )
     const depthProps = createDepthProps(settlementContext, definition.id)

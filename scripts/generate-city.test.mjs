@@ -89,6 +89,7 @@ function verify(map, style, label) {
             ['baker', 'weaver'].includes(definition.key) ? 'closed' : 'open',
             label
         )
+        assert.equal(value(door, 'doorAppearance'), undefined, label)
         for (const other of buildings.filter(
             (entry) => entry.id !== building.id
         ))
@@ -545,6 +546,7 @@ test('the farm barn and a knockable solid farmhouse have distinct accessible doo
             (object) => object.type === 'door'
         )
         const solid = layer(map, 'Collision').data
+        const structures = layer(map, 'Ruins').data
         const reachable = reached(map, [48, 40])
         assert.equal(doors.length, 2, definition.id)
         for (const [index, id, state] of [
@@ -560,6 +562,22 @@ test('the farm barn and a knockable solid farmhouse have distinct accessible doo
             )
             assert.equal(value(door, 'doorState'), state)
             assert.equal(Boolean(solid[cell]), state === 'locked')
+            assert.deepEqual(
+                door.properties.find(
+                    (property) => property.name === 'doorAppearance'
+                ),
+                id === 'hamlet'
+                    ? {
+                          name: 'doorAppearance',
+                          type: 'string',
+                          value: 'facade',
+                      }
+                    : undefined,
+                definition.id
+            )
+            if (id === 'hamlet') {
+                assert.equal(structures[cell], 512 + 85, definition.id)
+            }
             assert.ok(reachable.has(cell + map.width), definition.id)
         }
     }

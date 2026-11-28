@@ -23,9 +23,9 @@ export class InteractionObjectViews {
         this.signs = new SignReadingViews(engine)
     }
 
-    public setMap(map: MapVisibility): void {
+    public setMap(map: MapVisibility, facadeDoorIds: ReadonlySet<string>): void {
         this.bells.clear()
-        this.doors.clear()
+        this.doors.setMap(facadeDoorIds)
         this.signs.setMap(map)
     }
 

@@ -13001,6 +13001,11 @@
                             "name": "doorState",
                             "type": "string",
                             "value": "locked"
+                        },
+                        {
+                            "name": "doorAppearance",
+                            "type": "string",
+                            "value": "facade"
                         }
                     ]
                 }

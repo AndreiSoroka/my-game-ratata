@@ -14,6 +14,7 @@ interface DoorView {
 /** Door leaves sit over the authored arch and stay on the map when a roof is removed. */
 export class DoorViews {
     private readonly views = new Map<string, DoorView>()
+    private facadeDoorIds: ReadonlySet<string> = new Set()
     private readonly leaves = {
         open: doorLeaf('open'),
         closed: doorLeaf('closed'),
@@ -22,21 +23,29 @@ export class DoorViews {
 
     public constructor(private readonly engine: Engine) {}
 
+    public setMap(facadeDoorIds: ReadonlySet<string>): void {
+        this.clear()
+        this.facadeDoorIds = facadeDoorIds
+    }
+
     public update(
         objects: readonly WorldObjectSnapshot[],
         visible: (point: Vector2) => boolean
     ): void {
         const active = new Set<string>()
         for (const object of objects) {
-            if (object.kind !== 'door' || !object.door) continue
+            if (object.kind !== 'door' || !object.door || this.facadeDoorIds.has(object.id))
+                continue
             const { bounds, id, door } = object
+            const state = doorApproachPoints(bounds, door.state).some(visible)
+                ? door.state
+                : 'closed'
             active.add(id)
-            const view = this.views.get(id) ?? this.create(object, door.state)
-            if (view.state !== door.state) {
-                view.actor.graphics.use(this.leaves[door.state])
-                view.state = door.state
+            const view = this.views.get(id) ?? this.create(object, state)
+            if (view.state !== state) {
+                view.actor.graphics.use(this.leaves[state])
+                view.state = state
             }
-            view.actor.graphics.isVisible = doorApproachPoints(bounds, door.state).some(visible)
         }
         for (const [id, view] of this.views) {
             if (active.has(id)) continue
